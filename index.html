@@ -1949,7 +1949,12 @@ function confirmDiscard(go){
 async function openData(name, bytes, src){
   let obj;
   try {
-    if (isX(name)){ if (!(await loadExcelJS())) return; obj = await importXlsx(bytes); }
+    // 카톡 등을 거치면 파일 이름이 바뀔 수 있어서, 이름 대신 내용으로 엑셀(zip, 'PK'로 시작)인지 판단
+    const u8 = new Uint8Array(bytes.buffer ? bytes.buffer.slice(bytes.byteOffset || 0, (bytes.byteOffset || 0) + 4) : bytes.slice(0, 4));
+    const zip = u8[0] === 0x50 && u8[1] === 0x4B;
+    if (zip && !isX(name)) name = name.replace(/\.[^.]*$/, '') + '.xlsx';
+    if (!zip && isX(name)) name = name.replace(/\.xlsx$/i, '.monun');
+    if (zip){ if (!(await loadExcelJS())) return; obj = await importXlsx(bytes); }
     else { const o = JSON.parse(new TextDecoder().decode(bytes)); obj = o.wb || o; if (!obj || !Array.isArray(obj.sheets)) throw new Error('형식'); }
   } catch (err){ toast('파일을 열 수 없습니다. 모눈(.monun) 또는 엑셀(.xlsx) 파일인지 확인하세요'); return; }
   confirmDiscard(() => {
@@ -2230,6 +2235,19 @@ function setupWebApp(){
   window.addEventListener('appinstalled', () => { $('#installBtn').hidden = true; toast('앱으로 설치했습니다. 홈 화면에서 모눈을 찾아 보세요'); });
   if (isIOS && !standalone) $('#installBtn').hidden = false;
 }
+// 안드로이드: 카톡 등에서 "공유 → 모눈"으로 보낸 파일을 받아서 연다 (sw.js가 잠깐 보관해 둠)
+async function takeSharedFile(){
+  if (!/[?&]shared=1/.test(location.search) || !('caches' in window)) return;
+  history.replaceState(null, '', location.pathname);
+  try {
+    const c = await caches.open('monun-share'), r = await c.match('shared-file');
+    if (!r){ toast('공유한 파일을 받지 못했습니다. 다시 한번 공유해 주세요'); return; }
+    const name = decodeURIComponent(r.headers.get('X-Name') || '공유받은 파일.monun');
+    const buf = await r.arrayBuffer();
+    await c.delete('shared-file');
+    await openData(name, buf, {});
+  } catch (e){ toast('공유한 파일을 열 수 없습니다'); }
+}
 async function installApp(){
   if (installEvt){ installEvt.prompt(); const r = await installEvt.userChoice; if (r.outcome === 'accepted') $('#installBtn').hidden = true; installEvt = null; return; }
   if (isIOS){
@@ -2289,8 +2307,9 @@ if (saved && saved.wb && Array.isArray(saved.wb.sheets)){
 } else loadWorkbook(started ? {sheets:[newSheet('Sheet1')], active:0} : sample());
 updateDoc(); updateBk();
 setupWebApp();
-// 아이폰은 .monun 같은 낯선 확장자를 파일 고르기에서 막는 경우가 있어 제한을 푼다
-if (isIOS) $('#fileIn').removeAttribute('accept');
+// 폰(안드로이드·아이폰)은 .monun 같은 낯선 확장자를 파일 고르기에서 흐리게 막아서 제한을 푼다
+if (isIOS || touchDevice()) $('#fileIn').removeAttribute('accept');
+takeSharedFile();
 if (touchDevice()) touchMode = true;
 focusGrid();
 if (recovered){ toast('지난번에 저장하지 못하고 꺼진 작업을 복구했습니다'); changedSinceBackup = true; doBackup(false); }
