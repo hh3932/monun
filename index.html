@@ -1,0 +1,2311 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2E5BD0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="모눈">
+<title>모눈 시트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link id="gf" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=Gowun+Dodum&family=Do+Hyeon&family=Black+Han+Sans&family=Nanum+Pen+Script&display=swap">
+<style>
+:root{
+  --bg:#EDF0F4; --bar:#F7F8FA; --panel:#FFFFFF; --line:#D6DCE5; --ink:#1A2130; --muted:#626E82;
+  --accent:#2E5BD0; --accent-ink:#FFFFFF; --accent-soft:rgba(46,91,208,.12); --hover:#E6EAF1;
+  --head:#F2F4F7; --head-ink:#5B6576; --head-line:#D3D8E0; --head-sel:#DCE5FA; --head-sel-ink:#1E3F99;
+  --sel:#2E5BD0; --warn:#B86A00; --shadow:0 10px 30px rgba(20,30,50,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12161D; --bar:#1A1F28; --panel:#222834; --line:#323A49; --ink:#E5E9F0; --muted:#98A2B4;
+    --accent:#86A6FF; --accent-ink:#0E1626; --accent-soft:rgba(134,166,255,.16); --hover:#2A3242;
+    --head:#1D232D; --head-ink:#9AA4B5; --head-line:#323A49; --head-sel:#2B3B60; --head-sel-ink:#D3DEFF;
+    --sel:#3F6FE8; --warn:#F0B35A; --shadow:0 12px 32px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12161D; --bar:#1A1F28; --panel:#222834; --line:#323A49; --ink:#E5E9F0; --muted:#98A2B4;
+  --accent:#86A6FF; --accent-ink:#0E1626; --accent-soft:rgba(134,166,255,.16); --hover:#2A3242;
+  --head:#1D232D; --head-ink:#9AA4B5; --head-line:#323A49; --head-sel:#2B3B60; --head-sel-ink:#D3DEFF;
+  --sel:#3F6FE8; --warn:#F0B35A; --shadow:0 12px 32px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:13px/1.4 "IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%}
+button{font:inherit;color:inherit}
+
+.titlebar{display:flex;align-items:center;gap:14px;padding:0 16px;min-height:46px;background:var(--bar);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.brand svg{width:22px;height:22px}
+.doc{display:flex;align-items:baseline;gap:10px;min-width:0;flex:1}
+#docName{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#saveState{font-size:12px;color:var(--muted);white-space:nowrap}
+#saveState.dirty{color:var(--warn)}
+#bkState{font-size:12px;color:var(--muted);white-space:nowrap}
+#bkState:not(:empty)::before{content:"·";margin-right:10px}
+.filebtns{display:flex;gap:2px;flex-wrap:wrap;padding-block:6px}
+.fbtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:0;border-radius:6px;background:none;cursor:pointer;white-space:nowrap}
+.fbtn svg{width:17px;height:17px;flex:none}
+.fbtn:hover{background:var(--hover)}
+.fbtn.primary{background:var(--accent);color:var(--accent-ink)}
+.fbtn.primary:hover{filter:brightness(1.07)}
+
+.ribbon{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2px;padding:6px 16px;background:var(--bar);border-bottom:1px solid var(--line)}
+.grp{display:flex;align-items:center;gap:2px}
+.sep{width:1px;height:22px;background:var(--line);margin:0 6px}
+.tb{position:relative;display:inline-grid;place-items:center;min-width:30px;height:30px;padding:0 5px;border:0;border-radius:6px;background:none;cursor:pointer}
+.tb svg{width:18px;height:18px}
+.tb:hover{background:var(--hover)}
+.tb.on{background:var(--accent-soft);color:var(--accent)}
+.tb.caret{min-width:15px;padding:0;margin-left:-3px}
+.tb.caret svg{width:11px;height:11px}
+.tb.labeled{display:inline-flex;gap:5px;padding:0 8px 0 6px;font-size:12.5px;white-space:nowrap}
+.tb .bar{position:absolute;left:7px;right:7px;bottom:4px;height:3px;border-radius:1px;box-shadow:0 0 0 .5px rgba(0,0,0,.25)}
+.glyph{font-size:15px;line-height:1;font-family:Georgia,"Times New Roman",serif}
+.ctl{height:30px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit;padding:0 6px}
+#fontSel{width:150px}
+#sizeIn{width:60px;font-variant-numeric:tabular-nums}
+.tb:focus-visible,.fbtn:focus-visible,.ctl:focus-visible,.tab:focus-visible,.mi:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.fxbar{display:flex;align-items:center;gap:8px;padding:5px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+#nameBox{width:100px;font-family:"IBM Plex Mono",Consolas,monospace;text-align:center}
+.fxlabel{font-size:11px;letter-spacing:.08em;color:var(--muted)}
+#fx{flex:1;min-width:0}
+
+.wrap{position:relative;flex:1;overflow:auto;background:#fff;outline:none;min-height:0}
+.wrap.painting{cursor:copy}
+#cv{position:sticky;left:0;top:0;display:block}
+#spacer{position:absolute;left:0;top:0;pointer-events:none}
+#ed{position:absolute;z-index:3;margin:0;border:0;outline:2px solid var(--sel);outline-offset:0;resize:none;overflow:hidden;padding:2px 4px;opacity:0;pointer-events:none;line-height:1.28;background:#fff;color:#111}
+#ed.on{opacity:1;pointer-events:auto;box-shadow:0 3px 12px rgba(0,0,0,.18)}
+
+.bottombar{display:flex;align-items:stretch;gap:6px;min-height:36px;padding:0 16px;background:var(--bar);border-top:1px solid var(--line)}
+.tabs{display:flex;gap:2px;overflow-x:auto;min-width:0;max-width:55%}
+.tab{display:flex;align-items:center;padding:0 14px;border:0;background:none;color:var(--muted);cursor:pointer;white-space:nowrap;border-top:2px solid transparent}
+.tab:hover{color:var(--ink)}
+.tab.active{background:var(--panel);color:var(--ink);font-weight:500;border-top-color:var(--accent)}
+.tab input{font:inherit;width:100px;border:1px solid var(--accent);border-radius:4px;padding:1px 4px;background:var(--panel);color:var(--ink)}
+#addSheet{align-self:center}
+.status{flex:1;align-self:center;color:var(--muted);font-size:12px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zoom{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.zoom .tb{min-width:24px;height:24px}
+#zoomR{width:96px;accent-color:var(--accent)}
+#zoomV{width:40px;text-align:right;font-variant-numeric:tabular-nums}
+
+.pop,.menu{position:fixed;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);color:var(--ink)}
+.pop{padding:10px}
+.menu{padding:5px;min-width:210px}
+.mi{display:flex;align-items:center;gap:10px;width:100%;padding:6px 10px;border:0;border-radius:6px;background:none;text-align:left;cursor:pointer;white-space:nowrap}
+.mi:hover{background:var(--hover)}
+.mi svg{width:18px;height:18px;flex:none}
+.mi .sp{width:18px;flex:none}
+.mi kbd{margin-left:auto;padding-left:18px;font:11px "IBM Plex Mono",Consolas,monospace;color:var(--muted)}
+.msep{height:1px;background:var(--line);margin:4px 2px}
+.plabel{font-size:11px;color:var(--muted);letter-spacing:.04em;margin:8px 2px 5px}
+.plabel:first-child{margin-top:0}
+.swgrid{display:grid;grid-template-columns:repeat(10,18px);gap:3px}
+.swgrid.tints{gap:0 3px}
+.sw{width:18px;height:18px;border:1px solid rgba(0,0,0,.14);border-radius:3px;cursor:pointer;padding:0}
+.swgrid.tints .sw{border-radius:0}
+.sw:hover{outline:2px solid var(--accent);outline-offset:1px;position:relative;z-index:1}
+.prow{display:flex;gap:6px;align-items:center;margin-top:8px}
+.pbtn{flex:1;height:28px;border:1px solid var(--line);border-radius:6px;background:var(--panel);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.pbtn:hover{background:var(--hover)}
+.pbtn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.pbtn input[type=color]{width:20px;height:20px;border:0;padding:0;background:none;cursor:pointer}
+.bmenu{display:flex;gap:10px}
+.bmenu .presets{min-width:200px}
+.bmenu .pen{width:200px;border-left:1px solid var(--line);padding-left:10px}
+.lineopt{display:grid;grid-template-columns:1fr;gap:4px}
+.lineopt .pbtn{justify-content:flex-start;padding:0 10px}
+.lineopt svg{width:120px;height:10px}
+
+.modal-back{position:fixed;inset:0;background:rgba(10,15,25,.38);display:grid;place-items:center;z-index:30;padding:16px}
+.modal{background:var(--panel);border-radius:12px;box-shadow:var(--shadow);padding:20px;width:min(380px,100%)}
+.modal h3{margin:0 0 10px;font-size:15px}
+.modal p{margin:0 0 14px;color:var(--muted)}
+.modal input{width:100%;margin-bottom:14px}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px}
+.modal .acts button{height:32px;padding:0 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel);cursor:pointer}
+.modal .acts button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.modal.wide{width:min(540px,100%)}
+.bkset{display:grid;gap:10px;margin-bottom:6px}
+.bkset label{display:flex;align-items:center;gap:10px}
+.bkset select{width:auto}
+.modal .chk{align-items:flex-start;color:var(--muted);line-height:1.45}
+.modal .chk input{width:auto;margin:3px 0 0;accent-color:var(--accent)}
+.bklist{max-height:300px;overflow:auto;border-top:1px solid var(--line);margin-bottom:12px}
+.bkrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.bkrow b{font-weight:500;word-break:break-all}
+.bkrow span{display:block;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.bkrow .pbtn{flex:none;width:64px}
+.bkempty{padding:14px 2px}
+#toast{position:fixed;left:50%;bottom:56px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:40;white-space:nowrap}
+#toast.show{opacity:1}
+#cv{touch-action:none}
+.bottombar{padding-bottom:env(safe-area-inset-bottom,0px)}
+/* 화면 틀(버튼, 메뉴, 탭)은 길게 눌러도 글자가 선택되지 않게. 입력칸은 그대로 */
+.titlebar,.ribbon,.fxbar .fxlabel,.bottombar,.menu,.pop,.modal h3{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.doc{overflow:hidden}
+.doc.dirty #docName::after{content:" •";color:var(--warn)}
+@media (max-width:760px){
+  .fbtn span{display:none}.status{display:none}.tabs{max-width:70%}
+  .titlebar{gap:8px}
+  #saveState,#bkState{display:none}
+  .ribbon{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-block:5px}
+  .ribbon::-webkit-scrollbar{display:none}
+  .grp,.sep{flex:none}
+  #fontSel{width:116px}
+  #nameBox{width:70px}
+  #zoomR{display:none}
+}
+/* 손가락으로 누르기 쉽게, 그리고 iOS에서 입력칸을 누를 때 화면이 확대되지 않게 16px */
+@media (pointer:coarse){
+  .ctl{font-size:16px}
+  .tb{min-width:38px;height:38px}
+  .tb.caret{min-width:22px}
+  .fbtn{height:36px}
+  .mi{padding:10px 12px}
+}
+#installBtn[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="titlebar">
+    <div class="brand">
+      <svg viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="4" fill="var(--accent)"/><path d="M1 7.7h20M1 14.3h20M7.7 1v20M14.3 1v20" stroke="var(--accent-ink)" stroke-opacity=".55" stroke-width="1"/><rect x="7.7" y="7.7" width="6.6" height="6.6" fill="var(--accent-ink)"/></svg>
+      모눈
+    </div>
+    <div class="doc"><span id="docName">제목 없음</span><span id="saveState"></span><span id="bkState"></span></div>
+    <div class="filebtns">
+      <button class="fbtn" data-cmd="install" id="installBtn" title="이 기기에 앱으로 설치" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="2.5" width="9" height="15" rx="2"/><path d="M10 6v6M7.5 9.5 10 12l2.5-2.5M8.5 15h3"/></svg><span>앱으로 설치</span></button>
+      <button class="fbtn" data-cmd="backups" title="자동 백업 설정과 복원"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6"/><path d="M3 3.5v3.2h3.2"/><path d="M10 6.5V10l2.5 1.6"/></svg><span>백업·복원</span></button>
+      <button class="fbtn" data-cmd="new" title="새로 만들기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15"/></svg><span>새로 만들기</span></button>
+      <button class="fbtn" data-cmd="open" title="열기 (Ctrl+O)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 5h5l1.5 2h8.5v9h-15z"/></svg><span>열기</span></button>
+      <button class="fbtn" data-cmd="saveAs" title="다른 이름으로 저장 (Ctrl+Shift+S)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 3h9l3 3v4M4 3v14h6"/><path d="M7 3v3.5h5V3M12.5 17l1-3 4-4 2 2-4 4z"/></svg><span>다른 이름으로</span></button>
+      <button class="fbtn" data-cmd="export" title="엑셀(.xlsx)로 내보내기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 3h9v14H3zM3 8h9M3 12.5h9M7.5 3v14"/><path d="M14 10h4.5M16.5 8l2 2-2 2"/></svg><span>.xlsx 내보내기</span></button>
+      <button class="fbtn primary" data-cmd="save" title="저장 (Ctrl+S)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 3h10l3 3v11H4z"/><path d="M7 3v4h6V3M7 17v-5h7v5"/></svg><span>저장</span></button>
+    </div>
+  </header>
+
+  <div class="ribbon" id="ribbon">
+    <div class="grp">
+      <button class="tb" data-cmd="undo" title="실행 취소 (Ctrl+Z)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 4 8l3.5 3.5"/><path d="M4.5 8H12a4 4 0 0 1 0 8H8"/></svg></button>
+      <button class="tb" data-cmd="redo" title="다시 실행 (Ctrl+Y)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5 16 8l-3.5 3.5"/><path d="M15.5 8H8a4 4 0 0 0 0 8h4"/></svg></button>
+      <button class="tb" data-cmd="painter" id="painterBtn" title="서식 복사 (두 번 누르면 계속 적용)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="2.5" width="11" height="4.5" rx="1"/><path d="M14 4.75h2.5V9.5H9.5v2.5"/><rect x="8.25" y="12" width="2.5" height="5.5" rx=".6"/></svg></button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <select class="ctl" id="fontSel" title="글꼴"></select>
+      <input class="ctl" id="sizeIn" list="sizeList" title="글자 크기" inputmode="decimal">
+      <datalist id="sizeList"></datalist>
+      <button class="tb" data-cmd="grow" title="글자 크게"><span class="glyph" style="font-family:inherit;font-size:14px">A<sup style="font-size:9px">+</sup></span></button>
+      <button class="tb" data-cmd="shrink" title="글자 작게"><span class="glyph" style="font-family:inherit;font-size:12px">A<sup style="font-size:9px">−</sup></span></button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="tb" data-cmd="bold" id="tbBold" title="굵게 (Ctrl+B)"><span class="glyph" style="font-weight:700">B</span></button>
+      <button class="tb" data-cmd="italic" id="tbItalic" title="기울임 (Ctrl+I)"><span class="glyph" style="font-style:italic">I</span></button>
+      <button class="tb" data-cmd="underline" id="tbUnder" title="밑줄 (Ctrl+U)"><span class="glyph" style="text-decoration:underline">U</span></button>
+      <button class="tb" data-cmd="strike" id="tbStrike" title="취소선 (Ctrl+5)"><span class="glyph" style="text-decoration:line-through">S</span></button>
+      <button class="tb" data-cmd="fc" title="글자 색"><span class="glyph" style="font-family:inherit;font-weight:600;margin-top:-4px">가</span><span class="bar" id="fcBar"></span></button>
+      <button class="tb caret" data-cmd="fcMenu" title="글자 색 고르기"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
+      <button class="tb" data-cmd="bg" title="채우기 색"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" style="margin-top:-4px"><path d="M3.5 9 9 3.5l6 6L9.5 15z"/><path d="M3.5 9h11.5"/><path d="M16.5 11.5s1.5 1.9 1.5 2.9a1.5 1.5 0 0 1-3 0c0-1 1.5-2.9 1.5-2.9z" fill="currentColor"/></svg><span class="bar" id="bgBar"></span></button>
+      <button class="tb caret" data-cmd="bgMenu" title="채우기 색 고르기"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="tb" data-cmd="alignL" id="tbAL" title="왼쪽 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 4.5h14M3 8.5h9M3 12.5h14M3 16.5h9"/></svg></button>
+      <button class="tb" data-cmd="alignC" id="tbAC" title="가운데 맞춤 (Ctrl+E)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 4.5h14M5.5 8.5h9M3 12.5h14M5.5 16.5h9"/></svg></button>
+      <button class="tb" data-cmd="alignR" id="tbAR" title="오른쪽 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 4.5h14M8 8.5h9M3 12.5h14M8 16.5h9"/></svg></button>
+      <button class="tb" data-cmd="vTop" id="tbVT" title="위쪽 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h14M10 7v10M6.5 10.5 10 7l3.5 3.5"/></svg></button>
+      <button class="tb" data-cmd="vMid" id="tbVM" title="가운데 (세로) 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h14M10 2.5v4.5M7.5 4.5 10 7l2.5-2.5M10 17.5V13M7.5 15.5 10 13l2.5 2.5"/></svg></button>
+      <button class="tb" data-cmd="vBot" id="tbVB" title="아래쪽 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5h14M10 3v10M6.5 9.5 10 13l3.5-3.5"/></svg></button>
+      <button class="tb labeled" data-cmd="wrap" id="tbWrap" title="자동 줄 바꿈: 칸 너비에 맞춰 글자를 여러 줄로 보여 줍니다"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14M3 10h11a2.5 2.5 0 0 1 0 5h-4"/><path d="M12 13l-2 2 2 2M3 15h4"/></svg><span>줄 바꿈</span></button>
+      <button class="tb" data-cmd="merge" id="tbMerge" title="병합하고 가운데 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1"/><path d="M5.5 10h9M7.5 8l-2 2 2 2M12.5 8l2 2-2 2"/></svg></button>
+      <button class="tb caret" data-cmd="mergeMenu" title="병합 옵션"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="tb" data-cmd="border" id="tbBorder" title="테두리"></button>
+      <button class="tb caret" data-cmd="borderMenu" title="테두리 종류, 두께, 색"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
+      <button class="tb" data-cmd="clear" title="서식 지우기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M8 16 4 12l7.5-7.5 5 5L11 16z"/><path d="M7 9l5 5M8 16h9"/></svg></button>
+      <button class="tb" data-cmd="grid" id="tbGrid" title="눈금선 보이기/숨기기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="14" height="14" rx="1"/><path d="M3 7.7h14M3 12.3h14M7.7 3v14M12.3 3v14"/></svg></button>
+    </div>
+  </div>
+
+  <div class="fxbar">
+    <input class="ctl" id="nameBox" title="칸 주소 (입력 후 Enter로 이동)" spellcheck="false">
+    <span class="fxlabel">내용</span>
+    <input class="ctl" id="fx" spellcheck="false" placeholder="선택한 칸의 내용">
+  </div>
+
+  <div class="wrap" id="wrap">
+    <canvas id="cv"></canvas>
+    <div id="spacer"></div>
+    <textarea id="ed" spellcheck="false" autocomplete="off" aria-label="칸 편집"></textarea>
+  </div>
+
+  <footer class="bottombar">
+    <div class="tabs" id="tabs"></div>
+    <button class="tb" id="addSheet" title="시트 추가"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg></button>
+    <div class="status" id="status"></div>
+    <div class="zoom">
+      <button class="tb" id="zoomOut" title="축소">−</button>
+      <input type="range" id="zoomR" min="50" max="200" step="10" value="100" aria-label="확대/축소">
+      <button class="tb" id="zoomIn" title="확대">+</button>
+      <span id="zoomV">100%</span>
+    </div>
+  </footer>
+</div>
+<div id="pop" class="pop" hidden></div>
+<div id="ctx" class="menu" hidden></div>
+<div id="toast"></div>
+<input type="file" id="fileIn" accept=".monun,.json,.xlsx" hidden>
+
+<script>
+(() => {
+'use strict';
+// ===== 기본 값 =====
+const ROWS = 1000, COLS = 52, DEF_W = 90, DEF_H = 24, HW = 46, HH = 24;
+const DEF_FONT = 'Malgun Gothic', DEF_FS = 11, GRIDC = '#E1E5EB', LS = 'monun.autosave.v1';
+const FONTS = [['Malgun Gothic','맑은 고딕'],['Nanum Gothic','나눔고딕'],['Nanum Myeongjo','나눔명조'],['Noto Sans KR','본고딕'],['Noto Serif KR','본명조'],['Gowun Dodum','고운돋움'],['Do Hyeon','도현'],['Black Han Sans','검은고딕'],['Nanum Pen Script','나눔손글씨 펜'],['Gulim','굴림'],['Dotum','돋움'],['Batang','바탕'],['Gungsuh','궁서'],['Arial','Arial'],['Times New Roman','Times New Roman'],['Georgia','Georgia'],['Consolas','Consolas']];
+const XL_NAME = {'Malgun Gothic':'맑은 고딕','Gulim':'굴림','Dotum':'돋움','Batang':'바탕','Gungsuh':'궁서','Nanum Gothic':'나눔고딕','Nanum Myeongjo':'나눔명조'};
+const XL_BACK = Object.fromEntries(Object.entries(XL_NAME).map(([a,b]) => [b,a]));
+const SIZES = [8,9,10,11,12,14,16,18,20,22,24,26,28,36,48,72];
+
+const $ = s => document.querySelector(s);
+const wrap = $('#wrap'), cv = $('#cv'), ctx = cv.getContext('2d'), spacer = $('#spacer'), ed = $('#ed');
+const fx = $('#fx'), nameBox = $('#nameBox'), pop = $('#pop'), menuEl = $('#ctx');
+const mctx = document.createElement('canvas').getContext('2d');
+
+let wb, sh, colX, rowY, mergeIdx = new Map(), V = null;
+let sel = {r1:0,c1:0,r2:0,c2:0}, act = {r:0,c:0}, foc = {r:0,c:0};
+let editing = false, editMode = 'enter', edMinW = 0, edMinH = 0;
+let undoStack = [], redoStack = [], changedSinceBackup = false;
+let clip = null, clipHTML = '', painter = null, drag = null, lastEv = null, asId = 0;
+let fileHandle = null, fileName = '제목 없음', fileDirty = false;
+const pens = {fc:'#C00000', bg:'#FFF2CC'};
+let borderPen = {w:1, s:'solid', c:'#000000'}, lastBorder = 'all';
+let recent = [];
+const TH = {};
+
+// ===== 모델 =====
+function newSheet(name){ return {name, cells:{}, colW:{}, rowH:{}, rowManual:{}, colStyle:{}, rowStyle:{}, merges:[], grid:true, zoom:1}; }
+function normSheet(s){
+  const o = Object.assign(newSheet(s.name || 'Sheet'), s);
+  // rowManual에는 직접 정한 높이(최소 높이)를 담는다. 예전 파일은 1로 표시돼 있어 그때 높이로 바꿔 줌
+  for (const r in o.rowManual) if (o.rowManual[r] === 1 || o.rowManual[r] === true) o.rowManual[r] = o.rowH[r] ?? DEF_H;
+  return o;
+}
+const cw = c => sh.colW[c] ?? DEF_W;
+const rh = r => sh.rowH[r] ?? DEF_H;
+const getV = (r,c) => { const x = sh.cells[r+':'+c]; return x && x.v != null ? x.v : ''; };
+function setV(r,c,v){
+  const k = r+':'+c; let cell = sh.cells[k];
+  if (v === '' || v == null){ if (cell){ delete cell.v; clean(r,c); } return; }
+  if (!cell) cell = sh.cells[k] = {};
+  cell.v = String(v);
+}
+function ensureCell(r,c){ const k = r+':'+c; return sh.cells[k] || (sh.cells[k] = {}); }
+function clean(r,c){
+  const k = r+':'+c, cell = sh.cells[k]; if (!cell) return;
+  if (cell.s && !Object.keys(cell.s).length) delete cell.s;
+  if (cell.v == null && !cell.s) delete sh.cells[k];
+}
+const EMPTY = {};
+function st(r,c){
+  const cell = sh.cells[r+':'+c], cs = sh.colStyle[c], rs = sh.rowStyle[r];
+  if (!cs && !rs) return (cell && cell.s) || EMPTY;
+  return Object.assign({}, cs, rs, cell && cell.s);
+}
+function buildMerges(){
+  mergeIdx = new Map();
+  for (const m of sh.merges) for (let r = m.r1; r <= m.r2; r++) for (let c = m.c1; c <= m.c2; c++) mergeIdx.set(r*COLS+c, m);
+}
+const mergeOf = (r,c) => mergeIdx.get(r*COLS+c);
+const unitOf = (r,c) => mergeOf(r,c) || {r1:r,c1:c,r2:r,c2:c};
+const inter = (a,b) => a.r1 <= b.r2 && a.r2 >= b.r1 && a.c1 <= b.c2 && a.c2 >= b.c1;
+const contains = (a,b) => b.r1 >= a.r1 && b.r2 <= a.r2 && b.c1 >= a.c1 && b.c2 <= a.c2;
+const isEmptyCell = (r,c) => getV(r,c) === '' && !mergeOf(r,c);
+const NUMRE = /^[-+]?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?%?$/;
+const isNum = v => NUMRE.test(String(v).trim());
+const fullCols = s => s.r1 === 0 && s.r2 === ROWS-1;
+const fullRows = s => s.c1 === 0 && s.c2 === COLS-1;
+
+function colName(c){ let s = ''; c++; while (c > 0){ const m = (c-1) % 26; s = String.fromCharCode(65+m) + s; c = Math.floor((c-1)/26); } return s; }
+function parseRef(t){
+  const m = /^([A-Za-z]{1,2})(\d+)$/.exec(t.trim()); if (!m) return null;
+  let c = 0; for (const ch of m[1].toUpperCase()) c = c*26 + ch.charCodeAt(0) - 64;
+  const r = +m[2]-1; c -= 1;
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null; return {r,c};
+}
+const ref = (r,c) => colName(c) + (r+1);
+
+// ===== 배치 =====
+function layout(){
+  colX = new Float64Array(COLS+1); rowY = new Float64Array(ROWS+1);
+  for (let c = 0; c < COLS; c++) colX[c+1] = colX[c] + cw(c);
+  for (let r = 0; r < ROWS; r++) rowY[r+1] = rowY[r] + rh(r);
+  const z = sh.zoom;
+  spacer.style.width = (HW + colX[COLS]*z) + 'px';
+  spacer.style.height = (HH + rowY[ROWS]*z) + 'px';
+  positionEditor();
+}
+function bsearch(arr, v, n){ let lo = 0, hi = n-1; while (lo < hi){ const mid = (lo+hi+1) >> 1; if (arr[mid] <= v) lo = mid; else hi = mid-1; } return lo; }
+const colAt = x => bsearch(colX, x, COLS);
+const rowAt = y => bsearch(rowY, y, ROWS);
+
+// ===== 글꼴 =====
+const famStack = ff => `"${ff || DEF_FONT}", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
+const fontStr = (s, z) => `${s.i ? 'italic ' : ''}${s.b ? '700' : '400'} ${((s.fs || DEF_FS) * 4/3 * z).toFixed(2)}px ${famStack(s.ff)}`;
+const fontReq = new Set();
+function ensureFont(ff, b){
+  ff = ff || DEF_FONT; const key = ff + (b ? '|b' : '');
+  if (fontReq.has(key) || !document.fonts) return; fontReq.add(key);
+  document.fonts.load(`${b ? '700 ' : ''}16px "${ff}"`, '가A').then(() => schedule()).catch(() => {});
+}
+// 띄어쓰기 단위(어절)로 줄을 바꾸고, 한 어절이 칸보다 길 때만 글자 단위로 자른다
+const TOK = /\s+|\S+/g;
+function wrapLines(text, maxW, c){
+  const out = [];
+  for (const para of String(text).split('\n')){
+    const toks = para.match(TOK) || [''];
+    let line = '';
+    const chars = t => { for (const ch of t){ if (line && c.measureText(line+ch).width > maxW){ out.push(line); line = ch; } else line += ch; } };
+    for (const t of toks){
+      if (c.measureText(line+t).width <= maxW){ line += t; continue; }
+      if (/^\s+$/.test(t)){ out.push(line); line = ''; continue; }
+      if (line){ out.push(line.replace(/\s+$/, '')); line = ''; }
+      if (c.measureText(t).width > maxW) chars(t); else line = t;
+    }
+    out.push(line);
+  }
+  return out;
+}
+function autoRows(){
+  const need = {};
+  for (const k in sh.cells){
+    const cell = sh.cells[k]; if (cell.v == null || cell.v === '') continue;
+    const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1);
+    if (mergeOf(r,c)) continue;
+    const s = st(r,c), px = (s.fs || DEF_FS) * 4/3;
+    // 높이를 직접 정한 행은 줄 바꿈 글자가 들어갈 때만 늘린다
+    if (sh.rowManual[r] && !s.wrap) continue;
+    let lines;
+    if (s.wrap){ mctx.font = fontStr(s,1); lines = wrapLines(cell.v, cw(c) - 8, mctx).length; }
+    else lines = String(cell.v).split('\n').length;
+    const h = Math.ceil(lines * px * 1.28 + 4);
+    if (h > DEF_H && h > (need[r] || 0)) need[r] = h;
+  }
+  for (const r in sh.rowManual){ const base = sh.rowManual[r]; sh.rowH[r] = Math.max(base, need[r] || 0); }
+  for (const r in sh.rowH) if (!sh.rowManual[r] && !need[r]) delete sh.rowH[r];
+  for (const r in need) if (!sh.rowManual[r]) sh.rowH[r] = need[r];
+}
+
+// ===== 테마 =====
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['head','head-ink','head-line','head-sel','head-sel-ink','sel']) TH[k] = cs.getPropertyValue('--'+k).trim();
+}
+
+// ===== 그리기 =====
+let rq = 0;
+function schedule(){ if (!rq) rq = requestAnimationFrame(render); }
+function render(){
+  rq = 0;
+  const W = wrap.clientWidth, H = wrap.clientHeight; if (!W || !H) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(W*dpr) || cv.height !== Math.round(H*dpr)){
+    cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+  }
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const z = sh.zoom, sl = wrap.scrollLeft, stp = wrap.scrollTop;
+  const X = c => HW + colX[c]*z - sl, Y = r => HH + rowY[r]*z - stp;
+  const c0 = colAt(sl/z), c1 = colAt((sl + W - HW)/z), r0 = rowAt(stp/z), r1 = rowAt((stp + H - HH)/z);
+  V = {X, Y, c0, c1, r0, r1, W, H, z};
+
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H);
+  ctx.save(); ctx.beginPath(); ctx.rect(HW, HH, W-HW, H-HH); ctx.clip();
+
+  // 눈금선
+  if (sh.grid){
+    ctx.fillStyle = GRIDC;
+    for (let c = c0; c <= c1+1 && c <= COLS; c++) ctx.fillRect(Math.round(X(c))-1, HH, 1, H-HH);
+    for (let r = r0; r <= r1+1 && r <= ROWS; r++) ctx.fillRect(HW, Math.round(Y(r))-1, W-HW, 1);
+  }
+  const endX = X(COLS), endY = Y(ROWS);
+  ctx.fillStyle = '#EEF0F3';
+  if (endX < W) ctx.fillRect(endX, HH, W-endX, H-HH);
+  if (endY < H) ctx.fillRect(HW, endY, W-HW, H-endY);
+
+  // 채우기
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++){
+    if (mergeOf(r,c)) continue;
+    const s = st(r,c); if (!s.bg) continue;
+    const x = Math.round(X(c)), y = Math.round(Y(r));
+    ctx.fillStyle = s.bg; ctx.fillRect(x-1, y-1, Math.round(X(c+1))-x+1, Math.round(Y(r+1))-y+1);
+  }
+  const vm = sh.merges.filter(m => m.r2 >= r0 && m.r1 <= r1 && m.c2 >= c0 && m.c1 <= c1);
+  for (const m of vm){
+    const s = st(m.r1,m.c1);
+    const x = Math.round(X(m.c1)), y = Math.round(Y(m.r1)), w = Math.round(X(m.c2+1))-x, h = Math.round(Y(m.r2+1))-y;
+    if (s.bg){ ctx.fillStyle = s.bg; ctx.fillRect(x-1, y-1, w+1, h+1); }
+    else { ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w-1, h-1); }
+  }
+
+  // 글자
+  for (let r = r0; r <= r1; r++){
+    for (let c = 0; c < COLS; c++){
+      const cell = sh.cells[r+':'+c];
+      if (!cell || cell.v == null || cell.v === '' || mergeOf(r,c)) continue;
+      drawText(r, c, {x:X(c), y:Y(r), w:X(c+1)-X(c), h:Y(r+1)-Y(r)}, false);
+    }
+  }
+  for (const m of vm){
+    if (getV(m.r1,m.c1) === '') continue;
+    const x = X(m.c1), y = Y(m.r1);
+    drawText(m.r1, m.c1, {x, y, w:X(m.c2+1)-x, h:Y(m.r2+1)-y}, true);
+  }
+
+  // 테두리
+  for (let r = Math.max(0,r0-1); r <= Math.min(ROWS-1,r1+1); r++) for (let c = Math.max(0,c0-1); c <= Math.min(COLS-1,c1+1); c++){
+    if (mergeOf(r,c)) continue;
+    const s = st(r,c);
+    if (s.bt || s.bb || s.bl || s.br) drawBorders(X(c), Y(r), X(c+1), Y(r+1), s);
+  }
+  for (const m of vm) drawBorders(X(m.c1), Y(m.r1), X(m.c2+1), Y(m.r2+1), st(m.r1,m.c1));
+
+  drawSelection();
+  ctx.restore();
+  drawHeaders();
+}
+
+function drawText(r, c, rect, isMerge){
+  const {X, z, W} = V;
+  const v = getV(r,c), s = st(r,c);
+  ensureFont(s.ff, s.b);
+  ctx.font = fontStr(s, z);
+  const px = (s.fs || DEF_FS) * 4/3 * z, pad = 3*z + 1;
+  const ha = s.ha || (isNum(v) ? 'right' : 'left'), va = s.va || 'middle';
+  const lines = s.wrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
+  let clip = rect, tw = 0, spill = false;
+  if (!isMerge && !s.wrap){
+    for (const l of lines) tw = Math.max(tw, ctx.measureText(l).width);
+    const need = tw + pad*2;
+    if (need > rect.w){
+      spill = true;
+      let L = c, R = c;
+      const canR = () => R+1 < COLS && isEmptyCell(r, R+1), canL = () => L-1 >= 0 && isEmptyCell(r, L-1);
+      if (ha === 'left') while (X(R+1) - X(L) < need && canR()) R++;
+      else if (ha === 'right') while (X(R+1) - X(L) < need && canL()) L--;
+      else {
+        const cx = rect.x + rect.w/2;
+        while (cx - X(L) < need/2 && canL()) L--;
+        while (X(R+1) - cx < need/2 && canR()) R++;
+        // 한쪽이 막혀 있으면 반대쪽으로 더 넘겨서 글자 앞부분이 잘리지 않게
+        while (X(R+1) - X(L) < need && canR()) R++;
+        while (X(R+1) - X(L) < need && canL()) L--;
+      }
+      clip = {x:X(L), y:rect.y, w:X(R+1)-X(L), h:rect.h};
+      if (clip.x > W || clip.x + clip.w < HW) return;
+      // 넘친 글자가 지나가는 빈칸 사이 눈금선 지우기
+      ctx.fillStyle = '#fff';
+      for (let b = L+1; b <= R; b++) if (!st(r,b-1).bg && !st(r,b).bg) ctx.fillRect(Math.round(X(b))-1, Math.round(rect.y), 1, Math.round(rect.h)-1);
+    } else if (rect.x > W || rect.x + rect.w < HW) return;
+  }
+  ctx.save();
+  ctx.beginPath(); ctx.rect(clip.x, clip.y, clip.w, clip.h); ctx.clip();
+  ctx.fillStyle = s.fc || '#111111';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = ha;
+  const lh = px * 1.28, total = lh * lines.length;
+  // 칸 안쪽의 실제 빈 공간: 아래 눈금선 1px과 칸 안으로 들어온 굵은 테두리는 뺀다
+  const above = !isMerge && r > 0 ? st(r-1, c).bb : null;
+  const thickIn = b => b && (b.w > 1 || b.s === 'double');
+  const top = rect.y + (thickIn(s.bt) || thickIn(above) ? 1 : 0);
+  const bottom = rect.y + rect.h - 1 - (s.bb && (s.bb.w >= 3 || s.bb.s === 'double') ? 1 : 0);
+  const y0 = va === 'top' ? top + pad*0.5 : va === 'bottom' ? bottom - total - pad*0.5 : (top + bottom - total)/2;
+  let x = ha === 'left' ? rect.x + pad : ha === 'right' ? rect.x + rect.w - pad : rect.x + rect.w/2;
+  if (ha === 'center' && spill){
+    // 가운데 정렬 글자가 넘칠 때: 보이는 범위 안으로 밀어 넣고, 그래도 넘치면 앞부분이 보이게
+    const half = tw/2;
+    x = tw > clip.w - pad*2 ? clip.x + pad + half : Math.max(clip.x + pad + half, Math.min(clip.x + clip.w - pad - half, x));
+  }
+  const th = Math.max(1, px/15), shift = glyphShift(ctx.font);
+  lines.forEach((ln, i) => {
+    const y = y0 + lh*(i+0.5);   // 이 줄의 가운데
+    ctx.fillText(ln, x, y + shift);
+    if (s.u || s.st){
+      const w = ctx.measureText(ln).width, lx = ha === 'left' ? x : ha === 'right' ? x-w : x-w/2;
+      if (s.u) ctx.fillRect(lx, y + px*0.52, w, th);
+      if (s.st) ctx.fillRect(lx, y, w, th);
+    }
+  });
+  ctx.restore();
+}
+
+// 글꼴마다 글자가 글꼴 상자 안에서 위아래로 치우친 정도가 달라서(맑은 고딕은 위로 약 1.6px),
+// 한글 '가'의 실제 모양을 재서 눈에 보이는 가운데에 오도록 보정한다.
+const SHIFT = new Map();
+function glyphShift(font){
+  let v = SHIFT.get(font);
+  if (v == null){
+    const m = ctx.measureText('가');
+    v = (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+    if (!isFinite(v)) v = 0;
+    SHIFT.set(font, v);
+  }
+  return v;
+}
+const dashOf = b => b.s === 'dashed' ? [4 + b.w*2, 2 + b.w] : b.s === 'dotted' ? [b.w, b.w + 1] : [];
+function hline(x1, x2, y, b){
+  const w = b.w || 1, ext = Math.ceil(w/2), xa = Math.round(x1) - ext, xb = Math.round(x2) + ext - 1, Y0 = Math.round(y);
+  ctx.strokeStyle = b.c || '#000';
+  ctx.beginPath();
+  if (b.s === 'double'){
+    ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.moveTo(xa-1, Y0-1.5); ctx.lineTo(xb+1, Y0-1.5); ctx.moveTo(xa-1, Y0+0.5); ctx.lineTo(xb+1, Y0+0.5);
+  } else {
+    ctx.lineWidth = w; ctx.setLineDash(dashOf(b));
+    const yc = w % 2 ? Y0 - 0.5 : Y0; ctx.moveTo(xa, yc); ctx.lineTo(xb, yc);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function vline(y1, y2, x, b){
+  const w = b.w || 1, ext = Math.ceil(w/2), ya = Math.round(y1) - ext, yb = Math.round(y2) + ext - 1, X0 = Math.round(x);
+  ctx.strokeStyle = b.c || '#000';
+  ctx.beginPath();
+  if (b.s === 'double'){
+    ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.moveTo(X0-1.5, ya-1); ctx.lineTo(X0-1.5, yb+1); ctx.moveTo(X0+0.5, ya-1); ctx.lineTo(X0+0.5, yb+1);
+  } else {
+    ctx.lineWidth = w; ctx.setLineDash(dashOf(b));
+    const xc = w % 2 ? X0 - 0.5 : X0; ctx.moveTo(xc, ya); ctx.lineTo(xc, yb);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function drawBorders(x1, y1, x2, y2, s){
+  if (s.bt) hline(x1, x2, y1, s.bt);
+  if (s.bb) hline(x1, x2, y2, s.bb);
+  if (s.bl) vline(y1, y2, x1, s.bl);
+  if (s.br) vline(y1, y2, x2, s.br);
+}
+function rectOf(R){
+  const {X, Y} = V;
+  const x1 = Math.round(X(R.c1)), y1 = Math.round(Y(R.r1));
+  return {x1, y1, x2: Math.round(X(R.c2+1)), y2: Math.round(Y(R.r2+1))};
+}
+function drawSelection(){
+  const R = rectOf(sel), A = rectOf(unitOf(act.r, act.c));
+  if (clip && clip.sheet === wb.active){
+    const C = rectOf(clip.range);
+    ctx.strokeStyle = TH.sel; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+    ctx.strokeRect(C.x1-1, C.y1-1, C.x2-C.x1, C.y2-C.y1); ctx.setLineDash([]);
+  }
+  ctx.fillStyle = 'rgba(46,91,208,.11)';
+  ctx.beginPath(); ctx.rect(R.x1, R.y1, R.x2-R.x1, R.y2-R.y1); ctx.rect(A.x1, A.y1, A.x2-A.x1, A.y2-A.y1); ctx.fill('evenodd');
+  ctx.strokeStyle = TH.sel; ctx.lineWidth = 2;
+  ctx.strokeRect(R.x1-1, R.y1-1, R.x2-R.x1, R.y2-R.y1);
+  if (!editing){
+    ctx.fillStyle = '#fff'; ctx.fillRect(R.x2-5, R.y2-5, 8, 8);
+    ctx.fillStyle = TH.sel; ctx.fillRect(R.x2-4, R.y2-4, 6, 6);
+  }
+  if (drag && drag.mode === 'move' && drag.target){
+    const T = rectOf(drag.target);
+    ctx.strokeStyle = '#5B6576'; ctx.lineWidth = 3; ctx.setLineDash([]);
+    ctx.globalAlpha = .7; ctx.strokeRect(T.x1-1.5, T.y1-1.5, T.x2-T.x1+1, T.y2-T.y1+1); ctx.globalAlpha = 1;
+  }
+  if (drag && drag.mode === 'fill' && drag.target){
+    const T = rectOf(drag.target);
+    ctx.strokeStyle = '#6B7385'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+    ctx.strokeRect(T.x1-0.75, T.y1-0.75, T.x2-T.x1, T.y2-T.y1); ctx.setLineDash([]);
+  }
+}
+function drawHeaders(){
+  const {X, Y, c0, c1, r0, r1, W, H} = V;
+  ctx.font = '500 11.5px "IBM Plex Sans KR", "Malgun Gothic", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const fc = fullCols(sel), fr = fullRows(sel);
+  ctx.fillStyle = TH.head; ctx.fillRect(0, 0, W, HH);
+  for (let c = c0; c <= c1; c++){
+    const x = X(c), w = X(c+1) - x, on = c >= sel.c1 && c <= sel.c2;
+    if (on){ ctx.fillStyle = fc ? TH.sel : TH['head-sel']; ctx.fillRect(x, 0, w, HH); }
+    ctx.fillStyle = on ? (fc ? '#fff' : TH['head-sel-ink']) : TH['head-ink'];
+    if (w > 14) ctx.fillText(colName(c), x + w/2, HH/2 + 1);
+    ctx.fillStyle = TH['head-line']; ctx.fillRect(Math.round(X(c+1))-1, 0, 1, HH);
+    if (on && !fc){ ctx.fillStyle = TH.sel; ctx.fillRect(x, HH-2, w, 2); }
+  }
+  ctx.fillStyle = TH['head-line']; ctx.fillRect(0, HH-1, W, 1);
+  ctx.fillStyle = TH.head; ctx.fillRect(0, HH, HW, H-HH);
+  for (let r = r0; r <= r1; r++){
+    const y = Y(r), h = Y(r+1) - y, on = r >= sel.r1 && r <= sel.r2;
+    if (y + h < HH) continue;
+    if (on){ ctx.fillStyle = fr ? TH.sel : TH['head-sel']; ctx.fillRect(0, y, HW, h); }
+    ctx.fillStyle = on ? (fr ? '#fff' : TH['head-sel-ink']) : TH['head-ink'];
+    if (h > 10) ctx.fillText(String(r+1), HW/2, y + h/2 + 1);
+    ctx.fillStyle = TH['head-line']; ctx.fillRect(0, Math.round(Y(r+1))-1, HW, 1);
+    if (on && !fr){ ctx.fillStyle = TH.sel; ctx.fillRect(HW-2, y, 2, h); }
+  }
+  ctx.fillStyle = TH['head-line']; ctx.fillRect(HW-1, HH, 1, H-HH);
+  ctx.fillStyle = TH.head; ctx.fillRect(0, 0, HW, HH);
+  ctx.fillStyle = TH['head-line']; ctx.fillRect(HW-1, 0, 1, HH); ctx.fillRect(0, HH-1, HW, 1);
+  ctx.fillStyle = TH['head-ink']; ctx.globalAlpha = .45;
+  ctx.beginPath(); ctx.moveTo(HW-5, HH-14); ctx.lineTo(HW-5, HH-5); ctx.lineTo(HW-14, HH-5); ctx.fill(); ctx.globalAlpha = 1;
+}
+
+// ===== 선택 =====
+function norm(a, b){ return {r1:Math.min(a.r,b.r), r2:Math.max(a.r,b.r), c1:Math.min(a.c,b.c), c2:Math.max(a.c,b.c)}; }
+function expand(s){
+  let ch = true;
+  while (ch){ ch = false; for (const m of sh.merges) if (inter(m,s) && !contains(s,m)){ s.r1 = Math.min(s.r1,m.r1); s.r2 = Math.max(s.r2,m.r2); s.c1 = Math.min(s.c1,m.c1); s.c2 = Math.max(s.c2,m.c2); ch = true; } }
+  return s;
+}
+function setSel(ar, ac, fr, fc){
+  const m = mergeOf(ar, ac); if (m){ ar = m.r1; ac = m.c1; }
+  act = {r:ar, c:ac}; foc = {r:fr ?? ar, c:fc ?? ac};
+  sel = expand(norm(act, foc));
+  afterSel();
+}
+function setRange(R, a){
+  sel = expand({...R}); act = a ? {...a} : {r:R.r1, c:R.c1};
+  const m = mergeOf(act.r, act.c); if (m) act = {r:m.r1, c:m.c1};
+  afterSel();
+}
+function afterSel(){ if (!editing) ed.value = ''; positionEditor(); refreshUI(); schedule(); }
+function clampSel(){
+  const cl = (v, n) => Math.max(0, Math.min(n-1, v));
+  act = {r:cl(act.r,ROWS), c:cl(act.c,COLS)};
+  sel = expand({r1:cl(sel.r1,ROWS), r2:cl(sel.r2,ROWS), c1:cl(sel.c1,COLS), c2:cl(sel.c2,COLS)});
+  const m = mergeOf(act.r, act.c); if (m) act = {r:m.r1, c:m.c1};
+}
+function move(dr, dc){
+  const u = unitOf(act.r, act.c);
+  let r = dr > 0 ? u.r2 + dr : dr < 0 ? u.r1 + dr : act.r;
+  let c = dc > 0 ? u.c2 + dc : dc < 0 ? u.c1 + dc : act.c;
+  r = Math.max(0, Math.min(ROWS-1, r)); c = Math.max(0, Math.min(COLS-1, c));
+  setSel(r, c); ensureVisible(act.r, act.c);
+}
+function extendSel(dr, dc, jump){
+  let r = foc.r, c = foc.c;
+  if (jump){ const t = jumpTarget(r, c, dr, dc); r = t.r; c = t.c; }
+  else {
+    const before = JSON.stringify(sel);
+    for (let i = 0; i < 60; i++){
+      r = Math.max(0, Math.min(ROWS-1, r+dr)); c = Math.max(0, Math.min(COLS-1, c+dc));
+      if (JSON.stringify(expand(norm(act, {r,c}))) !== before) break;
+      if ((dr && (r === 0 || r === ROWS-1)) || (dc && (c === 0 || c === COLS-1))) break;
+    }
+  }
+  foc = {r, c}; sel = expand(norm(act, foc)); afterSel(); ensureVisible(r, c);
+}
+function jumpTarget(r, c, dr, dc){
+  const ok = (r, c) => r >= 0 && r < ROWS && c >= 0 && c < COLS;
+  const has = (r, c) => getV(r,c) !== '';
+  let nr = r + dr, nc = c + dc;
+  if (!ok(nr,nc)) return {r, c};
+  if (has(r,c) && has(nr,nc)){ while (ok(nr+dr, nc+dc) && has(nr+dr, nc+dc)){ nr += dr; nc += dc; } return {r:nr, c:nc}; }
+  while (ok(nr,nc) && !has(nr,nc)){ if (!ok(nr+dr, nc+dc)) return {r:nr, c:nc}; nr += dr; nc += dc; }
+  return {r:nr, c:nc};
+}
+function arrow(k, shift, ctrl){
+  const d = {ArrowUp:[-1,0], ArrowDown:[1,0], ArrowLeft:[0,-1], ArrowRight:[0,1]}[k];
+  if (shift) return extendSel(d[0], d[1], ctrl);
+  if (ctrl){ const t = jumpTarget(act.r, act.c, d[0], d[1]); setSel(t.r, t.c); ensureVisible(t.r, t.c); return; }
+  move(d[0], d[1]);
+}
+function ensureVisible(r, c){
+  const z = sh.zoom, vw = wrap.clientWidth - HW, vh = wrap.clientHeight - HH;
+  const x1 = colX[c]*z, x2 = colX[c+1]*z, y1 = rowY[r]*z, y2 = rowY[r+1]*z;
+  if (x1 < wrap.scrollLeft) wrap.scrollLeft = x1; else if (x2 > wrap.scrollLeft + vw) wrap.scrollLeft = x2 - vw;
+  if (y1 < wrap.scrollTop) wrap.scrollTop = y1; else if (y2 > wrap.scrollTop + vh) wrap.scrollTop = y2 - vh;
+}
+function selectAll(){ setRange({r1:0, c1:0, r2:ROWS-1, c2:COLS-1}, act); }
+// 터치로 쓸 때는 편집 중이 아니면 키보드가 올라오지 않도록 포커스를 주지 않는다
+let touchMode = false;
+const focusGrid = () => {
+  if (touchMode && !editing){ if (document.activeElement === ed) ed.blur(); return; }
+  ed.focus({preventScroll:true});
+};
+
+// ===== 편집 =====
+function positionEditor(){
+  if (!colX) return;
+  const m = unitOf(act.r, act.c), z = sh.zoom;
+  ed.style.left = (HW + colX[m.c1]*z) + 'px';
+  ed.style.top = (HH + rowY[m.r1]*z) + 'px';
+  edMinW = (colX[m.c2+1] - colX[m.c1])*z; edMinH = (rowY[m.r2+1] - rowY[m.r1])*z;
+  sizeEditor();
+}
+function sizeEditor(){
+  if (!editing){ ed.style.width = edMinW+'px'; ed.style.height = edMinH+'px'; return; }
+  const s = st(act.r, act.c); let w = edMinW;
+  if (!s.wrap){
+    mctx.font = fontStr(s, sh.zoom);
+    let tw = 0; for (const l of ed.value.split('\n')) tw = Math.max(tw, mctx.measureText(l).width);
+    const room = wrap.clientWidth - (parseFloat(ed.style.left) - wrap.scrollLeft) - 6;
+    w = Math.max(edMinW, Math.min(tw + 16, Math.max(edMinW, room)));
+  }
+  ed.style.width = w+'px'; ed.style.height = edMinH+'px';
+  if (ed.scrollHeight > edMinH) ed.style.height = ed.scrollHeight+'px';
+}
+function startEdit(mode, text){
+  if (editing) return;
+  editing = true; editMode = mode;
+  if (text != null) ed.value = text;
+  const s = st(act.r, act.c);
+  ed.style.font = fontStr(s, sh.zoom);
+  ed.style.color = s.fc || '#111';
+  ed.style.background = s.bg || '#fff';
+  ed.style.textAlign = s.ha || 'left';
+  ed.style.textDecoration = [s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ') || 'none';
+  ed.style.whiteSpace = s.wrap ? 'pre-wrap' : 'pre';
+  ed.classList.add('on');
+  positionEditor();
+  if (mode === 'edit'){ const n = ed.value.length; ed.setSelectionRange(n, n); }
+  fx.value = ed.value;
+  schedule();
+}
+function commitEdit(){
+  if (!editing) return;
+  const v = ed.value;
+  editing = false; ed.classList.remove('on'); ed.value = '';
+  if (v !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, v));
+  positionEditor(); refreshUI(); schedule();
+}
+function cancelEdit(){
+  if (!editing) return;
+  editing = false; ed.classList.remove('on'); ed.value = '';
+  positionEditor(); refreshUI(); schedule();
+}
+function insertAtCaret(t){
+  const a = ed.selectionStart, b = ed.selectionEnd;
+  ed.value = ed.value.slice(0,a) + t + ed.value.slice(b);
+  ed.setSelectionRange(a + t.length, a + t.length);
+  sizeEditor(); fx.value = ed.value;
+}
+
+// ===== 변경과 실행 취소 =====
+function snap(){ undoStack.push(JSON.stringify(wb)); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; }
+function afterChange(){ changedSinceBackup = true; buildMerges(); autoRows(); layout(); fileDirty = true; updateDoc(); queueAutosave(); refreshUI(); schedule(); }
+function mutate(fn){ snap(); fn(); afterChange(); }
+function restore(json){
+  wb = JSON.parse(json); wb.sheets = wb.sheets.map(normSheet); sh = wb.sheets[wb.active]; changedSinceBackup = true;
+  buildMerges(); layout(); clampSel(); renderTabs();
+  fileDirty = true; updateDoc(); queueAutosave(); afterSel();
+}
+function undo(){ if (editing) cancelEdit(); if (!undoStack.length) return toast('되돌릴 작업이 없습니다'); redoStack.push(JSON.stringify(wb)); restore(undoStack.pop()); }
+function redo(){ if (editing) cancelEdit(); if (!redoStack.length) return toast('다시 실행할 작업이 없습니다'); undoStack.push(JSON.stringify(wb)); restore(redoStack.pop()); }
+let asT = 0;
+function queueAutosave(){ clearTimeout(asT); asT = setTimeout(() => writeSession(false), 400); }
+// 지금 상태를 비상 복구용으로 기록 (프로그램: 디스크 파일, 웹: 브라우저 저장소)
+function writeSession(clean){
+  if (noAutosave) return;
+  const s = JSON.stringify({wb, fileName, fileDirty, filePath, clean, time: Date.now()});
+  try { if (window.native) window.native.sessionWrite(s); else localStorage.setItem(LS, s); } catch (e) {}
+}
+function readSession(){
+  try { const s = (window.native && window.native.sessionRead()) || localStorage.getItem(LS); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+}
+function clearSession(){ try { localStorage.removeItem(LS); if (window.native) window.native.sessionClear(); } catch (e) {} }
+
+// ===== 서식 =====
+function applyStyle(patch){
+  if (editing) commitEdit();
+  const s = sel;
+  const put = o => { for (const k in patch){ if (patch[k] == null) delete o[k]; else o[k] = patch[k]; } };
+  const each = (test, fn) => { for (const k in sh.cells){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (test(r,c)) fn(sh.cells[k], r, c); } };
+  mutate(() => {
+    if (fullCols(s)){
+      for (let c = s.c1; c <= s.c2; c++){ const o = sh.colStyle[c] || {}; put(o); if (Object.keys(o).length) sh.colStyle[c] = o; else delete sh.colStyle[c]; }
+      for (const r in sh.rowStyle) for (let c = s.c1; c <= s.c2; c++) ensureCell(+r, c);
+      each((r,c) => c >= s.c1 && c <= s.c2, (cell, r, c) => { cell.s = cell.s || {}; put(cell.s); clean(r,c); });
+    } else if (fullRows(s)){
+      for (let r = s.r1; r <= s.r2; r++){ const o = sh.rowStyle[r] || {}; put(o); if (Object.keys(o).length) sh.rowStyle[r] = o; else delete sh.rowStyle[r]; }
+      each((r) => r >= s.r1 && r <= s.r2, (cell, r, c) => { cell.s = cell.s || {}; put(cell.s); clean(r,c); });
+    } else {
+      for (let r = s.r1; r <= s.r2; r++) for (let c = s.c1; c <= s.c2; c++){ const cell = ensureCell(r,c); cell.s = cell.s || {}; put(cell.s); clean(r,c); }
+    }
+  });
+}
+function toggle(k){ const cur = !!st(act.r, act.c)[k]; applyStyle({[k]: cur ? null : true}); }
+function setFontSize(n){
+  n = Math.round(parseFloat(n)*2)/2;
+  if (!(n >= 1 && n <= 409)) return toast('글자 크기는 1~409 사이로 입력하세요');
+  applyStyle({fs: n === DEF_FS ? null : n});
+}
+function stepFont(dir){
+  const cur = st(act.r, act.c).fs || DEF_FS;
+  let n = dir > 0 ? SIZES.find(x => x > cur) : [...SIZES].reverse().find(x => x < cur);
+  if (n == null) n = dir > 0 ? cur + 4 : Math.max(1, cur - 1);
+  setFontSize(n);
+}
+function clearFormats(){
+  if (editing) commitEdit();
+  const s = sel;
+  mutate(() => {
+    if (fullCols(s)) for (let c = s.c1; c <= s.c2; c++) delete sh.colStyle[c];
+    if (fullRows(s)) for (let r = s.r1; r <= s.r2; r++) delete sh.rowStyle[r];
+    for (const k in sh.cells){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2){ delete sh.cells[k].s; clean(r,c); } }
+  });
+}
+function clearContents(){
+  const s = sel;
+  let any = false;
+  for (const k in sh.cells){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2 && sh.cells[k].v != null){ any = true; break; } }
+  if (!any) return;
+  mutate(() => { for (const k of Object.keys(sh.cells)){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2) setV(r,c,''); } });
+}
+function usedMax(){ let mr = 0, mc = 0; for (const k in sh.cells){ const i = k.indexOf(':'); mr = Math.max(mr, +k.slice(0,i)); mc = Math.max(mc, +k.slice(i+1)); } return {mr, mc}; }
+function forUnits(s, fn){
+  for (let r = s.r1; r <= s.r2; r++) for (let c = s.c1; c <= s.c2; c++){
+    const m = mergeOf(r,c);
+    if (m){ if (m.r1 === r && m.c1 === c) fn(m); }
+    else fn({r1:r, c1:c, r2:r, c2:c});
+  }
+}
+const SIDE = {t:'bt', b:'bb', l:'bl', r:'br'}, OPP = {t:'bb', b:'bt', l:'br', r:'bl'};
+function setSide(u, side, val){
+  const cell = ensureCell(u.r1, u.c1); cell.s = cell.s || {};
+  if (val) cell.s[SIDE[side]] = {...val}; else delete cell.s[SIDE[side]];
+  clean(u.r1, u.c1);
+  const nb = [];
+  if (side === 't' && u.r1 > 0) for (let c = u.c1; c <= u.c2; c++) nb.push([u.r1-1, c]);
+  if (side === 'b' && u.r2 < ROWS-1) for (let c = u.c1; c <= u.c2; c++) nb.push([u.r2+1, c]);
+  if (side === 'l' && u.c1 > 0) for (let r = u.r1; r <= u.r2; r++) nb.push([r, u.c1-1]);
+  if (side === 'r' && u.c2 < COLS-1) for (let r = u.r1; r <= u.r2; r++) nb.push([r, u.c2+1]);
+  for (const [r, c] of nb){
+    const m = mergeOf(r,c), ar = m ? m.r1 : r, ac = m ? m.c1 : c, x = sh.cells[ar+':'+ac];
+    if (x && x.s && x.s[OPP[side]]){ delete x.s[OPP[side]]; clean(ar, ac); }
+  }
+}
+function applyBorder(kind){
+  if (editing) commitEdit();
+  lastBorder = kind; $('#tbBorder').innerHTML = borderIcon(kind);
+  const s = {...sel};
+  if (fullCols(s) || fullRows(s)){
+    const {mr, mc} = usedMax();
+    if (fullCols(s)) s.r2 = Math.max(mr, 29);
+    if (fullRows(s)) s.c2 = Math.max(mc, 9);
+  }
+  let pen = {...borderPen};
+  if (kind === 'thickOuter') pen = {w: Math.max(2, borderPen.w), s: borderPen.s === 'double' ? 'solid' : borderPen.s, c: borderPen.c};
+  if (kind === 'bottomDouble') pen = {w:1, s:'double', c: borderPen.c};
+  mutate(() => {
+    buildMerges();
+    forUnits(s, u => {
+      const T = u.r1 === s.r1, B = u.r2 === s.r2, L = u.c1 === s.c1, R = u.c2 === s.c2;
+      const set = (side, v) => setSide(u, side, v);
+      switch (kind){
+        case 'all': set('t',pen); set('b',pen); set('l',pen); set('r',pen); break;
+        case 'outer': case 'thickOuter': if (T) set('t',pen); if (B) set('b',pen); if (L) set('l',pen); if (R) set('r',pen); break;
+        case 'inner': if (!T) set('t',pen); if (!B) set('b',pen); if (!L) set('l',pen); if (!R) set('r',pen); break;
+        case 'innerH': if (!T) set('t',pen); if (!B) set('b',pen); break;
+        case 'innerV': if (!L) set('l',pen); if (!R) set('r',pen); break;
+        case 'top': if (T) set('t',pen); break;
+        case 'bottom': case 'bottomDouble': if (B) set('b',pen); break;
+        case 'left': if (L) set('l',pen); break;
+        case 'right': if (R) set('r',pen); break;
+        case 'topBottom': if (T) set('t',pen); if (B) set('b',pen); break;
+        case 'none': set('t',null); set('b',null); set('l',null); set('r',null); break;
+      }
+    });
+  });
+}
+
+// ===== 병합 =====
+function doMerge(kind){
+  if (editing) commitEdit();
+  const s = {...sel};
+  if (kind === 'unmerge'){
+    if (!sh.merges.some(m => inter(m, s))) return toast('병합된 칸이 없습니다');
+    return mutate(() => { sh.merges = sh.merges.filter(m => !inter(m, s)); });
+  }
+  if ((s.r2-s.r1+1)*(s.c2-s.c1+1) > 20000) return toast('병합하기에는 범위가 너무 큽니다');
+  const rects = kind === 'mergeAcross' ? Array.from({length: s.r2-s.r1+1}, (_, i) => ({r1:s.r1+i, r2:s.r1+i, c1:s.c1, c2:s.c2})) : [s];
+  if (rects.every(R => R.r1 === R.r2 && R.c1 === R.c2)) return toast('두 칸 이상 선택한 뒤 병합하세요');
+  let lost = false;
+  mutate(() => {
+    sh.merges = sh.merges.filter(m => !inter(m, s));
+    for (const R of rects){
+      if (R.r1 === R.r2 && R.c1 === R.c2) continue;
+      let first = null, count = 0;
+      for (let r = R.r1; r <= R.r2; r++) for (let c = R.c1; c <= R.c2; c++) if (getV(r,c) !== ''){ count++; if (!first) first = {r, c, v:getV(r,c)}; }
+      if (count > 1) lost = true;
+      for (let r = R.r1; r <= R.r2; r++) for (let c = R.c1; c <= R.c2; c++) if (r !== R.r1 || c !== R.c1) setV(r,c,'');
+      if (first) setV(R.r1, R.c1, first.v);
+      sh.merges.push({...R});
+      if (kind !== 'mergeOnly'){ const cell = ensureCell(R.r1, R.c1); cell.s = cell.s || {}; cell.s.ha = 'center'; }
+    }
+  });
+  setRange(s);
+  if (lost) toast('여러 칸에 내용이 있어 첫 번째 내용만 남겼습니다');
+}
+function mergeToggle(){
+  const m = mergeOf(act.r, act.c);
+  if (m && m.r1 === sel.r1 && m.r2 === sel.r2 && m.c1 === sel.c1 && m.c2 === sel.c2) doMerge('unmerge');
+  else doMerge('mergeCenter');
+}
+
+// ===== 크기 =====
+function textWidthOf(r, c){
+  const v = getV(r,c); if (v === '' || mergeOf(r,c)) return 0;
+  const s = st(r,c); if (s.wrap) return 0;
+  mctx.font = fontStr(s, 1);
+  let w = 0; for (const l of String(v).split('\n')) w = Math.max(w, mctx.measureText(l).width);
+  return w + 10;
+}
+function autofitCols(cols){
+  mutate(() => {
+    for (const c of cols){
+      let w = 0; for (const k in sh.cells){ const i = k.indexOf(':'); if (+k.slice(i+1) === c) w = Math.max(w, textWidthOf(+k.slice(0,i), c)); }
+      if (w) sh.colW[c] = Math.max(24, Math.ceil(w)); else delete sh.colW[c];
+    }
+  });
+}
+function autofitRows(rows){ mutate(() => { for (const r of rows){ delete sh.rowManual[r]; delete sh.rowH[r]; } }); }
+function selCols(c){ return (fullCols(sel) && c >= sel.c1 && c <= sel.c2) ? range(sel.c1, sel.c2) : [c]; }
+function selRows(r){ return (fullRows(sel) && r >= sel.r1 && r <= sel.r2) ? range(sel.r1, sel.r2) : [r]; }
+const range = (a, b) => Array.from({length: b-a+1}, (_, i) => a+i);
+function setColWidth(cols, w){ mutate(() => { for (const c of cols) sh.colW[c] = w; }); }
+function setRowHeight(rows, h){ mutate(() => { for (const r of rows){ sh.rowH[r] = h; sh.rowManual[r] = h; } }); }
+
+// ===== 행/열 삽입 삭제 =====
+function shiftAxis(axis, at, n, del){
+  const max = axis === 'r' ? ROWS : COLS;
+  const map = i => del ? (i < at ? i : i < at+n ? -1 : i-n) : (i < at ? i : i+n < max ? i+n : -1);
+  const nc = {};
+  for (const k in sh.cells){
+    let [r, c] = k.split(':').map(Number);
+    if (axis === 'r'){ r = map(r); if (r < 0) continue; } else { c = map(c); if (c < 0) continue; }
+    nc[r+':'+c] = sh.cells[k];
+  }
+  sh.cells = nc;
+  const ro = o => { const x = {}; for (const k in o){ const i = map(+k); if (i >= 0) x[i] = o[k]; } return x; };
+  if (axis === 'r'){ sh.rowH = ro(sh.rowH); sh.rowManual = ro(sh.rowManual); sh.rowStyle = ro(sh.rowStyle); }
+  else { sh.colW = ro(sh.colW); sh.colStyle = ro(sh.colStyle); }
+  const a1 = axis+'1', a2 = axis+'2', out = [];
+  for (const m of sh.merges){
+    let a = m[a1], b = m[a2];
+    if (!del){ if (a >= at) a += n; if (b >= at) b += n; b = Math.min(b, max-1); if (a > max-1) continue; }
+    else { const e = at+n-1; a = a < at ? a : a > e ? a-n : at; b = b < at ? b : b > e ? b-n : at-1; if (b < a) continue; }
+    const nm = {...m, [a1]:a, [a2]:b};
+    if (nm.r1 === nm.r2 && nm.c1 === nm.c2) continue;
+    out.push(nm);
+  }
+  sh.merges = out;
+}
+function insertRows(){ const n = sel.r2-sel.r1+1; if (n >= ROWS) return; mutate(() => shiftAxis('r', sel.r1, n, false)); }
+function deleteRows(){ const n = sel.r2-sel.r1+1; mutate(() => shiftAxis('r', sel.r1, n, true)); clampSel(); afterSel(); }
+function insertCols(){ const n = sel.c2-sel.c1+1; if (n >= COLS) return; mutate(() => shiftAxis('c', sel.c1, n, false)); }
+function deleteCols(){ const n = sel.c2-sel.c1+1; mutate(() => shiftAxis('c', sel.c1, n, true)); clampSel(); afterSel(); }
+
+// ===== 채우기 핸들 (이어 채우기) =====
+const LISTS = [
+  ['월','화','수','목','금','토','일'], ['월요일','화요일','수요일','목요일','금요일','토요일','일요일'],
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
+  ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+  ['1분기','2분기','3분기','4분기'], ['갑','을','병','정','무','기','경','신','임','계'],
+  ['가','나','다','라','마','바','사','아','자','차','카','타','파','하'],
+  ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'],
+  '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'.split('')
+];
+const PLAIN = /^[-+]?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/;
+const DATE = /^(\d{4})([-./])(\d{1,2})\2(\d{1,2})\.?$/;
+const mod = (a, n) => ((a % n) + n) % n;
+function series(vals, n, copyOnly){
+  const L = vals.length, out = [];
+  const cyc = () => { for (let i = 0; i < n; i++) out.push(vals[i % L]); return out; };
+  if (copyOnly || vals.every(v => v === '')) return cyc();
+  if (vals.every(v => PLAIN.test(String(v).trim()))){
+    const nums = vals.map(v => parseFloat(String(v).replace(/,/g, '')));
+    const step = L > 1 ? (nums[L-1] - nums[0]) / (L-1) : 1;
+    const dec = Math.max(0, ...vals.map(v => (String(v).split('.')[1] || '').length));
+    const comma = vals.some(v => String(v).includes(','));
+    for (let i = 0; i < n; i++){
+      const x = nums[L-1] + step*(i+1);
+      out.push(comma ? x.toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec}) : x.toFixed(dec));
+    }
+    return out;
+  }
+  for (const list of LISTS){
+    const idx = vals.map(v => list.indexOf(String(v).trim()));
+    if (idx.every(i => i >= 0)){
+      const step = L > 1 ? idx[L-1] - idx[L-2] || 1 : 1;
+      for (let i = 0; i < n; i++) out.push(list[mod(idx[L-1] + step*(i+1), list.length)]);
+      return out;
+    }
+  }
+  const ds = vals.map(v => DATE.exec(String(v).trim()));
+  if (ds.every(Boolean)){
+    const toD = m => new Date(+m[1], +m[3]-1, +m[4]);
+    const step = L > 1 ? Math.round((toD(ds[L-1]) - toD(ds[L-2])) / 864e5) || 1 : 1;
+    const m = ds[L-1], sep = m[2], pad = m[3].length === 2 || m[4].length === 2;
+    const p = x => pad ? String(x).padStart(2, '0') : String(x);
+    for (let i = 0; i < n; i++){ const d = toD(m); d.setDate(d.getDate() + step*(i+1)); out.push(d.getFullYear() + sep + p(d.getMonth()+1) + sep + p(d.getDate())); }
+    return out;
+  }
+  const pm = vals.map(v => /^(.*?)(\d+)(\D*)$/.exec(String(v)));
+  if (pm.every(Boolean) && pm.every(m => m[1] === pm[0][1] && m[3] === pm[0][3])){
+    const ns = pm.map(m => +m[2]);
+    const step = L > 1 ? ns[L-1] - ns[L-2] : 1;
+    const last = pm[L-1], width = last[2].length, zero = last[2].length > 1 && last[2][0] === '0';
+    for (let i = 0; i < n; i++){
+      const x = ns[L-1] + step*(i+1);
+      out.push(last[1] + (zero && x >= 0 ? String(x).padStart(width, '0') : String(x)) + last[3]);
+    }
+    return out;
+  }
+  return cyc();
+}
+const cloneS = s => s ? JSON.parse(JSON.stringify(s)) : undefined;
+function applyFill(base, t, copyOnly){
+  const vertical = t.c1 === base.c1 && t.c2 === base.c2;
+  mutate(() => {
+    let area;
+    if (vertical) area = t.r2 > base.r2 ? {r1:base.r2+1, r2:t.r2, c1:t.c1, c2:t.c2} : {r1:t.r1, r2:base.r1-1, c1:t.c1, c2:t.c2};
+    else area = t.c2 > base.c2 ? {r1:t.r1, r2:t.r2, c1:base.c2+1, c2:t.c2} : {r1:t.r1, r2:t.r2, c1:t.c1, c2:base.c1-1};
+    sh.merges = sh.merges.filter(m => !inter(m, area));
+    const fwd = vertical ? t.r2 > base.r2 : t.c2 > base.c2;
+    const n = vertical ? (fwd ? t.r2-base.r2 : base.r1-t.r1) : (fwd ? t.c2-base.c2 : base.c1-t.c1);
+    const lanes = vertical ? range(base.c1, base.c2) : range(base.r1, base.r2);
+    for (const lane of lanes){
+      let src = vertical ? range(base.r1, base.r2).map(r => [r, lane]) : range(base.c1, base.c2).map(c => [lane, c]);
+      if (!fwd) src.reverse();
+      const cells = src.map(([r,c]) => ({v:getV(r,c), s:(sh.cells[r+':'+c] || {}).s}));
+      const vals = series(cells.map(x => x.v), n, copyOnly);
+      for (let i = 0; i < n; i++){
+        const off = fwd ? (vertical ? base.r2 : base.c2) + 1 + i : (vertical ? base.r1 : base.c1) - 1 - i;
+        const r = vertical ? off : lane, c = vertical ? lane : off;
+        const s = cloneS(cells[i % cells.length].s);
+        const k = r+':'+c;
+        const o = {}; if (vals[i] !== '') o.v = String(vals[i]); if (s) o.s = s;
+        if (o.v != null || o.s) sh.cells[k] = o; else delete sh.cells[k];
+      }
+    }
+  });
+  setRange(t, act);
+}
+
+// ===== 끌어서 옮기기 =====
+function applyMove(B, T, copy){
+  const inR = (R, r, c) => r >= R.r1 && r <= R.r2 && c >= R.c1 && c <= R.c2;
+  const keyRC = k => { const i = k.indexOf(':'); return [+k.slice(0,i), +k.slice(i+1)]; };
+  let occupied = false;
+  for (const k in sh.cells){
+    const [r, c] = keyRC(k);
+    if (inR(T, r, c) && sh.cells[k].v != null && (copy || !inR(B, r, c))){ occupied = true; break; }
+  }
+  const go = () => {
+    const dr = T.r1 - B.r1, dc = T.c1 - B.c1;
+    mutate(() => {
+      const src = [];
+      for (const k in sh.cells){ const [r, c] = keyRC(k); if (inR(B, r, c)) src.push([r, c, JSON.parse(JSON.stringify(sh.cells[k]))]); }
+      const ms = sh.merges.filter(m => contains(B, m));
+      if (!copy){ for (const [r, c] of src) delete sh.cells[r+':'+c]; sh.merges = sh.merges.filter(m => !contains(B, m)); }
+      for (const k of Object.keys(sh.cells)){ const [r, c] = keyRC(k); if (inR(T, r, c)) delete sh.cells[k]; }
+      sh.merges = sh.merges.filter(m => !inter(m, T));
+      for (const [r, c, cell] of src) sh.cells[(r+dr)+':'+(c+dc)] = cell;
+      for (const m of ms) sh.merges.push({r1:m.r1+dr, r2:m.r2+dr, c1:m.c1+dc, c2:m.c2+dc});
+    });
+    if (clip && !copy) clip = null;
+    setRange(T, {r:act.r+dr, c:act.c+dc}); ensureVisible(T.r1, T.c1);
+  };
+  if (occupied) modal('내용 덮어쓰기', '<p>옮길 위치에 이미 내용이 있습니다. 덮어쓸까요? 실행 취소(Ctrl+Z)로 되돌릴 수 있습니다.</p>', '덮어쓰기', go);
+  else go();
+}
+
+// ===== 복사/붙여넣기 =====
+function esc(s){ return String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
+function tsvCell(v){ v = String(v); return /[\t\n"]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function parseTSV(t){
+  t = t.replace(/\r\n?/g, '\n'); if (t.endsWith('\n')) t = t.slice(0, -1);
+  const rows = [[]]; let cur = '', q = false;
+  for (let i = 0; i < t.length; i++){
+    const ch = t[i];
+    if (q){ if (ch === '"'){ if (t[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"' && cur === '') q = true;
+    else if (ch === '\t'){ rows[rows.length-1].push(cur); cur = ''; }
+    else if (ch === '\n'){ rows[rows.length-1].push(cur); rows.push([]); cur = ''; }
+    else cur += ch;
+  }
+  rows[rows.length-1].push(cur);
+  const w = Math.max(...rows.map(r => r.length));
+  return rows.map(r => { while (r.length < w) r.push(''); return r; });
+}
+const bcss = b => b ? `${b.s === 'double' ? 3 : b.w}px ${b.s} ${b.c}` : '';
+function toHTML(R){
+  let h = '<table style="border-collapse:collapse">';
+  for (let r = R.r1; r <= R.r2; r++){
+    h += `<tr style="height:${Math.round(rh(r)*0.75)}pt">`;
+    for (let c = R.c1; c <= R.c2; c++){
+      const m = mergeOf(r,c);
+      if (m && (m.r1 !== r || m.c1 !== c) && contains(R, m)) continue;
+      const s = st(r,c), v = getV(r,c);
+      const css = [`font-family:'${XL_NAME[s.ff || DEF_FONT] || s.ff || DEF_FONT}'`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
+        (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`,
+        s.fc && `color:${s.fc}`, s.bg && `background:${s.bg}`, s.ha && `text-align:${s.ha}`, `vertical-align:${s.va || 'middle'}`,
+        s.wrap ? 'white-space:normal' : 'white-space:nowrap', r === R.r1 && `width:${Math.round(cw(c)*0.75)}pt`,
+        s.bt && `border-top:${bcss(s.bt)}`, s.bb && `border-bottom:${bcss(s.bb)}`, s.bl && `border-left:${bcss(s.bl)}`, s.br && `border-right:${bcss(s.br)}`].filter(Boolean).join(';');
+      const span = m && contains(R, m) ? ` rowspan="${m.r2-m.r1+1}" colspan="${m.c2-m.c1+1}"` : '';
+      h += `<td${span} style="${css}">${esc(v).replace(/\n/g, '<br>')}</td>`;
+    }
+    h += '</tr>';
+  }
+  return h + '</table>';
+}
+function buildClip(cut){
+  const R = {...sel};
+  if ((R.r2-R.r1+1)*(R.c2-R.c1+1) > 200000){ const {mr, mc} = usedMax(); R.r2 = Math.min(R.r2, mr); R.c2 = Math.min(R.c2, mc); }
+  const cells = [], lines = [];
+  for (let r = R.r1; r <= R.r2; r++){
+    const row = [], line = [];
+    for (let c = R.c1; c <= R.c2; c++){ const s = st(r,c); row.push({v:getV(r,c), s: s === EMPTY ? undefined : cloneS(s)}); line.push(tsvCell(getV(r,c))); }
+    cells.push(row); lines.push(line.join('\t'));
+  }
+  const merges = sh.merges.filter(m => contains(R, m)).map(m => ({r1:m.r1-R.r1, r2:m.r2-R.r1, c1:m.c1-R.c1, c2:m.c2-R.c1}));
+  return {sheet: wb.active, range: R, cells, merges, text: lines.join('\n'), cut};
+}
+function prepareCopy(cut){
+  clip = buildClip(cut); clipHTML = toHTML(clip.range);
+  ed.value = clip.text || ' '; ed.select();
+  setTimeout(() => { if (!editing) ed.value = ''; }, 0);
+  schedule();
+}
+async function menuCopy(cut){
+  clip = buildClip(cut); clipHTML = toHTML(clip.range); schedule();
+  try { await navigator.clipboard.writeText(clip.text); } catch (e) {}
+}
+async function menuPaste(){
+  let t = null;
+  try { t = await navigator.clipboard.readText(); } catch (e) {}
+  if (t == null){ if (clip) t = clip.text; else return toast('Ctrl+V로 붙여넣어 주세요'); }
+  doPaste(t);
+}
+function doPaste(text){
+  const nrm = s => String(s).replace(/\r\n?/g, '\n').replace(/\n$/, '');
+  const internal = clip && nrm(text) === nrm(clip.text);
+  const data = internal ? clip : {cells: parseTSV(text).map(r => r.map(v => ({v}))), merges: []};
+  const h = data.cells.length, w = data.cells[0].length;
+  const R = sel.r2-sel.r1+1, C = sel.c2-sel.c1+1;
+  let th = h, tw = w;
+  if (R % h === 0 && C % w === 0 && (R > h || C > w) && R*C <= 200000){ th = R; tw = C; }
+  const r0 = sel.r1, c0 = sel.c1;
+  const T = {r1:r0, c1:c0, r2:Math.min(ROWS-1, r0+th-1), c2:Math.min(COLS-1, c0+tw-1)};
+  mutate(() => {
+    if (internal && clip.cut){
+      const S = clip.range; const prev = sh; sh = wb.sheets[clip.sheet];
+      for (const k of Object.keys(sh.cells)){ const [r,c] = k.split(':').map(Number); if (r >= S.r1 && r <= S.r2 && c >= S.c1 && c <= S.c2) delete sh.cells[k]; }
+      sh.merges = sh.merges.filter(m => !contains(S, m));
+      sh = prev;
+    }
+    sh.merges = sh.merges.filter(m => !inter(m, T));
+    for (let i = 0; i < th; i++) for (let j = 0; j < tw; j++){
+      const r = r0+i, c = c0+j; if (r >= ROWS || c >= COLS) continue;
+      const src = data.cells[i % h][j % w];
+      if (internal){
+        const o = {}; if (src.v !== '') o.v = src.v; if (src.s) o.s = cloneS(src.s);
+        if (o.v != null || o.s) sh.cells[r+':'+c] = o; else delete sh.cells[r+':'+c];
+      } else setV(r, c, src.v);
+    }
+    if (internal) for (let i = 0; i < th; i += h) for (let j = 0; j < tw; j += w) for (const m of data.merges){
+      const nm = {r1:r0+i+m.r1, r2:r0+i+m.r2, c1:c0+j+m.c1, c2:c0+j+m.c2};
+      if (nm.r2 < ROWS && nm.c2 < COLS) sh.merges.push(nm);
+    }
+  });
+  if (internal && clip.cut) clip = null;
+  setRange(T);
+}
+
+// ===== 서식 복사 =====
+function startPainter(sticky){
+  if (editing) commitEdit();
+  const R = sel;
+  if ((R.r2-R.r1+1)*(R.c2-R.c1+1) > 5000){ painter = {h:1, w:1, styles:[[cloneS(st(act.r, act.c))]], sticky}; }
+  else painter = {h:R.r2-R.r1+1, w:R.c2-R.c1+1, styles: range(R.r1, R.r2).map(r => range(R.c1, R.c2).map(c => { const s = st(r,c); return s === EMPTY ? undefined : cloneS(s); })), sticky};
+  updatePainter(); toast(sticky ? '서식 복사 계속 켜짐 · Esc로 끄기' : '서식을 칠할 칸을 선택하세요');
+}
+function applyPainter(){
+  const P = painter, R = sel;
+  mutate(() => {
+    for (let r = R.r1; r <= R.r2; r++) for (let c = R.c1; c <= R.c2; c++){
+      const s = cloneS(P.styles[(r-R.r1) % P.h][(c-R.c1) % P.w]);
+      const cell = ensureCell(r,c); if (s) cell.s = s; else delete cell.s; clean(r,c);
+    }
+  });
+  if (!P.sticky){ painter = null; updatePainter(); }
+}
+function updatePainter(){ $('#painterBtn').classList.toggle('on', !!painter); wrap.classList.toggle('painting', !!painter); }
+
+// ===== 마우스 =====
+function hit(e){
+  const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+  const z = sh.zoom, sl = wrap.scrollLeft, stp = wrap.scrollTop;
+  const res = {x, y, c: colAt((x - HW + sl)/z), r: rowAt((y - HH + stp)/z)};
+  const touch = e.pointerType === 'touch', te = touch ? 9 : 4, th = touch ? 16 : 6;   // 손가락은 잡는 범위를 넓게
+  if (x < HW && y < HH) res.type = 'corner';
+  else if (y < HH){
+    res.type = 'colh';
+    const xr = HW + colX[res.c+1]*z - sl, xl = HW + colX[res.c]*z - sl;
+    if (Math.abs(x - xr) <= te) res.edge = res.c; else if (Math.abs(x - xl) <= te && res.c > 0) res.edge = res.c-1;
+  } else if (x < HW){
+    res.type = 'rowh';
+    const yb = HH + rowY[res.r+1]*z - stp, yt = HH + rowY[res.r]*z - stp;
+    if (Math.abs(y - yb) <= te - 1) res.edge = res.r; else if (Math.abs(y - yt) <= te - 1 && res.r > 0) res.edge = res.r-1;
+  } else {
+    res.type = 'cell';
+    const hx = HW + colX[sel.c2+1]*z - sl, hy = HH + rowY[sel.r2+1]*z - stp;
+    if (!editing && Math.abs(x - hx) <= th && Math.abs(y - hy) <= th) res.handle = true;
+    else if (!editing && !touch && !fullCols(sel) && !fullRows(sel)){
+      // 선택 범위 테두리 근처: 잡고 끌어서 옮기기
+      const x1 = HW + colX[sel.c1]*z - sl, y1 = HH + rowY[sel.r1]*z - stp;
+      const inY = y >= y1 - 3 && y <= hy + 3, inX = x >= x1 - 3 && x <= hx + 3;
+      if (((Math.abs(x - x1) <= 3 || Math.abs(x - hx) <= 3) && inY) || ((Math.abs(y - y1) <= 3 || Math.abs(y - hy) <= 3) && inX)) res.moveEdge = true;
+    }
+  }
+  return res;
+}
+cv.addEventListener('mousedown', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'touch'){ touchMode = true; touchDown(e); return; }
+  touchMode = false;
+  hideMenus();
+  if (e.button === 2){
+    const h = hit(e);
+    if (h.type === 'cell' && !(h.r >= sel.r1 && h.r <= sel.r2 && h.c >= sel.c1 && h.c <= sel.c2)){ if (editing) commitEdit(); setSel(h.r, h.c); }
+    if (h.type === 'colh' && !(fullCols(sel) && h.c >= sel.c1 && h.c <= sel.c2)){ if (editing) commitEdit(); setRange({r1:0, r2:ROWS-1, c1:h.c, c2:h.c}, {r:act.r, c:h.c}); }
+    if (h.type === 'rowh' && !(fullRows(sel) && h.r >= sel.r1 && h.r <= sel.r2)){ if (editing) commitEdit(); setRange({r1:h.r, r2:h.r, c1:0, c2:COLS-1}, {r:h.r, c:act.c}); }
+    focusGrid();
+    return;
+  }
+  if (e.button !== 0) return;
+  focusGrid();
+  if (editing) commitEdit();
+  const h = hit(e);
+  lastEv = e;
+  if (h.type === 'corner'){ selectAll(); return; }
+  if (h.type === 'colh'){
+    if (h.edge != null){ snap(); drag = {mode:'colw', cols: selCols(h.edge), c: h.edge, sx: h.x, sw: cw(h.edge)}; }
+    else {
+      const a = e.shiftKey ? drag0Col() : h.c;
+      setRange({r1:0, r2:ROWS-1, c1:Math.min(a, h.c), c2:Math.max(a, h.c)}, {r: rowAt(wrap.scrollTop/sh.zoom), c: e.shiftKey ? act.c : h.c});
+      drag = {mode:'cols', a};
+    }
+  } else if (h.type === 'rowh'){
+    if (h.edge != null){ snap(); drag = {mode:'rowh', rows: selRows(h.edge), r: h.edge, sy: h.y, sh: rh(h.edge)}; }
+    else {
+      const a = e.shiftKey ? drag0Row() : h.r;
+      setRange({r1:Math.min(a, h.r), r2:Math.max(a, h.r), c1:0, c2:COLS-1}, {r: e.shiftKey ? act.r : h.r, c: colAt(wrap.scrollLeft/sh.zoom)});
+      drag = {mode:'rows', a};
+    }
+  } else {
+    if (h.handle){ drag = {mode:'fill', base:{...sel}, target:null}; }
+    else if (h.moveEdge){
+      const B = {...sel};
+      drag = {mode:'move', base:B, grab:{r:Math.max(B.r1, Math.min(B.r2, h.r)), c:Math.max(B.c1, Math.min(B.c2, h.c))}, target:null};
+    }
+    else {
+      if (e.shiftKey){ foc = {r:h.r, c:h.c}; sel = expand(norm(act, foc)); afterSel(); }
+      else setSel(h.r, h.c);
+      drag = {mode:'cells'};
+    }
+  }
+  cv.setPointerCapture(e.pointerId);
+  if (!asId) asId = requestAnimationFrame(autoScroll);
+});
+const drag0Col = () => act.c, drag0Row = () => act.r;
+cv.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch'){ touchMove(e); return; }
+  if (!drag){
+    const h = hit(e);
+    cv.style.cursor = h.type === 'colh' && h.edge != null ? 'col-resize' : h.type === 'rowh' && h.edge != null ? 'row-resize' : h.handle ? 'crosshair' : h.moveEdge ? 'move' : h.type === 'colh' ? 's-resize' : h.type === 'rowh' ? 'e-resize' : '';
+    return;
+  }
+  lastEv = e; updateDrag(e);
+});
+function updateDrag(e){
+  const h = hit(e), z = sh.zoom;
+  if (drag.mode === 'colw'){
+    const w = Math.max(6, Math.round(drag.sw + (h.x - drag.sx)/z));
+    for (const c of drag.cols) sh.colW[c] = w;
+    layout(); schedule(); setStatus(`열 너비 ${w}px`);
+  } else if (drag.mode === 'rowh'){
+    const hh = Math.max(6, Math.round(drag.sh + (h.y - drag.sy)/z));
+    for (const r of drag.rows){ sh.rowH[r] = hh; sh.rowManual[r] = hh; }
+    layout(); schedule(); setStatus(`행 높이 ${hh}px`);
+  } else if (drag.mode === 'cols'){
+    sel = {r1:0, r2:ROWS-1, c1:Math.min(drag.a, h.c), c2:Math.max(drag.a, h.c)}; refreshUI(); schedule();
+  } else if (drag.mode === 'rows'){
+    sel = {r1:Math.min(drag.a, h.r), r2:Math.max(drag.a, h.r), c1:0, c2:COLS-1}; refreshUI(); schedule();
+  } else if (drag.mode === 'cells'){
+    if (h.r !== foc.r || h.c !== foc.c){ foc = {r:h.r, c:h.c}; sel = expand(norm(act, foc)); refreshUI(); schedule(); }
+  } else if (drag.mode === 'move'){
+    const B = drag.base;
+    const dr = Math.max(-B.r1, Math.min(ROWS-1-B.r2, h.r - drag.grab.r));
+    const dc = Math.max(-B.c1, Math.min(COLS-1-B.c2, h.c - drag.grab.c));
+    drag.target = dr || dc ? {r1:B.r1+dr, r2:B.r2+dr, c1:B.c1+dc, c2:B.c2+dc} : null;
+    const copy = e.ctrlKey || e.metaKey;
+    cv.style.cursor = copy ? 'copy' : 'move';
+    if (drag.target){
+      const T = drag.target, single = T.r1 === T.r2 && T.c1 === T.c2;
+      setStatus(`${single ? ref(T.r1, T.c1) : ref(T.r1, T.c1) + ':' + ref(T.r2, T.c2)}(으)로 ${copy ? '복사' : '옮기기'} · ${copy ? 'Ctrl을 떼면 옮기기' : 'Ctrl을 누르면 복사'}`);
+    }
+    schedule();
+  } else if (drag.mode === 'fill'){
+    const B = drag.base;
+    const dr = h.r > B.r2 ? h.r - B.r2 : h.r < B.r1 ? h.r - B.r1 : 0;
+    const dc = h.c > B.c2 ? h.c - B.c2 : h.c < B.c1 ? h.c - B.c1 : 0;
+    let t = null;
+    if (dr || dc){
+      if (Math.abs(dr) >= Math.abs(dc)) t = {r1:Math.min(B.r1, h.r), r2:Math.max(B.r2, h.r), c1:B.c1, c2:B.c2};
+      else t = {r1:B.r1, r2:B.r2, c1:Math.min(B.c1, h.c), c2:Math.max(B.c2, h.c)};
+    }
+    drag.target = t; schedule();
+    if (t) setStatus(e.ctrlKey ? '놓으면 그대로 복사합니다' : '놓으면 이어서 채웁니다 · Ctrl을 누르면 복사');
+  }
+}
+cv.addEventListener('pointerup', e => {
+  if (e.pointerType === 'touch' && touchUp(e)) return;
+  if (!drag) return;
+  const d = drag; drag = null;
+  cancelAnimationFrame(asId); asId = 0;
+  if (d.mode === 'colw' || d.mode === 'rowh'){ afterChange(); }
+  else if (d.mode === 'fill'){ if (d.target) applyFill(d.base, d.target, e.ctrlKey || e.metaKey); else schedule(); }
+  else if (d.mode === 'move'){ cv.style.cursor = ''; if (d.target) applyMove(d.base, d.target, e.ctrlKey || e.metaKey); else schedule(); }
+  else if (d.mode === 'cells' && painter) applyPainter();
+  else if ((d.mode === 'cols' || d.mode === 'rows') && painter) applyPainter();
+  refreshUI();
+});
+cv.addEventListener('pointercancel', () => { drag = null; touches.clear(); clearTimeout(lpTimer); cancelAnimationFrame(asId); asId = 0; schedule(); });
+
+// ===== 터치 (폰·태블릿) =====
+// 빈 곳을 끌면 화면 이동, 선택한 칸 안에서 끌면 범위 선택, 두 손가락은 확대/축소,
+// 두 번 탭하면 편집, 길게 누르면 메뉴
+const touches = new Map();
+let inertia = 0, lastTap = {t:0, r:-1, c:-1}, lpTimer = 0;
+const inSel = (r, c) => r >= sel.r1 && r <= sel.r2 && c >= sel.c1 && c <= sel.c2;
+function touchDown(e){
+  hideMenus(); cancelAnimationFrame(inertia);
+  touches.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  cv.setPointerCapture(e.pointerId);
+  if (touches.size === 2){
+    clearTimeout(lpTimer);
+    const [a, b] = [...touches.values()];
+    drag = {mode:'pinch', d0: Math.max(10, Math.hypot(a.x-b.x, a.y-b.y)), z0: sh.zoom};
+    return;
+  }
+  if (touches.size > 2) return;
+  const h = hit(e); lastEv = e;
+  if (h.type === 'colh' && h.edge != null){ if (editing) commitEdit(); snap(); drag = {mode:'colw', cols: selCols(h.edge), c:h.edge, sx:h.x, sw:cw(h.edge)}; return; }
+  if (h.type === 'rowh' && h.edge != null){ if (editing) commitEdit(); snap(); drag = {mode:'rowh', rows: selRows(h.edge), r:h.edge, sy:h.y, sh:rh(h.edge)}; return; }
+  if (h.type === 'cell' && h.handle){ drag = {mode:'fill', base:{...sel}, target:null}; if (!asId) asId = requestAnimationFrame(autoScroll); return; }
+  const mode = h.type === 'cell' && !editing && inSel(h.r, h.c) ? 'cells' : 'pan';
+  drag = {mode, h, sx:e.clientX, sy:e.clientY, sl:wrap.scrollLeft, st:wrap.scrollTop, moved:false, lx:e.clientX, ly:e.clientY, lt:performance.now(), vx:0, vy:0};
+  clearTimeout(lpTimer);
+  lpTimer = setTimeout(() => {
+    if (!drag || drag.moved || (drag.mode !== 'pan' && drag.mode !== 'cells')) return;
+    const hh = drag.h; drag = null;
+    if (editing) commitEdit();
+    if (hh.type === 'cell' && !inSel(hh.r, hh.c)) setSel(hh.r, hh.c);
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (err) {}
+    openCellMenu(e.clientX, e.clientY);
+  }, 550);
+}
+function touchMove(e){
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (!drag) return;
+  if (drag.mode === 'pinch'){
+    const [a, b] = [...touches.values()]; if (!b) return;
+    setZoom(drag.z0 * Math.hypot(a.x-b.x, a.y-b.y) / drag.d0); return;
+  }
+  if (drag.mode === 'pan' || drag.mode === 'cells'){
+    const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+    drag.moved = true; clearTimeout(lpTimer);
+    if (drag.mode === 'cells'){ lastEv = e; updateDrag(e); if (!asId) asId = requestAnimationFrame(autoScroll); return; }
+    wrap.scrollLeft = drag.sl - dx; wrap.scrollTop = drag.st - dy;
+    const now = performance.now(), dt = Math.max(1, now - drag.lt);
+    drag.vx = (e.clientX - drag.lx)/dt; drag.vy = (e.clientY - drag.ly)/dt;
+    drag.lx = e.clientX; drag.ly = e.clientY; drag.lt = now;
+    return;
+  }
+  lastEv = e; updateDrag(e);
+}
+function touchUp(e){   // 여기서 다 처리했으면 true, 마우스와 같은 마무리가 필요하면 false
+  touches.delete(e.pointerId); clearTimeout(lpTimer);
+  if (!drag) return true;
+  if (drag.mode === 'pinch'){ if (!touches.size){ drag = null; queueAutosave(); } return true; }
+  if (drag.mode === 'cells' && drag.moved) return false;
+  if (drag.mode !== 'pan' && drag.mode !== 'cells') return false;
+  const d = drag; drag = null;
+  cancelAnimationFrame(asId); asId = 0;
+  if (d.moved){
+    // 손을 뗀 뒤에도 조금 미끄러지게
+    if (performance.now() - d.lt > 80) return true;
+    let vx = -d.vx * 16, vy = -d.vy * 16;
+    const step = () => {
+      if (Math.abs(vx) < 0.4 && Math.abs(vy) < 0.4) return;
+      wrap.scrollLeft += vx; wrap.scrollTop += vy; vx *= 0.95; vy *= 0.95;
+      inertia = requestAnimationFrame(step);
+    };
+    inertia = requestAnimationFrame(step);
+    return true;
+  }
+  const h = d.h;
+  if (editing) commitEdit();
+  if (h.type === 'corner') selectAll();
+  else if (h.type === 'colh') setRange({r1:0, r2:ROWS-1, c1:h.c, c2:h.c}, {r: rowAt(wrap.scrollTop/sh.zoom), c:h.c});
+  else if (h.type === 'rowh') setRange({r1:h.r, r2:h.r, c1:0, c2:COLS-1}, {r:h.r, c: colAt(wrap.scrollLeft/sh.zoom)});
+  else {
+    const now = Date.now(), m = unitOf(h.r, h.c);
+    const again = now - lastTap.t < 450 && lastTap.r === m.r1 && lastTap.c === m.c1;
+    lastTap = {t: now, r: m.r1, c: m.c1};
+    setSel(h.r, h.c);
+    if (painter) applyPainter();
+    else if (again){ lastTap.t = 0; startEdit('edit', getV(act.r, act.c)); ed.focus({preventScroll:true}); }
+  }
+  return true;
+}
+function autoScroll(){
+  if (!drag || !lastEv){ asId = 0; return; }
+  const b = cv.getBoundingClientRect(), x = lastEv.clientX - b.left, y = lastEv.clientY - b.top;
+  let dx = 0, dy = 0;
+  if (drag.mode !== 'colw' && drag.mode !== 'rowh'){
+    if (drag.mode !== 'rows'){ if (x > b.width - 8) dx = x - b.width + 8; else if (x < HW) dx = x - HW; }
+    if (drag.mode !== 'cols'){ if (y > b.height - 8) dy = y - b.height + 8; else if (y < HH) dy = y - HH; }
+  }
+  if (dx || dy){ wrap.scrollLeft += dx * 0.5; wrap.scrollTop += dy * 0.5; updateDrag(lastEv); }
+  asId = requestAnimationFrame(autoScroll);
+}
+cv.addEventListener('dblclick', e => {
+  const h = hit(e);
+  if (h.type === 'colh' && h.edge != null) return autofitCols(selCols(h.edge));
+  if (h.type === 'rowh' && h.edge != null) return autofitRows(selRows(h.edge));
+  if (h.type === 'cell' && !h.handle){ setSel(h.r, h.c); startEdit('edit', getV(act.r, act.c)); focusGrid(); }
+});
+cv.addEventListener('contextmenu', e => { e.preventDefault(); openCellMenu(e.clientX, e.clientY); });
+wrap.addEventListener('scroll', () => schedule());
+wrap.addEventListener('wheel', e => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault(); setZoom(sh.zoom + (e.deltaY < 0 ? 0.1 : -0.1));
+}, {passive:false});
+new ResizeObserver(() => schedule()).observe(wrap);
+
+// ===== 키보드 =====
+ed.addEventListener('keydown', e => {
+  const k = e.key, ctrl = e.ctrlKey || e.metaKey;
+  if (e.isComposing || k === 'Process') return;
+  if (editing){
+    if (k === 'Enter' && e.altKey){ e.preventDefault(); insertAtCaret('\n'); return; }
+    if (k === 'Enter'){ e.preventDefault(); commitEdit(); move(e.shiftKey ? -1 : 1, 0); return; }
+    if (k === 'Tab'){ e.preventDefault(); commitEdit(); move(0, e.shiftKey ? -1 : 1); return; }
+    if (k === 'Escape'){ e.preventDefault(); cancelEdit(); return; }
+    if (k === 'F2'){ e.preventDefault(); editMode = editMode === 'enter' ? 'edit' : 'enter'; return; }
+    if (editMode === 'enter' && k.startsWith('Arrow') && !ctrl){ e.preventDefault(); commitEdit(); arrow(k, e.shiftKey, false); return; }
+    if (ctrl && k.toLowerCase() === 's'){ e.preventDefault(); commitEdit(); saveFile(e.shiftKey); return; }
+    if (ctrl && ['b','i','u'].includes(k.toLowerCase())){ e.preventDefault(); commitEdit(); toggle({b:'b', i:'i', u:'u'}[k.toLowerCase()]); return; }
+    return;
+  }
+  if (ctrl){
+    const kl = k.toLowerCase();
+    if (kl === 'c'){ prepareCopy(false); return; }
+    if (kl === 'x'){ prepareCopy(true); return; }
+    if (kl === 'v') return;
+    const map = {z: e.shiftKey ? redo : undo, y: redo, b: () => toggle('b'), i: () => toggle('i'), u: () => toggle('u'), '5': () => toggle('st'),
+      s: () => saveFile(e.shiftKey), o: openFile, a: selectAll, e: () => applyStyle({ha:'center'}), '1': null};
+    if (map[kl]){ e.preventDefault(); map[kl](); return; }
+    if (k.startsWith('Arrow')){ e.preventDefault(); arrow(k, e.shiftKey, true); return; }
+    if (k === 'Home'){ e.preventDefault(); setSel(0, 0); ensureVisible(0, 0); return; }
+    if (k === '=' || k === '+' || k === '-'){ e.preventDefault(); setZoom(sh.zoom + (k === '-' ? -0.1 : 0.1)); return; }
+    return;
+  }
+  switch (k){
+    case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight': e.preventDefault(); arrow(k, e.shiftKey, false); break;
+    case 'Enter': e.preventDefault(); move(e.shiftKey ? -1 : 1, 0); break;
+    case 'Tab': e.preventDefault(); move(0, e.shiftKey ? -1 : 1); break;
+    case 'Delete': e.preventDefault(); clearContents(); break;
+    case 'Backspace': e.preventDefault(); startEdit('enter', ''); break;
+    case 'F2': e.preventDefault(); startEdit('edit', getV(act.r, act.c)); break;
+    case 'Escape': if (clip || painter){ clip = null; painter = null; updatePainter(); schedule(); } break;
+    case 'Home': e.preventDefault(); setSel(act.r, 0); ensureVisible(act.r, 0); break;
+    case 'PageDown': case 'PageUp': {
+      e.preventDefault();
+      const n = Math.max(1, Math.floor((wrap.clientHeight - HH) / (DEF_H*sh.zoom)) - 1) * (k === 'PageDown' ? 1 : -1);
+      wrap.scrollTop += n * DEF_H * sh.zoom; move(n, 0); break;
+    }
+  }
+});
+ed.addEventListener('input', () => { if (!editing) startEdit('enter', null); sizeEditor(); fx.value = ed.value; });
+ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter', null); });
+ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
+ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
+ed.addEventListener('paste', e => { if (editing) return; e.preventDefault(); const t = e.clipboardData.getData('text/plain'); if (t !== '') doPaste(t); });
+
+fx.addEventListener('input', () => { if (editing){ ed.value = fx.value; sizeEditor(); } });
+fx.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing){
+    e.preventDefault();
+    if (editing){ ed.value = fx.value; commitEdit(); }
+    else if (fx.value !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, fx.value));
+    focusGrid(); move(1, 0);
+  } else if (e.key === 'Escape'){ e.preventDefault(); if (editing) cancelEdit(); fx.value = getV(act.r, act.c); focusGrid(); }
+});
+fx.addEventListener('change', () => { if (!editing && fx.value !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, fx.value)); });
+nameBox.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){ refreshUI(); focusGrid(); return; }
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const [a, b] = nameBox.value.split(':'), p = parseRef(a || ''), q = b ? parseRef(b) : p;
+  if (!p || !q){ toast('A1 또는 A1:C5 처럼 입력하세요'); return; }
+  setSel(p.r, p.c, q.r, q.c); ensureVisible(p.r, p.c); focusGrid();
+});
+
+// ===== 화면 갱신 =====
+function setOn(id, on){ const el = document.getElementById(id); if (el) el.classList.toggle('on', !!on); }
+function refreshUI(){
+  const s = st(act.r, act.c);
+  setOn('tbBold', s.b); setOn('tbItalic', s.i); setOn('tbUnder', s.u); setOn('tbStrike', s.st);
+  setOn('tbAL', s.ha === 'left'); setOn('tbAC', s.ha === 'center'); setOn('tbAR', s.ha === 'right');
+  setOn('tbVT', s.va === 'top'); setOn('tbVM', !s.va || s.va === 'middle'); setOn('tbVB', s.va === 'bottom');
+  setOn('tbWrap', s.wrap); setOn('tbMerge', mergeOf(act.r, act.c)); setOn('tbGrid', sh.grid);
+  const ff = s.ff || DEF_FONT, fs = $('#fontSel');
+  if (![...fs.options].some(o => o.value === ff)) fs.add(new Option(ff, ff));
+  if (document.activeElement !== fs) fs.value = ff;
+  if (document.activeElement !== $('#sizeIn')) $('#sizeIn').value = s.fs || DEF_FS;
+  const single = sel.r1 === sel.r2 && sel.c1 === sel.c2 || (mergeOf(act.r, act.c) && contains(mergeOf(act.r, act.c), sel));
+  if (document.activeElement !== nameBox) nameBox.value = single ? ref(act.r, act.c) : `${ref(sel.r1, sel.c1)}:${ref(sel.r2, sel.c2)}`;
+  if (!editing && document.activeElement !== fx) fx.value = getV(act.r, act.c);
+  setStatus();
+  $('#zoomR').value = Math.round(sh.zoom*100); $('#zoomV').textContent = Math.round(sh.zoom*100) + '%';
+}
+function setStatus(msg){
+  const el = $('#status');
+  if (msg){ el.textContent = msg; return; }
+  const R = sel.r2-sel.r1+1, C = sel.c2-sel.c1+1, m = mergeOf(act.r, act.c);
+  if (R*C > 1 && !(m && contains(m, sel))){
+    let n = 0; for (const k in sh.cells){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (sh.cells[k].v != null && r >= sel.r1 && r <= sel.r2 && c >= sel.c1 && c <= sel.c2) n++; }
+    el.textContent = `${R}행 × ${C}열 선택 · 내용 있는 칸 ${n}개`;
+  } else el.textContent = touchMode ? '두 번 탭: 편집 · 길게 누르기: 메뉴 · 두 손가락: 확대/축소' : '더블클릭으로 편집 · 오른쪽 아래 점을 끌면 이어 채우기';
+}
+function updateDoc(){
+  $('#docName').textContent = fileName;
+  const s = $('#saveState');
+  s.textContent = fileDirty ? (NATIVE ? '저장 안 됨' : '저장 안 됨 · 이 브라우저에 자동 보관 중') : (fileHandle || filePath ? '저장됨' : '');
+  s.classList.toggle('dirty', fileDirty);
+  $('.doc').classList.toggle('dirty', fileDirty);
+  document.title = `${fileDirty ? '• ' : ''}${fileName} - 모눈`;
+  if (NATIVE) NATIVE.setDirty(fileDirty);
+}
+function setZoom(z){
+  z = Math.max(0.5, Math.min(2, Math.round(z*10)/10)); if (z === sh.zoom) return;
+  const fx0 = wrap.scrollLeft / sh.zoom, fy0 = wrap.scrollTop / sh.zoom;
+  if (editing) commitEdit();
+  sh.zoom = z; layout(); wrap.scrollLeft = fx0*z; wrap.scrollTop = fy0*z;
+  refreshUI(); schedule(); queueAutosave();
+}
+
+// ===== 시트 탭 =====
+function renderTabs(){
+  const box = $('#tabs'); box.innerHTML = '';
+  wb.sheets.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'tab' + (i === wb.active ? ' active' : ''); b.textContent = s.name;
+    b.onclick = () => switchSheet(i);
+    b.ondblclick = () => renameSheet(i, b);
+    b.oncontextmenu = e => { e.preventDefault(); openTabMenu(i, e.clientX, e.clientY, b); };
+    box.appendChild(b);
+  });
+}
+function switchSheet(i){
+  if (editing) commitEdit();
+  if (i === wb.active) return focusGrid();
+  wb.active = i; sh = wb.sheets[i]; clip = clip && clip.sheet === i ? clip : clip;
+  buildMerges(); layout(); wrap.scrollTo(0, 0); setSel(0, 0); renderTabs(); queueAutosave(); focusGrid();
+}
+function renameSheet(i, btn){
+  const inp = document.createElement('input'); inp.value = wb.sheets[i].name; btn.textContent = ''; btn.appendChild(inp); inp.focus(); inp.select();
+  let done = false;
+  const fin = ok => {
+    if (done) return; done = true;
+    const v = inp.value.trim();
+    if (ok && v && v !== wb.sheets[i].name){
+      if (wb.sheets.some((s, j) => j !== i && s.name === v)) toast('같은 이름의 시트가 이미 있습니다');
+      else mutate(() => { wb.sheets[i].name = v.slice(0, 31); });
+    }
+    renderTabs(); focusGrid();
+  };
+  inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') fin(true); if (e.key === 'Escape') fin(false); };
+  inp.onblur = () => fin(true);
+  inp.onclick = e => e.stopPropagation();
+}
+function uniqueName(base){ let n = 1, name = base; while (wb.sheets.some(s => s.name === name)) name = base + ' ' + (++n); return name; }
+function addSheet(){
+  if (editing) commitEdit();
+  let n = wb.sheets.length + 1; while (wb.sheets.some(s => s.name === 'Sheet' + n)) n++;
+  mutate(() => { wb.sheets.push(newSheet('Sheet' + n)); });
+  switchSheet(wb.sheets.length - 1); renderTabs();
+}
+function openTabMenu(i, x, y, btn){
+  showMenu(x, y, [
+    {label:'이름 바꾸기', run: () => renameSheet(i, btn)},
+    {label:'복제', run: () => { mutate(() => { const c = JSON.parse(JSON.stringify(wb.sheets[i])); c.name = uniqueName(c.name + ' 복사본'); wb.sheets.splice(i+1, 0, c); }); switchSheet(i+1); renderTabs(); }},
+    {label:'왼쪽으로 옮기기', run: () => moveSheet(i, -1)},
+    {label:'오른쪽으로 옮기기', run: () => moveSheet(i, 1)},
+    '-',
+    {label:'시트 삭제', run: () => {
+      if (wb.sheets.length === 1) return toast('시트가 하나뿐이라 삭제할 수 없습니다');
+      modal('시트 삭제', `<p>“${esc(wb.sheets[i].name)}” 시트를 삭제할까요? 실행 취소(Ctrl+Z)로 되돌릴 수 있습니다.</p>`, '삭제', () => {
+        mutate(() => { wb.sheets.splice(i, 1); if (wb.active >= wb.sheets.length) wb.active = wb.sheets.length - 1; else if (wb.active > i) wb.active--; });
+        sh = wb.sheets[wb.active]; clip = null; buildMerges(); layout(); setSel(0, 0); renderTabs();
+      });
+    }}
+  ]);
+}
+function moveSheet(i, d){
+  const j = i + d; if (j < 0 || j >= wb.sheets.length) return;
+  mutate(() => { const [s] = wb.sheets.splice(i, 1); wb.sheets.splice(j, 0, s); if (wb.active === i) wb.active = j; else if (wb.active === j) wb.active = i; });
+  sh = wb.sheets[wb.active]; renderTabs();
+}
+
+// ===== 메뉴, 팝업, 대화상자 =====
+function place(el, x, y){
+  el.hidden = false;
+  const r = el.getBoundingClientRect();
+  el.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + 'px';
+  el.style.top = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + 'px';
+}
+function showMenu(x, y, items){
+  hideMenus();
+  menuEl.innerHTML = items.map((it, i) => it === '-' ? '<div class="msep"></div>' :
+    `<button class="mi" data-i="${i}">${it.icon || '<span class="sp"></span>'}<span>${it.label}</span>${it.kbd ? `<kbd>${it.kbd}</kbd>` : ''}</button>`).join('');
+  menuEl.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; hideMenus(); items[+b.dataset.i].run(); };
+  place(menuEl, x, y);
+}
+function showPop(anchor, html, bind){
+  hideMenus();
+  pop.innerHTML = html; bind(pop);
+  const r = anchor.getBoundingClientRect();
+  place(pop, r.left - 10, r.bottom + 4);
+}
+function hideMenus(){ menuEl.hidden = true; pop.hidden = true; }
+document.addEventListener('mousedown', e => { if (!menuEl.contains(e.target) && !pop.contains(e.target) && !e.target.closest('.caret')) hideMenus(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideMenus(); });
+
+function modal(title, body, okLabel, onOk, onOpen, opts = {}){
+  const back = document.createElement('div'); back.className = 'modal-back';
+  back.innerHTML = `<div class="modal${opts.wide ? ' wide' : ''}" role="dialog" aria-modal="true"><h3>${title}</h3>${body}<div class="acts">${opts.noCancel ? '' : '<button data-a="no">취소</button>'}<button class="primary" data-a="ok">${okLabel}</button></div></div>`;
+  document.body.appendChild(back);
+  const close = () => { back.remove(); focusGrid(); };
+  const ok = () => { const res = onOk(back); if (res !== false) close(); };
+  back.addEventListener('click', e => { const a = e.target.dataset.a; if (a === 'no' || e.target === back) close(); if (a === 'ok') ok(); });
+  back.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') close(); if (e.key === 'Enter' && !e.isComposing) ok(); });
+  const inp = back.querySelector('input'); (inp || back.querySelector('[data-a=ok]')).focus(); if (inp) inp.select();
+  if (onOpen) onOpen(back);
+}
+function askNumber(title, label, val, min, max, cb){
+  modal(title, `<p>${label}</p><input class="ctl" id="mdlNum" type="number" min="${min}" max="${max}" value="${val}">`, '적용', b => {
+    const n = Math.round(parseFloat(b.querySelector('#mdlNum').value));
+    if (!(n >= min && n <= max)){ toast(`${min}~${max} 사이 숫자를 입력하세요`); return false; }
+    cb(n);
+  });
+}
+let toastT = 0;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200); }
+
+const IC = {
+  cut: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="15" r="2.5"/><circle cx="14" cy="15" r="2.5"/><path d="M7.5 13 14 3M12.5 13 6 3"/></svg>',
+  copy: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6.5" y="6.5" width="10" height="10.5" rx="1.5"/><path d="M13.5 6.5V4a1 1 0 0 0-1-1h-8a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h2"/></svg>',
+  paste: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="12" height="13.5" rx="1.5"/><rect x="7" y="2.5" width="6" height="3" rx="1"/></svg>',
+};
+function openCellMenu(x, y){
+  const fc = fullCols(sel);
+  const items = [
+    {label:'잘라내기', kbd:'Ctrl+X', icon:IC.cut, run: () => menuCopy(true)},
+    {label:'복사', kbd:'Ctrl+C', icon:IC.copy, run: () => menuCopy(false)},
+    {label:'붙여넣기', kbd:'Ctrl+V', icon:IC.paste, run: menuPaste},
+    '-',
+    {label:'행 삽입 (위에)', run: insertRows},
+    {label:'열 삽입 (왼쪽에)', run: insertCols},
+    {label:'행 삭제', run: deleteRows},
+    {label:'열 삭제', run: deleteCols},
+    '-',
+    {label:'내용 지우기', kbd:'Delete', run: clearContents},
+    {label:'서식 지우기', run: clearFormats},
+    '-',
+    {label:'열 너비…', run: () => { const cols = range(sel.c1, sel.c2); askNumber('열 너비', `${colName(sel.c1)}${cols.length > 1 ? '~' + colName(sel.c2) : ''} 열의 너비 (픽셀)`, cw(sel.c1), 6, 1000, n => setColWidth(cols, n)); }},
+    {label:'행 높이…', run: () => { const rows = range(sel.r1, sel.r2); askNumber('행 높이', `${sel.r1+1}${rows.length > 1 ? '~' + (sel.r2+1) : ''} 행의 높이 (픽셀)`, rh(sel.r1), 6, 800, n => setRowHeight(rows, n)); }},
+    {label:'열 너비 자동 맞춤', run: () => autofitCols(range(sel.c1, sel.c2))},
+    {label:'행 높이 자동 맞춤', run: () => autofitRows(range(sel.r1, Math.min(sel.r2, fc ? usedMax().mr : sel.r2)))},
+    '-',
+    {label: mergeOf(act.r, act.c) ? '병합 해제' : '병합하고 가운데 맞춤', run: mergeToggle},
+  ];
+  showMenu(x, y, items);
+}
+
+// ===== 색 =====
+function mix(hex, t){ // t>0 흰색 쪽, t<0 검은색 쪽
+  const n = parseInt(hex.slice(1), 16), ch = [n >> 16, (n >> 8) & 255, n & 255];
+  return '#' + ch.map(v => Math.round(t > 0 ? v + (255 - v)*t : v*(1 + t)).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+const BASE = ['#FFFFFF','#000000','#E7E6E6','#44546A','#4472C4','#ED7D31','#A5A5A5','#FFC000','#5B9BD5','#70AD47'];
+const STD = ['#C00000','#FF0000','#FFC000','#FFFF00','#92D050','#00B050','#00B0F0','#0070C0','#002060','#7030A0'];
+function tints(){
+  const rows = [];
+  const steps = [[-.05,.5],[-.15,.35],[-.25,.25],[-.35,.15],[-.5,.05]];
+  const light = [.8,.6,.4,-.25,-.5];
+  for (let i = 0; i < 5; i++) rows.push(BASE.map((b, j) => j === 0 ? mix(b, steps[i][0]) : j === 1 ? mix('#000000', steps[i][1]) : mix(b, light[i])));
+  return rows.flat();
+}
+const swatch = c => `<button class="sw" data-c="${c}" style="background:${c}" title="${c}"></button>`;
+function colorPop(anchor, kind){
+  const label = kind === 'fc' ? '자동 (검정)' : '채우기 없음';
+  const html = `<div class="plabel">테마 색</div><div class="swgrid">${BASE.map(swatch).join('')}</div>
+    <div class="swgrid tints" style="margin-top:4px">${tints().map(swatch).join('')}</div>
+    <div class="plabel">표준 색</div><div class="swgrid">${STD.map(swatch).join('')}</div>
+    ${recent.length ? `<div class="plabel">최근 사용</div><div class="swgrid">${recent.map(swatch).join('')}</div>` : ''}
+    <div class="prow"><button class="pbtn" data-none="1">${label}</button><label class="pbtn" title="원하는 색 고르기">다른 색 <input type="color" id="pickC" value="${pens[kind]}"></label></div>`;
+  showPop(anchor, html, p => {
+    p.onclick = e => {
+      const b = e.target.closest('[data-c]');
+      if (b){ pick(b.dataset.c); return; }
+      if (e.target.closest('[data-none]')){ hideMenus(); applyStyle({[kind]: null}); focusGrid(); }
+    };
+    p.querySelector('#pickC').onchange = e => pick(e.target.value.toUpperCase());
+  });
+  function pick(c){
+    pens[kind] = c; recent = [c, ...recent.filter(x => x !== c)].slice(0, 10);
+    $('#' + kind + 'Bar').style.background = c; hideMenus(); applyStyle({[kind]: c}); focusGrid();
+  }
+}
+
+// ===== 테두리 메뉴 =====
+const BSIDES = {bottom:{b:1}, top:{t:1}, left:{l:1}, right:{r:1}, none:{}, all:{t:1,b:1,l:1,r:1,h:1,v:1}, outer:{t:1,b:1,l:1,r:1}, thickOuter:{t:1,b:1,l:1,r:1,thick:1}, inner:{h:1,v:1}, innerH:{h:1}, innerV:{v:1}, bottomDouble:{dbl:1}, topBottom:{t:1,b:1}};
+function borderIcon(kind){
+  const o = BSIDES[kind]; let p = '';
+  if (o.t) p += 'M3 3h14'; if (o.b) p += 'M3 17h14'; if (o.l) p += 'M3 3v14'; if (o.r) p += 'M17 3v14'; if (o.h) p += 'M3 10h14'; if (o.v) p += 'M10 3v14';
+  if (o.dbl) p += 'M3 15.2h14M3 17.6h14';
+  return `<svg viewBox="0 0 20 20" fill="none"><path d="M3 3h14v14H3zM3 10h14M10 3v14" stroke="currentColor" stroke-opacity=".38" stroke-dasharray="1 1.7"/><path d="${p}" stroke="currentColor" stroke-width="${o.thick ? 2.6 : 1.6}"/></svg>`;
+}
+function lineSvg(b){
+  const d = b.s === 'dashed' ? `stroke-dasharray="${4 + b.w*2} ${2 + b.w}"` : b.s === 'dotted' ? `stroke-dasharray="${b.w} ${b.w + 1}"` : '';
+  if (b.s === 'double') return `<svg viewBox="0 0 120 10"><path d="M0 3.5h120M0 6.5h120" stroke="currentColor" stroke-width="1"/></svg>`;
+  return `<svg viewBox="0 0 120 10"><path d="M0 5h120" stroke="currentColor" stroke-width="${b.w}" ${d}/></svg>`;
+}
+const BLABEL = [['bottom','아래쪽 테두리'],['top','위쪽 테두리'],['left','왼쪽 테두리'],['right','오른쪽 테두리'],'-',['none','테두리 없음'],['all','모든 테두리'],['outer','바깥쪽 테두리'],['thickOuter','굵은 바깥쪽 테두리'],'-',['inner','안쪽 테두리'],['innerH','안쪽 가로선'],['innerV','안쪽 세로선'],['topBottom','위쪽 + 아래쪽'],['bottomDouble','아래쪽 이중 테두리']];
+function borderPop(anchor){
+  const widths = [1,2,3].map(w => `<button class="pbtn${borderPen.w === w && borderPen.s !== 'double' ? ' on' : ''}" data-w="${w}" title="${['가는','보통','굵은'][w-1]} 선">${lineSvg({w, s: borderPen.s === 'double' ? 'solid' : borderPen.s})}</button>`).join('');
+  const styles = [['solid','실선'],['dashed','파선'],['dotted','점선'],['double','이중선']].map(([s, l]) => `<button class="pbtn${borderPen.s === s ? ' on' : ''}" data-s="${s}" title="${l}">${lineSvg({w: s === 'double' ? 1 : borderPen.w, s})}</button>`).join('');
+  const cols = ['#000000','#595959','#A6A6A6','#1F3B7A','#4472C4','#C00000','#ED7D31','#70AD47'];
+  const html = `<div class="bmenu"><div class="presets">${BLABEL.map(it => it === '-' ? '<div class="msep"></div>' : `<button class="mi" data-b="${it[0]}">${borderIcon(it[0])}<span>${it[1]}</span></button>`).join('')}</div>
+    <div class="pen"><div class="plabel">선 두께</div><div class="lineopt">${widths}</div>
+    <div class="plabel">선 모양</div><div class="lineopt">${styles}</div>
+    <div class="plabel">선 색</div><div class="swgrid" style="grid-template-columns:repeat(8,18px)">${cols.map(swatch).join('')}</div>
+    <div class="prow"><label class="pbtn">다른 색 <input type="color" id="bpC" value="${borderPen.c}"></label><span class="pbtn" style="cursor:default;color:${borderPen.c}" title="지금 선">${lineSvg(borderPen).replace('120 10', '120 10" style="width:70px')}</span></div>
+    <div class="plabel" style="line-height:1.5">두께·모양·색을 고른 뒤 왼쪽에서 테두리 종류를 누르세요.</div></div></div>`;
+  showPop(anchor, html, p => {
+    p.onclick = e => {
+      const b = e.target.closest('[data-b]'); if (b){ hideMenus(); applyBorder(b.dataset.b); focusGrid(); return; }
+      const w = e.target.closest('[data-w]'); if (w){ borderPen.w = +w.dataset.w; if (borderPen.s === 'double') borderPen.s = 'solid'; return borderPop(anchor); }
+      const s = e.target.closest('[data-s]'); if (s){ borderPen.s = s.dataset.s; if (borderPen.s === 'double') borderPen.w = 1; return borderPop(anchor); }
+      const c = e.target.closest('[data-c]'); if (c){ borderPen.c = c.dataset.c; return borderPop(anchor); }
+    };
+    p.querySelector('#bpC').onchange = e => { borderPen.c = e.target.value.toUpperCase(); borderPop(anchor); };
+  });
+}
+function mergePop(anchor){
+  const r = anchor.getBoundingClientRect();
+  showMenu(r.left - 10, r.bottom + 4, [
+    {label:'병합하고 가운데 맞춤', run: () => doMerge('mergeCenter')},
+    {label:'전체 병합 (행마다 따로)', run: () => doMerge('mergeAcross')},
+    {label:'셀 병합 (맞춤 유지)', run: () => doMerge('mergeOnly')},
+    '-',
+    {label:'병합 해제', run: () => doMerge('unmerge')},
+  ]);
+}
+
+// ===== 리본 =====
+const ribbon = $('#ribbon');
+ribbon.addEventListener('mousedown', e => { if (e.target.closest('button.tb')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-cmd]'); if (!b) return;
+  run(b.dataset.cmd, b);
+});
+function run(cmd, el){
+  const fileCmds = {new: newFile, open: openFile, save: () => saveFile(false), saveAs: () => saveFile(true), export: exportXlsx, backups: openBackups, install: installApp};
+  if (fileCmds[cmd]){ if (editing) commitEdit(); fileCmds[cmd](); return; }
+  const s = () => st(act.r, act.c);
+  const C = {
+    undo, redo,
+    painter: () => { if (painter){ painter = null; updatePainter(); } else startPainter(false); },
+    bold: () => toggle('b'), italic: () => toggle('i'), underline: () => toggle('u'), strike: () => toggle('st'),
+    grow: () => stepFont(1), shrink: () => stepFont(-1),
+    fc: () => applyStyle({fc: pens.fc}), fcMenu: () => colorPop(el, 'fc'),
+    bg: () => applyStyle({bg: pens.bg}), bgMenu: () => colorPop(el, 'bg'),
+    alignL: () => applyStyle({ha: s().ha === 'left' ? null : 'left'}),
+    alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
+    alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
+    vTop: () => applyStyle({va:'top'}), vMid: () => applyStyle({va:null}), vBot: () => applyStyle({va:'bottom'}),
+    wrap: () => toggle('wrap'), merge: mergeToggle, mergeMenu: () => mergePop(el),
+    border: () => applyBorder(lastBorder), borderMenu: () => borderPop(el),
+    clear: clearFormats,
+    grid: () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); },
+  };
+  if (C[cmd]){ C[cmd](); if (!/Menu$/.test(cmd)) focusGrid(); }
+}
+$('#painterBtn').addEventListener('dblclick', () => { startPainter(true); });
+const fontSel = $('#fontSel');
+FONTS.forEach(([v, l]) => { const o = new Option(l, v); o.style.fontFamily = famStack(v); fontSel.add(o); });
+fontSel.addEventListener('change', () => { ensureFont(fontSel.value); applyStyle({ff: fontSel.value === DEF_FONT ? null : fontSel.value}); focusGrid(); });
+$('#sizeList').innerHTML = SIZES.map(n => `<option value="${n}">`).join('');
+const sizeIn = $('#sizeIn');
+sizeIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); setFontSize(sizeIn.value); focusGrid(); } if (e.key === 'Escape'){ refreshUI(); focusGrid(); } });
+sizeIn.addEventListener('change', () => { const n = parseFloat(sizeIn.value); if (n !== (st(act.r, act.c).fs || DEF_FS)) setFontSize(n); });
+$('#addSheet').onclick = addSheet;
+$('#zoomR').oninput = e => setZoom(+e.target.value / 100);
+$('#zoomIn').onclick = () => setZoom(sh.zoom + 0.1);
+$('#zoomOut').onclick = () => setZoom(sh.zoom - 0.1);
+
+// ===== 파일 =====
+const NATIVE = window.native || null;   // 설치형 프로그램에서만 있음
+const MONUN_TYPES = [{description:'모눈 시트', accept:{'application/json':['.monun']}}];
+const XLSX_TYPES = [{description:'Excel 통합 문서', accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']}}];
+const isX = n => /\.xlsx$/i.test(n || '');
+const baseName = () => fileName.replace(/\.(monun|json|xlsx)$/i, '') || '제목 없음';
+let filePath = null, noAutosave = false;
+function download(blob, name){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const monunJSON = () => JSON.stringify({app:'monun', version:1, wb});
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const touchDevice = () => matchMedia('(pointer:coarse)').matches;
+async function shareOrDownload(blob, name){
+  if (touchDevice() && navigator.canShare){
+    try {
+      const file = new File([blob], name, {type: blob.type || 'application/octet-stream'});
+      if (navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); return 'shared'; }
+    } catch (e){ if (e.name === 'AbortError') return 'cancel'; }
+  }
+  download(blob, name); return 'downloaded';
+}
+async function fileData(name){ return isX(name) ? await buildXlsx() : monunJSON(); }
+let autoSaving = false;
+function markSaved(name){ fileName = name; fileDirty = false; updateDoc(); queueAutosave(); toast((autoSaving ? '자동 저장했습니다: ' : '저장했습니다: ') + name); }
+async function saveFile(as){
+  if (editing) commitEdit();
+  const ext = isX(fileName) ? '.xlsx' : '.monun';
+  try {
+    if (NATIVE){
+      if (!filePath || as){
+        const p = await NATIVE.saveDialog({suggested: baseName() + ext, kind: isX(fileName) ? 'xlsx' : 'monun'});
+        if (!p) return false; filePath = p;
+      }
+      const data = await fileData(filePath); if (data == null) return false;
+      markSaved(await NATIVE.writeFile(filePath, data)); return true;
+    }
+    if (window.showSaveFilePicker){
+      try {
+        if (!fileHandle || as) fileHandle = await showSaveFilePicker({suggestedName: baseName() + ext, types: isX(fileName) ? [...XLSX_TYPES, ...MONUN_TYPES] : [...MONUN_TYPES, ...XLSX_TYPES]});
+        const data = await fileData(fileHandle.name); if (data == null) return false;
+        const w = await fileHandle.createWritable(); await w.write(data); await w.close();
+        markSaved(fileHandle.name); return true;
+      } catch (e){ if (e.name === 'AbortError') return false; fileHandle = null; }
+    }
+    // 폰: 공유 창으로 보내서 OneDrive·구글 드라이브 등 원하는 곳에 저장 / 그 밖: 다운로드
+    const name = baseName() + ext, data = await fileData(name); if (data == null) return false;
+    const how = await shareOrDownload(new Blob([data], {type: isX(name) ? XLSX_MIME : 'application/json'}), name);
+    if (how === 'cancel') return false;
+    fileName = name; fileDirty = false; updateDoc(); queueAutosave();
+    toast(how === 'shared' ? '공유 창에서 고른 곳에 저장했습니다' : '다운로드 폴더에 저장했습니다');
+    return true;
+  } catch (e){ toast('저장하지 못했습니다: ' + e.message); return false; }
+}
+async function openFile(){
+  if (NATIVE){ const f = await NATIVE.openDialog(); if (f) await openData(f.name, f.data, {path: f.path}); return; }
+  if (window.showOpenFilePicker){
+    try {
+      const [h] = await showOpenFilePicker({types:[{description:'모눈 시트 또는 엑셀', accept:{'application/json':['.monun','.json'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']}}]});
+      const f = await h.getFile(); await openData(f.name, await f.arrayBuffer(), {handle: h}); return;
+    } catch (e){ if (e.name === 'AbortError') return; }
+  }
+  $('#fileIn').click();
+}
+$('#fileIn').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (f) await openData(f.name, await f.arrayBuffer(), {}); });
+function confirmDiscard(go){
+  if (fileDirty) modal('저장하지 않은 변경 내용', '<p>지금 시트에 저장하지 않은 변경 내용이 있습니다. 저장하지 않고 계속할까요?</p>', '계속', go);
+  else go();
+}
+async function openData(name, bytes, src){
+  let obj;
+  try {
+    if (isX(name)){ if (!(await loadExcelJS())) return; obj = await importXlsx(bytes); }
+    else { const o = JSON.parse(new TextDecoder().decode(bytes)); obj = o.wb || o; if (!obj || !Array.isArray(obj.sheets)) throw new Error('형식'); }
+  } catch (err){ toast('파일을 열 수 없습니다. 모눈(.monun) 또는 엑셀(.xlsx) 파일인지 확인하세요'); return; }
+  confirmDiscard(() => {
+    loadWorkbook(obj); fileHandle = src.handle || null; filePath = src.path || null; fileName = name; fileDirty = false;
+    updateDoc(); queueAutosave(); toast('열었습니다: ' + name);
+  });
+}
+function newFile(){
+  confirmDiscard(() => { loadWorkbook({sheets:[newSheet('Sheet1')], active:0}); fileHandle = null; filePath = null; fileName = '제목 없음'; fileDirty = false; updateDoc(); queueAutosave(); });
+}
+function loadWorkbook(obj){
+  wb = {sheets: obj.sheets.map(normSheet), active: Math.min(obj.active || 0, obj.sheets.length - 1)};
+  if (!wb.sheets.length) wb.sheets = [newSheet('Sheet1')];
+  sh = wb.sheets[wb.active];
+  undoStack = []; redoStack = []; clip = null; painter = null; updatePainter();
+  if (editing) cancelEdit();
+  buildMerges(); autoRows(); layout(); wrap.scrollTo(0, 0); setSel(0, 0); renderTabs(); schedule();
+}
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', async e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  const p = NATIVE ? NATIVE.pathOf(f) : '';
+  await openData(f.name, await f.arrayBuffer(), {path: p || null});
+});
+
+// ===== 엑셀 (.xlsx) =====
+let xlP = null;
+function loadScript(src){
+  return new Promise(res => { const s = document.createElement('script'); s.src = src; s.onload = () => res(true); s.onerror = () => { s.remove(); res(false); }; document.head.appendChild(s); });
+}
+function loadExcelJS(){
+  if (window.ExcelJS) return Promise.resolve(true);
+  if (!xlP) xlP = (async () => {
+    if (await loadScript('exceljs.min.js')) return true;   // 같은 폴더에 있으면 인터넷 없이 동작
+    toast('엑셀 기능을 불러오는 중…');
+    if (await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js')) return true;
+    xlP = null; toast('엑셀 기능을 쓰려면 인터넷 연결이 필요합니다'); return false;
+  })();
+  return xlP;
+}
+const argb = c => 'FF' + c.replace('#', '').toUpperCase();
+const fromArgb = a => a && /^[0-9A-Fa-f]{8}$/.test(a) ? '#' + a.slice(2).toUpperCase() : null;
+function toXB(b){ return {style: b.s === 'double' ? 'double' : b.s === 'dashed' ? (b.w >= 2 ? 'mediumDashed' : 'dashed') : b.s === 'dotted' ? 'dotted' : b.w >= 3 ? 'thick' : b.w === 2 ? 'medium' : 'thin', color:{argb: argb(b.c || '#000000')}}; }
+function fromXB(x){
+  if (!x || !x.style) return null;
+  const m = {thin:[1,'solid'], hair:[1,'dotted'], medium:[2,'solid'], thick:[3,'solid'], dashed:[1,'dashed'], mediumDashed:[2,'dashed'], dotted:[1,'dotted'], double:[1,'double'], dashDot:[1,'dashed'], mediumDashDot:[2,'dashed'], dashDotDot:[1,'dashed'], mediumDashDotDot:[2,'dashed'], slantDashDot:[2,'dashed']}[x.style] || [1,'solid'];
+  return {w:m[0], s:m[1], c: fromArgb(x.color && x.color.argb) || '#000000'};
+}
+function toXStyle(s){
+  const o = {};
+  o.font = {name: XL_NAME[s.ff || DEF_FONT] || s.ff || DEF_FONT, size: s.fs || DEF_FS};
+  if (s.b) o.font.bold = true; if (s.i) o.font.italic = true; if (s.u) o.font.underline = true; if (s.st) o.font.strike = true;
+  if (s.fc) o.font.color = {argb: argb(s.fc)};
+  if (s.bg) o.fill = {type:'pattern', pattern:'solid', fgColor:{argb: argb(s.bg)}};
+  o.alignment = {vertical: s.va === 'top' ? 'top' : s.va === 'bottom' ? 'bottom' : 'middle'};
+  if (s.ha) o.alignment.horizontal = s.ha; if (s.wrap) o.alignment.wrapText = true;
+  const bd = {}; if (s.bt) bd.top = toXB(s.bt); if (s.bb) bd.bottom = toXB(s.bb); if (s.bl) bd.left = toXB(s.bl); if (s.br) bd.right = toXB(s.br);
+  if (Object.keys(bd).length) o.border = bd;
+  return o;
+}
+function fromXStyle(x){
+  if (!x) return null;
+  const s = {}, f = x.font || {};
+  if (f.name){ const n = XL_BACK[f.name] || f.name; if (n !== DEF_FONT) s.ff = n; }
+  if (f.size && f.size !== DEF_FS) s.fs = f.size;
+  if (f.bold) s.b = true; if (f.italic) s.i = true; if (f.underline) s.u = true; if (f.strike) s.st = true;
+  const fc = fromArgb(f.color && f.color.argb); if (fc && fc !== '#000000') s.fc = fc;
+  if (x.fill && x.fill.type === 'pattern' && x.fill.pattern === 'solid'){ const bg = fromArgb(x.fill.fgColor && x.fill.fgColor.argb); if (bg) s.bg = bg; }
+  const a = x.alignment || {};
+  if (['left','center','right'].includes(a.horizontal)) s.ha = a.horizontal; else if (a.horizontal === 'centerContinuous') s.ha = 'center';
+  if (a.vertical === 'top') s.va = 'top'; else if (a.vertical === 'bottom') s.va = 'bottom';
+  if (a.wrapText) s.wrap = true;
+  const b = x.border || {};
+  const bt = fromXB(b.top), bb = fromXB(b.bottom), bl = fromXB(b.left), br = fromXB(b.right);
+  if (bt) s.bt = bt; if (bb) s.bb = bb; if (bl) s.bl = bl; if (br) s.br = br;
+  return Object.keys(s).length ? s : null;
+}
+async function buildXlsx(){
+  if (!(await loadExcelJS())) return null;
+  const cur = sh;
+  try {
+    const X = new ExcelJS.Workbook(); X.creator = '모눈';
+    for (const s of wb.sheets){
+      sh = s; buildMerges();
+      const ws = X.addWorksheet(s.name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Sheet', {views:[{showGridLines: s.grid}]});
+      const {mr, mc} = usedMax();
+      const maxC = Math.max(mc, ...Object.keys(s.colW).map(Number), 0);
+      for (let c = 0; c <= maxC; c++) ws.getColumn(c+1).width = Math.max(1, (cw(c) - 5) / 7);
+      for (const r in s.rowH) ws.getRow(+r+1).height = s.rowH[r] * 0.75;
+      const keys = new Set(Object.keys(s.cells));
+      for (const c in s.colStyle) for (let r = 0; r <= mr; r++) keys.add(r+':'+c);
+      for (const r in s.rowStyle) for (let c = 0; c <= mc; c++) keys.add(r+':'+c);
+      for (const k of keys){
+        const [r, c] = k.split(':').map(Number), v = getV(r,c), cell = ws.getCell(r+1, c+1);
+        if (v !== '') cell.value = PLAIN.test(v.trim()) && !/^0\d/.test(v.trim()) ? parseFloat(v.replace(/,/g, '')) : v;
+        const es = st(r,c); if (es !== EMPTY) cell.style = toXStyle(es);
+      }
+      for (const m of s.merges){
+        ws.mergeCells(m.r1+1, m.c1+1, m.r2+1, m.c2+1);
+        const a = st(m.r1, m.c1), base = ws.getCell(m.r1+1, m.c1+1).style || {};
+        for (let r = m.r1; r <= m.r2; r++) for (let c = m.c1; c <= m.c2; c++){
+          const bd = {};
+          if (r === m.r1 && a.bt) bd.top = toXB(a.bt); if (r === m.r2 && a.bb) bd.bottom = toXB(a.bb);
+          if (c === m.c1 && a.bl) bd.left = toXB(a.bl); if (c === m.c2 && a.br) bd.right = toXB(a.br);
+          ws.getCell(r+1, c+1).style = Object.assign({}, JSON.parse(JSON.stringify(base)), {border: bd});
+        }
+      }
+    }
+    sh = cur; buildMerges();
+    return await X.xlsx.writeBuffer();
+  } finally { sh = cur; buildMerges(); }
+}
+async function exportXlsx(){
+  try {
+    const buf = await buildXlsx(); if (!buf) return;
+    if (NATIVE){
+      const p = await NATIVE.saveDialog({suggested: baseName() + '.xlsx', kind: 'xlsx'}); if (!p) return;
+      toast('엑셀 파일로 내보냈습니다: ' + await NATIVE.writeFile(p, buf)); return;
+    }
+    const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    if (window.showSaveFilePicker){
+      try {
+        const h = await showSaveFilePicker({suggestedName: baseName() + '.xlsx', types: XLSX_TYPES});
+        const w = await h.createWritable(); await w.write(blob); await w.close(); toast('엑셀 파일로 내보냈습니다: ' + h.name); return;
+      } catch (e){ if (e.name === 'AbortError') return; }
+    }
+    const how = await shareOrDownload(blob, baseName() + '.xlsx');
+    if (how !== 'cancel') toast(how === 'shared' ? '엑셀 파일을 공유 창에서 고른 곳에 저장했습니다' : '다운로드 폴더에 엑셀 파일을 저장했습니다');
+  } catch (e){ toast('엑셀로 내보내지 못했습니다: ' + e.message); }
+}
+async function importXlsx(buf){
+  const X = new ExcelJS.Workbook(); await X.xlsx.load(buf);
+  const out = {sheets:[], active:0};
+  X.eachSheet(ws => {
+    const s = newSheet(ws.name);
+    if (ws.views && ws.views[0] && ws.views[0].showGridLines === false) s.grid = false;
+    for (let c = 1; c <= Math.min(ws.columnCount, COLS); c++){ const w = ws.getColumn(c).width; if (w) s.colW[c-1] = Math.round(w*7 + 5); }
+    ws.eachRow({includeEmpty:true}, (row, rn) => {
+      if (rn > ROWS) return;
+      if (row.height){ s.rowH[rn-1] = s.rowManual[rn-1] = Math.round(row.height / 0.75); }
+      row.eachCell({includeEmpty:true}, (cell, cn) => {
+        if (cn > COLS) return;
+        const slave = cell.isMerged && cell.master && cell.master.address !== cell.address;
+        let v = '';
+        if (!slave){
+          if (cell.value instanceof Date){ const d = cell.value; v = d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); }
+          else { try { v = cell.text == null ? '' : String(cell.text); } catch (e) { v = ''; } }
+        }
+        const sty = fromXStyle(cell.style), o = {};
+        if (v !== '') o.v = v; if (sty) o.s = sty;
+        if (o.v != null || o.s) s.cells[(rn-1)+':'+(cn-1)] = o;
+      });
+    });
+    for (const a of (ws.model.merges || [])){
+      const [p, q] = a.split(':').map(parseRef); if (!p || !q) continue;
+      const m = {r1:Math.min(p.r,q.r), r2:Math.max(p.r,q.r), c1:Math.min(p.c,q.c), c2:Math.max(p.c,q.c)};
+      s.merges.push(m);
+      const anchor = s.cells[m.r1+':'+m.c1] || (s.cells[m.r1+':'+m.c1] = {});
+      anchor.s = anchor.s || {};
+      const rc = s.cells[m.r1+':'+m.c2], bc = s.cells[m.r2+':'+m.c1];
+      if (rc && rc.s && rc.s.br) anchor.s.br = rc.s.br;
+      if (bc && bc.s && bc.s.bb) anchor.s.bb = bc.s.bb;
+      if (!Object.keys(anchor.s).length) delete anchor.s;
+    }
+    out.sheets.push(s);
+  });
+  if (!out.sheets.length) out.sheets.push(newSheet('Sheet1'));
+  return out;
+}
+
+// ===== 자동 백업과 복원 =====
+const SET_KEY = 'monun.settings', MAX_BK = 30;
+const settings = {interval: 10, fileAuto: false};
+try { Object.assign(settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (e) {}
+const saveSettings = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) {} };
+let lastBackupAt = Date.now(), lastBackupDone = 0;
+// 웹 버전은 브라우저 안(IndexedDB)에, 프로그램은 디스크 백업 폴더에 보관
+function idbOpen(){
+  return new Promise((res, rej) => {
+    const q = indexedDB.open('monun', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('backups', {keyPath:'id', autoIncrement:true});
+    q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+  });
+}
+async function idbDo(mode, fn){
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('backups', mode), req = fn(tx.objectStore('backups'));
+    tx.oncomplete = () => res(req ? req.result : undefined); tx.onerror = () => rej(tx.error);
+  });
+}
+const backups = {
+  async write(name, data){
+    if (NATIVE) return NATIVE.backupWrite(name, data);
+    await idbDo('readwrite', s => s.add({name: name.replace(/\.(monun|xlsx|json)$/i, ''), time: Date.now(), size: data.length, data}));
+    for (const b of (await backups.list()).slice(MAX_BK)) await idbDo('readwrite', s => s.delete(b.id));
+  },
+  async list(){
+    if (NATIVE) return NATIVE.backupList();
+    const all = await idbDo('readonly', s => s.getAll()) || [];
+    return all.map(({id, name, time, size}) => ({id, name, time, size})).sort((a, b) => b.time - a.time);
+  },
+  async read(id){ if (NATIVE) return NATIVE.backupRead(id); const r = await idbDo('readonly', s => s.get(id)); return r && r.data; }
+};
+const hhmm = t => new Date(t).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+function updateBk(){
+  const el = $('#bkState');
+  if (!settings.interval) el.textContent = '자동 백업 꺼짐';
+  else el.textContent = lastBackupDone ? `마지막 백업 ${hhmm(lastBackupDone)}` : `${settings.interval}분마다 자동 백업`;
+}
+async function doBackup(manual){
+  try {
+    await backups.write(fileName, monunJSON());
+    changedSinceBackup = false; lastBackupAt = lastBackupDone = Date.now(); updateBk();
+    if (manual) toast('지금 상태를 백업했습니다');
+    return true;
+  } catch (e){ if (manual) toast('백업하지 못했습니다: ' + e.message); return false; }
+}
+setInterval(async () => {
+  if (!settings.interval || Date.now() - lastBackupAt < settings.interval * 60000) return;
+  lastBackupAt = Date.now();
+  if (changedSinceBackup) await doBackup(false);
+  if (settings.fileAuto && fileDirty && !editing && (filePath || fileHandle)){
+    autoSaving = true; try { await saveFile(false); } finally { autoSaving = false; }
+  }
+}, 15000);
+const sizeLabel = n => n < 1024 ? n + 'B' : n < 1048576 ? Math.round(n/1024) + 'KB' : (n/1048576).toFixed(1) + 'MB';
+const whenLabel = t => new Date(t).toLocaleString('ko-KR', {month:'long', day:'numeric', weekday:'short', hour:'2-digit', minute:'2-digit'});
+async function openBackups(){
+  if (editing) commitEdit();
+  let list = [];
+  try { list = await backups.list(); } catch (e) {}
+  const rows = list.length
+    ? list.map((b, i) => `<div class="bkrow"><div><b>${esc(b.name)}</b><span>${whenLabel(b.time)} · ${sizeLabel(b.size)}</span></div><button class="pbtn" data-r="${i}">복원</button></div>`).join('')
+    : '<p class="bkempty">아직 백업이 없습니다. 내용을 바꾸면 정한 간격마다 자동으로 백업됩니다.</p>';
+  const opts = [0, 1, 5, 10, 30].map(n => `<option value="${n}"${settings.interval === n ? ' selected' : ''}>${n ? n + '분마다' : '끄기'}</option>`).join('');
+  const body = `<p>갑자기 꺼져도 다음에 켜면 마지막 작업이 자동으로 복구됩니다. 아래 백업으로 예전 상태로 되돌릴 수도 있습니다.</p>
+    <div class="bkset">
+      <label>자동 백업 <select class="ctl" id="bkInt">${opts}</select></label>
+      <label class="chk"><input type="checkbox" id="bkFile"${settings.fileAuto ? ' checked' : ''}> 한 번 저장한 파일은 같은 간격으로 원본 파일에도 자동 저장</label>
+    </div>
+    <div class="plabel">최근 백업 (최대 ${MAX_BK}개)</div>
+    <div class="bklist">${rows}</div>
+    <div class="prow" style="margin:0 0 14px"><button class="pbtn" id="bkNow">지금 백업</button>${NATIVE ? '<button class="pbtn" id="bkDir">백업 폴더 열기</button>' : ''}</div>`;
+  modal('백업과 복원', body, '닫기', () => {}, back => {
+    const close = () => { back.remove(); focusGrid(); };
+    back.querySelector('#bkInt').onchange = e => { settings.interval = +e.target.value; saveSettings(); lastBackupAt = Date.now(); updateBk(); };
+    back.querySelector('#bkFile').onchange = e => { settings.fileAuto = e.target.checked; saveSettings(); };
+    back.querySelector('#bkNow').onclick = async () => { if (await doBackup(true)){ close(); openBackups(); } };
+    const dir = back.querySelector('#bkDir'); if (dir) dir.onclick = () => NATIVE.backupFolder();
+    back.querySelectorAll('[data-r]').forEach(btn => btn.onclick = async () => {
+      const b = list[+btn.dataset.r];
+      let obj;
+      try { const o = JSON.parse(await backups.read(b.id)); obj = o.wb || o; if (!Array.isArray(obj.sheets)) throw 0; }
+      catch (e){ toast('이 백업을 읽을 수 없습니다'); return; }
+      close();
+      if (changedSinceBackup) await doBackup(false);   // 되돌리기 전 지금 상태도 백업해 둠
+      loadWorkbook(obj); fileHandle = null; filePath = null; fileName = b.name + ' (복원)'; fileDirty = true;
+      updateDoc(); queueAutosave();
+      toast(`${whenLabel(b.time)} 백업으로 되돌렸습니다. 저장할 때 위치를 다시 고르세요`);
+    });
+  }, {wide: true, noCancel: true});
+}
+
+// ===== 폰에 앱으로 설치 (웹 주소로 열었을 때만) =====
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+let installEvt = null;
+function setupWebApp(){
+  if (NATIVE || !/^https?:$/.test(location.protocol)) return;
+  const link = (rel, href) => { const l = document.createElement('link'); l.rel = rel; l.href = href; document.head.appendChild(l); };
+  link('manifest', 'manifest.webmanifest');
+  link('apple-touch-icon', 'icon-180.png');
+  link('icon', 'icon-192.png');
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('#installBtn').hidden = false; });
+  window.addEventListener('appinstalled', () => { $('#installBtn').hidden = true; toast('앱으로 설치했습니다. 홈 화면에서 모눈을 찾아 보세요'); });
+  if (isIOS && !standalone) $('#installBtn').hidden = false;
+}
+async function installApp(){
+  if (installEvt){ installEvt.prompt(); const r = await installEvt.userChoice; if (r.outcome === 'accepted') $('#installBtn').hidden = true; installEvt = null; return; }
+  if (isIOS){
+    modal('아이폰에 설치하기', `<p>사파리 아래쪽의 <b>공유 버튼</b>(네모에서 화살표가 위로 나온 모양)을 누른 뒤,<br><b>“홈 화면에 추가”</b>를 고르면 홈 화면에 모눈 아이콘이 생깁니다.</p><p>꼭 <b>사파리</b>에서 열어야 이 메뉴가 보입니다.</p>`, '알겠어요', () => {}, null, {noCancel: true});
+    return;
+  }
+  modal('앱으로 설치하기', '<p>브라우저 메뉴(⋮)에서 <b>“앱 설치”</b> 또는 <b>“홈 화면에 추가”</b>를 누르세요.</p>', '알겠어요', () => {}, null, {noCancel: true});
+}
+
+// ===== 예시 시트 =====
+function sample(){
+  const s = newSheet('10월 업무표');
+  s.colW = {0:44, 1:92, 2:250, 3:78, 4:78, 5:96, 7:120};
+  const put = (r, c, v, sty) => { const o = {}; if (v !== '' && v != null) o.v = String(v); if (sty) o.s = sty; s.cells[r+':'+c] = o; };
+  const ink = '#1F3B7A', thin = {w:1, s:'solid', c:'#A9B4C8'}, thick = {w:2, s:'solid', c:ink};
+  put(0, 0, '마케팅팀 10월 둘째 주 업무표', {b:true, fs:18, ha:'center', fc:ink, ff:'Noto Sans KR'});
+  s.merges.push({r1:0, c1:0, r2:0, c2:5}); s.rowH[0] = s.rowManual[0] = 44;
+  put(1, 0, '2026-10-05 ~ 2026-10-09 · 예시로 넣어 둔 시트입니다. 위쪽 [새로 만들기]를 누르면 빈 시트로 시작합니다.', {fc:'#6B7385', fs:9});
+  ['No','담당','업무','시작','마감','상태'].forEach((h, c) => put(3, c, h, {b:true, bg:ink, fc:'#FFFFFF', ha:'center', bt:thick, bb:thin, bl:c === 0 ? thick : thin, br:c === 5 ? thick : thin}));
+  s.rowH[3] = s.rowManual[3] = 28;
+  const rows = [['1','김하늘','가을 캠페인 배너 시안 3종','10-05','10-06','완료'],['2','이도윤','인스타그램 릴스 촬영 일정 조율과 장소 섭외, 소품 목록 정리','10-05','10-08','진행 중'],['3','박서연','뉴스레터 10월호 원고','10-06','10-07','완료'],['4','최민준','고객 설문 결과 정리','10-07','10-09','대기'],['5','정유나','11월 프로모션 기획안 초안','10-08','10-09','진행 중']];
+  const tone = {'완료':['#E2F0D9','#2E6B1F'], '진행 중':['#FFF2CC','#8A6100'], '대기':['#EDEFF3','#59606E']};
+  rows.forEach((row, i) => { const r = 4 + i; row.forEach((v, c) => {
+    const sty = {bt:thin, bb: i === rows.length-1 ? thick : thin, bl: c === 0 ? thick : thin, br: c === 5 ? thick : thin};
+    if (c === 0 || c >= 3) sty.ha = 'center';
+    if (c === 2) sty.wrap = true;
+    if (i % 2 === 1) sty.bg = '#F4F6FA';
+    if (c === 5){ sty.bg = tone[v][0]; sty.fc = tone[v][1]; sty.b = true; }
+    put(r, c, v, sty);
+  }); });
+  put(10, 1, '메모', {b:true, fc:ink});
+  put(11, 1, '긴 글은 이렇게 오른쪽 빈칸으로 이어져 보입니다. 옆 칸에 내용을 넣으면 그 앞에서 잘립니다.', {fc:'#3B4252'});
+  put(13, 1, '채우기 연습', {b:true, fc:ink});
+  put(14, 1, '아래 칸을 선택하고 오른쪽 아래 작은 점을 끌어 보세요', {fc:'#6B7385', fs:9});
+  const fs = {ha:'center', bg:'#DCE5FA', bt:thin, bb:thin, bl:thin, br:thin};
+  put(15, 1, '항목1', fs); put(15, 2, '월요일', fs); put(15, 3, '1월', fs); put(15, 4, '2026-10-05', fs); put(15, 5, '1분기', fs);
+  return {sheets:[s], active:0};
+}
+
+// ===== 시작 =====
+readTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTheme(); schedule(); });
+new MutationObserver(() => { readTheme(); schedule(); }).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+$('#gf').addEventListener('load', () => { fontReq.clear(); SHIFT.clear(); schedule(); });
+if (document.fonts) document.fonts.addEventListener('loadingdone', () => { SHIFT.clear(); if (sh){ autoRows(); layout(); schedule(); } });
+$('#fcBar').style.background = pens.fc; $('#bgBar').style.background = pens.bg;
+$('#tbBorder').innerHTML = borderIcon(lastBorder);
+
+let started = false;
+try { started = !!localStorage.getItem('monun.started'); localStorage.setItem('monun.started', '1'); } catch (e) {}
+const saved = readSession();
+let recovered = false;
+if (saved && saved.wb && Array.isArray(saved.wb.sheets)){
+  loadWorkbook(saved.wb); fileName = saved.fileName || '제목 없음'; fileDirty = !!saved.fileDirty;
+  if (NATIVE) filePath = saved.filePath || null;
+  recovered = saved.clean === false && fileDirty;
+} else loadWorkbook(started ? {sheets:[newSheet('Sheet1')], active:0} : sample());
+updateDoc(); updateBk();
+setupWebApp();
+// 아이폰은 .monun 같은 낯선 확장자를 파일 고르기에서 막는 경우가 있어 제한을 푼다
+if (isIOS) $('#fileIn').removeAttribute('accept');
+if (touchDevice()) touchMode = true;
+focusGrid();
+if (recovered){ toast('지난번에 저장하지 못하고 꺼진 작업을 복구했습니다'); changedSinceBackup = true; doBackup(false); }
+const flushAutosave = () => { clearTimeout(asT); writeSession(true); };
+window.addEventListener('beforeunload', flushAutosave);
+document.addEventListener('visibilitychange', () => { if (document.hidden) writeSession(false); });
+if (NATIVE){
+  NATIVE.onOpenFile(f => openData(f.name, f.data, {path: f.path}));
+  NATIVE.onSaveThenClose(async () => { if (await saveFile(false)){ flushAutosave(); NATIVE.closeNow(); } });
+  NATIVE.onDiscardThenClose(async () => {
+    if (changedSinceBackup) await doBackup(false);   // 저장 안 하고 닫아도 백업에는 남김
+    noAutosave = true; clearTimeout(asT); clearSession(); NATIVE.closeNow();
+  });
+}
+})();
+</script>
+</body>
+</html>
