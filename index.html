@@ -1933,7 +1933,8 @@ async function saveFile(as){
 }
 async function openFile(){
   if (NATIVE){ const f = await NATIVE.openDialog(); if (f) await openData(f.name, f.data, {path: f.path}); return; }
-  if (window.showOpenFilePicker){
+  // 폰의 고급 파일 선택 창은 파일 종류로 걸러서 .monun(폰이 모르는 종류)을 숨긴다 → 폰에서는 기본 선택 창(걸러내기 없음)을 쓴다
+  if (window.showOpenFilePicker && !touchDevice()){
     try {
       const [h] = await showOpenFilePicker({types:[{description:'모눈 시트 또는 엑셀', accept:{'application/json':['.monun','.json'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']}}]});
       const f = await h.getFile(); await openData(f.name, await f.arrayBuffer(), {handle: h}); return;
