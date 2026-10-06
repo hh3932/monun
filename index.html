@@ -814,7 +814,7 @@ function writeSession(clean){
   try { if (window.native) window.native.sessionWrite(s); else localStorage.setItem(LS, s); } catch (e) {}
 }
 function readSession(){
-  try { const s = (window.native && window.native.sessionRead()) || localStorage.getItem(LS); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+  try { const s = window.native ? window.native.sessionRead() : localStorage.getItem(LS); return s ? JSON.parse(s) : null; } catch (e) { return null; }
 }
 function clearSession(){ try { localStorage.removeItem(LS); if (window.native) window.native.sessionClear(); } catch (e) {} }
 
@@ -1617,7 +1617,7 @@ function updateDoc(){
   s.classList.toggle('dirty', fileDirty);
   $('.doc').classList.toggle('dirty', fileDirty);
   document.title = `${fileDirty ? '• ' : ''}${fileName} - 모눈`;
-  if (NATIVE) NATIVE.setDirty(fileDirty);
+  if (NATIVE){ NATIVE.setDirty(fileDirty); NATIVE.setFile(filePath); }
 }
 function setZoom(z){
   z = Math.max(0.5, Math.min(2, Math.round(z*10)/10)); if (z === sh.zoom) return;
@@ -1943,8 +1943,17 @@ async function saveFile(as){
     return true;
   } catch (e){ toast('저장하지 못했습니다: ' + e.message); return false; }
 }
+// 프로그램: 지금 창이 비어 있으면 여기서, 아니면 새 창에서 연다. 다른 창에 이미 열려 있으면 그 창을 앞으로.
+const isBlankWindow = () => !fileDirty && !filePath && !fileHandle && wb.sheets.length === 1 && !Object.keys(wb.sheets[0].cells).length;
+const samePathJS = (a, b) => !!a && !!b && a.replace(/\//g, '\\').toLowerCase() === b.replace(/\//g, '\\').toLowerCase();
+async function openNative(f){
+  if (samePathJS(f.path, filePath)){ toast('이미 이 창에 열려 있는 파일입니다'); return; }
+  if (f.path && await NATIVE.focusIfOpen(f.path)) return;
+  if (isBlankWindow() || !f.path) return openData(f.name, f.data, {path: f.path || null});
+  NATIVE.openInNewWindow(f.path);
+}
 async function openFile(){
-  if (NATIVE){ const f = await NATIVE.openDialog(); if (f) await openData(f.name, f.data, {path: f.path}); return; }
+  if (NATIVE){ const f = await NATIVE.openDialog(); if (f) await openNative(f); return; }
   // 폰의 고급 파일 선택 창은 파일 종류로 걸러서 .monun(폰이 모르는 종류)을 숨긴다 → 폰에서는 기본 선택 창(걸러내기 없음)을 쓴다
   if (window.showOpenFilePicker && !touchDevice()){
     try {
@@ -1976,6 +1985,7 @@ async function openData(name, bytes, src){
   });
 }
 function newFile(){
+  if (NATIVE){ NATIVE.newWindow(); return; }
   confirmDiscard(() => { loadWorkbook({sheets:[newSheet('Sheet1')], active:0}); fileHandle = null; filePath = null; fileName = '제목 없음'; fileDirty = false; updateDoc(); queueAutosave(); });
 }
 function loadWorkbook(obj){
@@ -1991,6 +2001,7 @@ window.addEventListener('drop', async e => {
   e.preventDefault();
   const f = e.dataTransfer.files[0]; if (!f) return;
   const p = NATIVE ? NATIVE.pathOf(f) : '';
+  if (NATIVE) return openNative({name: f.name, data: await f.arrayBuffer(), path: p || null});
   await openData(f.name, await f.arrayBuffer(), {path: p || null});
 });
 
