@@ -175,6 +175,21 @@ button{font:inherit;color:inherit}
   .mi{padding:10px 12px}
 }
 #installBtn[hidden]{display:none}
+#fnHint{position:fixed;z-index:25;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:4px;max-width:360px;font-size:12.5px;color:var(--ink)}
+#fnHint[hidden]{display:none}
+.fh-item{display:flex;gap:10px;align-items:baseline;padding:4px 8px;border-radius:5px;cursor:pointer}
+.fh-item b{font-family:"IBM Plex Mono",Consolas,monospace;font-weight:500;min-width:84px}
+.fh-item span{color:var(--muted)}
+.fh-item.on,.fh-item:hover{background:var(--accent-soft)}
+.fh-tip{font-size:11px;color:var(--muted);padding:2px 8px}
+.fh-sig{font-family:"IBM Plex Mono",Consolas,monospace;padding:4px 8px}
+.fh-sig b{color:var(--accent)}
+.fh-desc{color:var(--muted);padding:0 8px 4px}
+.fc-list{max-height:52vh;overflow:auto;border-top:1px solid var(--line);margin:8px 0 12px}
+.fc-row{display:grid;gap:2px;padding:7px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.fc-row:hover{background:var(--hover)}
+.fc-row b{font-family:"IBM Plex Mono",Consolas,monospace;font-weight:500;font-size:12.5px}
+.fc-row span{color:var(--muted);font-size:12px}
 .findbar{position:fixed;z-index:15;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px;display:grid;gap:6px;width:min(400px,calc(100vw - 32px))}
 .findbar[hidden]{display:none}
 .frow{display:flex;gap:4px;align-items:center}
@@ -275,6 +290,8 @@ button{font:inherit;color:inherit}
     <div class="sep"></div>
     <div class="grp">
       <button class="tb labeled" data-cmd="freezeMenu" id="tbFreeze" title="틀 고정: 제목 줄·열을 스크롤해도 보이게"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="3" y="3" width="14" height="14" rx="1" stroke-width="1.3"/><path d="M3 7.5h14M7.5 3v14" stroke-width="2.4"/></svg><span>틀 고정</span></button>
+      <button class="tb" data-cmd="autoSum" title="자동 합계 (Alt+=)"><span class="glyph" style="font-family:Georgia,serif;font-size:17px">Σ</span></button>
+      <button class="tb caret" data-cmd="sumMenu" title="평균·개수·최댓값… 함수 목록"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
       <button class="tb" data-cmd="find" title="찾기 (Ctrl+F) · 바꾸기 (Ctrl+H)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.5 12.5 4.5 4.5"/></svg></button>
     </div>
   </div>
@@ -590,11 +607,11 @@ function drawCells(){
 
 function drawText(r, c, rect, isMerge){
   const {X, z, W} = V;
-  const raw = getV(r,c), s = st(r,c), v = fmtValue(raw, s);
+  const raw = shown(r,c), s = st(r,c), v = fmtValue(raw, s), errCell = raw !== '' && String(raw)[0] === '#' && isFormulaCell(r, c);
   ensureFont(s.ff, s.b);
   ctx.font = fontStr(s, z);
   const px = (s.fs || DEF_FS) * 4/3 * z, pad = 3*z + 1;
-  const ha = s.ha || (isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left'), va = s.va || 'middle';
+  const ha = s.ha || (errCell ? 'center' : isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left'), va = s.va || 'middle';
   const lines = s.wrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
   let clip = rect, tw = 0, spill = false;
   if (!isMerge && !s.wrap){
@@ -717,6 +734,11 @@ function drawSelection(){
   if (!editing){
     ctx.fillStyle = '#fff'; ctx.fillRect(R.x2-5, R.y2-5, 8, 8);
     ctx.fillStyle = TH.sel; ctx.fillRect(R.x2-4, R.y2-4, 6, 6);
+  }
+  if (editing && pointRef){
+    const P = rectOf(pointRef);
+    ctx.strokeStyle = '#D9480F'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+    ctx.strokeRect(P.x1 - 1, P.y1 - 1, P.x2 - P.x1, P.y2 - P.y1); ctx.setLineDash([]);
   }
   if (drag && drag.mode === 'move' && drag.target){
     const T = rectOf(drag.target);
@@ -904,12 +926,14 @@ function startEdit(mode, text){
 }
 function commitEdit(){
   if (!editing) return;
-  const v = ed.value;
+  const v = finalizeInput(ed.value);
+  pointRef = null; hideFnHint();
   editing = false; ed.classList.remove('on'); ed.value = '';
   if (v !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, v));
   positionEditor(); refreshUI(); schedule();
 }
 function cancelEdit(){
+  pointRef = null; hideFnHint();
   if (!editing) return;
   editing = false; ed.classList.remove('on'); ed.value = '';
   positionEditor(); refreshUI(); schedule();
@@ -924,10 +948,10 @@ function insertAtCaret(t){
 // ===== 변경과 실행 취소 =====
 const snapJSON = () => JSON.stringify(wb, (k, v) => k === 'media' ? undefined : v);
 function snap(){ undoStack.push(snapJSON()); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; }
-function afterChange(){ changedSinceBackup = true; buildMerges(); autoRows(); layout(); fileDirty = true; updateDoc(); queueAutosave(); refreshUI(); schedule(); }
+function afterChange(){ clearCalc(); changedSinceBackup = true; buildMerges(); autoRows(); layout(); fileDirty = true; updateDoc(); queueAutosave(); refreshUI(); schedule(); }
 function mutate(fn){ snap(); fn(); afterChange(); }
 function restore(json){
-  const media = wb.media; wb = JSON.parse(json); wb.media = media || {}; wb.sheets = wb.sheets.map(normSheet); sh = wb.sheets[wb.active]; changedSinceBackup = true; selImg = null;
+  clearCalc(); const media = wb.media; wb = JSON.parse(json); wb.media = media || {}; wb.sheets = wb.sheets.map(normSheet); sh = wb.sheets[wb.active]; changedSinceBackup = true; selImg = null;
   buildMerges(); layout(); clampSel(); renderTabs();
   fileDirty = true; updateDoc(); queueAutosave(); afterSel();
 }
@@ -1086,7 +1110,7 @@ function mergeToggle(){
 
 // ===== 크기 =====
 function textWidthOf(r, c){
-  const v = fmtValue(getV(r,c), st(r,c)); if (v === '' || mergeOf(r,c)) return 0;
+  const v = fmtValue(shown(r,c), st(r,c)); if (v === '' || mergeOf(r,c)) return 0;
   const s = st(r,c); if (s.wrap) return 0;
   mctx.font = fontStr(s, 1);
   let w = 0; for (const l of String(v).split('\n')) w = Math.max(w, mctx.measureText(l).width);
@@ -1109,6 +1133,7 @@ function setRowHeight(rows, h){ mutate(() => { for (const r of rows){ sh.rowH[r]
 
 // ===== 행/열 삽입 삭제 =====
 function shiftAxis(axis, at, n, del){
+  shiftRefsForAxis(sh, axis, at, n, del);
   const max = axis === 'r' ? ROWS : COLS;
   const map = i => del ? (i < at ? i : i < at+n ? -1 : i-n) : (i < at ? i : i+n < max ? i+n : -1);
   const nc = {};
@@ -1216,13 +1241,15 @@ function applyFill(base, t, copyOnly){
       let src = vertical ? range(base.r1, base.r2).map(r => [r, lane]) : range(base.c1, base.c2).map(c => [lane, c]);
       if (!fwd) src.reverse();
       const cells = src.map(([r,c]) => ({v:getV(r,c), s:(sh.cells[r+':'+c] || {}).s}));
-      const vals = series(cells.map(x => x.v), n, copyOnly);
+      const vals = series(cells.map(x => x.v), n, copyOnly), hasF = cells.some(x => isFormula(x.v));
       for (let i = 0; i < n; i++){
         const off = fwd ? (vertical ? base.r2 : base.c2) + 1 + i : (vertical ? base.r1 : base.c1) - 1 - i;
         const r = vertical ? off : lane, c = vertical ? lane : off;
         const s = cloneS(cells[i % cells.length].s);
         const k = r+':'+c;
-        const o = {}; if (vals[i] !== '') o.v = String(vals[i]); if (s) o.s = s;
+        let val = vals[i];
+        if (hasF){ const si = i % cells.length, [sr, scc] = src[si]; val = isFormula(cells[si].v) ? shiftFormula(cells[si].v, r - sr, c - scc) : cells[si].v; }
+        const o = {}; if (val !== '') o.v = String(val); if (s) o.s = s;
         if (o.v != null || o.s) sh.cells[k] = o; else delete sh.cells[k];
       }
     }
@@ -1312,8 +1339,8 @@ function currentRegion(r, c){
 function guessHeader(R, col){
   if (R.r2 <= R.r1) return false;
   for (let c = R.c1; c <= R.c2; c++){ const s = st(R.r1, c); if (s.b || s.bg) return true; }
-  const top = getV(R.r1, col), below = [];
-  for (let r = R.r1 + 1; r <= Math.min(R.r2, R.r1 + 20); r++) below.push(getV(R.r1 === r ? r : r, col));
+  const top = shown(R.r1, col), below = [];
+  for (let r = R.r1 + 1; r <= Math.min(R.r2, R.r1 + 20); r++) below.push(shown(r, col));
   const nums = below.filter(v => isNum(v)).length;
   return top !== '' && !isNum(top) && nums > 0 && nums >= below.length / 2;
 }
@@ -1328,7 +1355,7 @@ function sortRows(R, col, desc, header){
   const rows = [];
   for (let r = r1; r <= R.r2; r++){
     const cells = []; for (let c = R.c1; c <= R.c2; c++) cells.push(sh.cells[r + ':' + c]);
-    rows.push({cells, key: getV(r, col), i: r});
+    rows.push({cells, key: shown(r, col), i: r});
   }
   // 엑셀과 같은 순서: 오름차순은 숫자 → 글자, 빈 칸은 항상 맨 아래
   rows.sort((a, b) => {
@@ -1341,6 +1368,8 @@ function sortRows(R, col, desc, header){
   });
   mutate(() => rows.forEach((row, k) => row.cells.forEach((cell, j) => {
     const key = (r1 + k) + ':' + (R.c1 + j);
+    // 수식은 줄이 옮겨간 만큼 상대 참조도 옮김 (같은 줄을 가리키던 수식이 계속 같은 줄을 가리키게)
+    if (cell && isFormula(cell.v) && r1 + k !== row.i) cell = {...cell, v: shiftFormula(cell.v, r1 + k - row.i, 0)};
     if (cell) sh.cells[key] = cell; else delete sh.cells[key];
   })));
   toast(`${colName(col)}열 기준 ${desc ? '내림차순' : '오름차순'}으로 정렬했습니다${header ? ' (첫 행은 제목이라 그대로 둠)' : ''}`);
@@ -1397,7 +1426,7 @@ function computeHidden(){
   const cols = Object.keys(F.hide).filter(c => F.hide[c] && F.hide[c].length).map(Number);
   if (!cols.length) return;
   for (let r = F.r1 + 1; r <= F.r2; r++) for (const c of cols)
-    if (F.hide[c].includes(String(fmtValue(getV(r, c), st(r, c))))){ hiddenRows.add(r); break; }
+    if (F.hide[c].includes(String(fmtValue(shown(r, c), st(r, c))))){ hiddenRows.add(r); break; }
 }
 function filterBtnBox(c, X, Y){
   const F = sh.filter, s = Math.max(14, Math.round(16 * sh.zoom));
@@ -1421,7 +1450,7 @@ function openFilterPop(c, cx, cy){
   let r2 = F.r2; while (r2 + 1 < ROWS && rowHasData(r2 + 1, F.c1, F.c2)) r2++;   // 아래에 새로 적은 줄도 포함
   if (r2 !== F.r2){ F.r2 = r2; computeHidden(); }
   const counts = new Map();
-  for (let r = F.r1 + 1; r <= F.r2; r++){ const t = String(fmtValue(getV(r, c), st(r, c))); counts.set(t, (counts.get(t) || 0) + 1); }
+  for (let r = F.r1 + 1; r <= F.r2; r++){ const t = String(fmtValue(shown(r, c), st(r, c))); counts.set(t, (counts.get(t) || 0) + 1); }
   const list = [...counts.keys()].sort((a, b) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b, 'ko', {numeric: true}));
   const hidden = new Set((F.hide && F.hide[c]) || []);
   const title = getV(F.r1, c);
@@ -1477,7 +1506,7 @@ function runFind(){
     const [r, c] = k.split(':').map(Number), v = getV(r, c);
     if (v === '' || hiddenRows.has(r)) continue;
     const m = mergeOf(r, c); if (m && (m.r1 !== r || m.c1 !== c)) continue;
-    if (String(v).toLowerCase().includes(q) || String(fmtValue(v, st(r, c))).toLowerCase().includes(q)) findHits.push([r, c]);
+    if (String(v).toLowerCase().includes(q) || String(fmtValue(shown(r, c), st(r, c))).toLowerCase().includes(q)) findHits.push([r, c]);
   }
   findHits.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   updFindCount();
@@ -1535,7 +1564,574 @@ $('#replOne').onclick = replaceOne;
 $('#replAll').onclick = replaceAll;
 window.addEventListener('resize', () => { if (!findBar.hidden) placeFind(); });
 
-// ===== 끌어서 옮기기 =====
+// ===== 수식 (엑셀 호환) =====
+// 칸 값이 '='로 시작하면 수식. 값은 그릴 때 계산하고(바뀔 때마다 기억 지움), 같은 칸은 한 번만 계산한다.
+const isFormula = v => typeof v === 'string' && v.length > 1 && v[0] === '=';
+class FErr { constructor(code){ this.code = code; } toString(){ return this.code; } }
+const FE = {div0: new FErr('#DIV/0!'), value: new FErr('#VALUE!'), ref: new FErr('#REF!'), name: new FErr('#NAME?'), na: new FErr('#N/A'), num: new FErr('#NUM!'), circ: new FErr('#순환참조!'), err: new FErr('#ERROR!')};
+const isErr = x => x instanceof FErr;
+let calcCache = new Map(), calcStack = new Set();
+const parseCache = new Map();
+function clearCalc(){ calcCache = new Map(); }
+
+// --- 날짜: 엑셀처럼 1899-12-30부터 센 날 수로 계산 ---
+const DAY0 = Date.UTC(1899, 11, 30);
+const dateSerial = (y, m, d) => (Date.UTC(y, m - 1, d) - DAY0) / 864e5;
+function serialToDate(n){ const d = new Date(DAY0 + Math.round(n) * 864e5); return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`; }
+const isDateStr = v => typeof v === 'string' && DATE.test(v.trim());
+function toSerial(v){
+  if (typeof v === 'number') return v;
+  const m = DATE.exec(String(v).trim()); return m ? dateSerial(+m[1], +m[3], +m[4]) : null;
+}
+
+// 칸에 적힌 글자 → 값 (숫자 글자는 숫자로, '로 시작하면 글자 그대로)
+function literal(v){
+  if (typeof v !== 'string') return v;
+  if (v[0] === "'") return v.slice(1);
+  const t = v.trim(), pct = t.endsWith('%'), core = pct ? t.slice(0, -1) : t;
+  if (core !== '' && PLAIN.test(core)){ const n = parseFloat(core.replace(/,/g, '')); return pct ? n / 100 : n; }
+  const u = t.toUpperCase(); if (u === 'TRUE' || u === 'FALSE') return u === 'TRUE';
+  return v;
+}
+const numText = x => Number.isInteger(x) ? String(x) : String(Number(x.toPrecision(15)));
+function toStr(v){ if (v == null) return ''; if (typeof v === 'number') return numText(v); if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE'; return String(v); }
+function toNum(v){
+  if (isErr(v)) return v;
+  if (v == null || v === '') return v === '' ? FE.value : 0;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  const t = String(v).trim(), pct = t.endsWith('%'), core = pct ? t.slice(0, -1) : t;
+  if (PLAIN.test(core)){ const n = parseFloat(core.replace(/,/g, '')); return pct ? n / 100 : n; }
+  const s = toSerial(t); return s != null ? s : FE.value;
+}
+const truthy = v => typeof v === 'string' ? (v.toUpperCase() === 'TRUE' ? true : v.toUpperCase() === 'FALSE' ? false : FE.value) : isErr(v) ? v : !!toNum(v);
+
+// --- 범위 값 ---
+class RangeV {
+  constructor(s, r1, c1, r2, c2){ Object.assign(this, {s, r1, c1, r2, c2}); }
+  get rows(){ return this.r2 - this.r1 + 1; } get cols(){ return this.c2 - this.c1 + 1; }
+  lastRow(){ let m = this.r1 - 1; for (const k in this.s.cells){ const i = k.indexOf(':'), r = +k.slice(0, i), c = +k.slice(i + 1); if (r >= this.r1 && r <= this.r2 && c >= this.c1 && c <= this.c2 && r > m) m = r; } return m; }
+  *values(){ const r2 = Math.min(this.r2, this.lastRow()); for (let r = this.r1; r <= r2; r++) for (let c = this.c1; c <= this.c2; c++) yield cellValue(this.s, r, c); }
+  at(i, j){ return cellValue(this.s, this.r1 + i, this.c1 + j); }   // i행 j열 (0부터)
+  list(){ return [...this.values()]; }
+}
+function scalar(v){ if (v instanceof RangeV) return v.rows === 1 && v.cols === 1 ? v.at(0, 0) : FE.value; return v; }
+
+// --- 낱말 나누기 ---
+const NAMECH = '[A-Za-z_\\u3131-\\uD79D][\\w.\\u3131-\\uD79D]*';
+const RE_SHEET = new RegExp(`^(?:'((?:[^']|'')+)'|(${NAMECH}))!`);
+const RE_CELLRANGE = /^(\$?)([A-Za-z]{1,3})(\$?)(\d+)(?::(\$?)([A-Za-z]{1,3})(\$?)(\d+))?(?![\w(])/;
+const RE_COLRANGE = /^(\$?)([A-Za-z]{1,3}):(\$?)([A-Za-z]{1,3})(?![\w(])/;
+const colNum = s => { let c = 0; for (const ch of s.toUpperCase()) c = c * 26 + ch.charCodeAt(0) - 64; return c - 1; };
+function tokenize(src){
+  const out = []; let i = 0;
+  while (i < src.length){
+    const ch = src[i], rest = src.slice(i);
+    if (/\s/.test(ch)){ i++; continue; }
+    if (ch === '"'){
+      let j = i + 1, s = '';
+      for (;; j++){ if (j >= src.length) throw FE.err; if (src[j] === '"'){ if (src[j + 1] === '"'){ s += '"'; j++; continue; } break; } s += src[j]; }
+      out.push({k: 'str', v: s}); i = j + 1; continue;
+    }
+    let m = /^(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?/.exec(rest);
+    if (m && !/^[A-Za-z:]/.test(rest.slice(m[0].length))){ out.push({k: 'num', v: parseFloat(m[0])}); i += m[0].length; continue; }
+    let sheet = null, j = 0;
+    const sm = RE_SHEET.exec(rest);
+    if (sm){ sheet = sm[1] != null ? sm[1].replace(/''/g, "'") : sm[2]; j = sm[0].length; }
+    const after = rest.slice(j);
+    m = RE_CELLRANGE.exec(after);
+    if (m){
+      const a = {c: colNum(m[2]), r: +m[4] - 1, ca: !!m[1], ra: !!m[3]};
+      const b = m[6] ? {c: colNum(m[6]), r: +m[8] - 1, ca: !!m[5], ra: !!m[7]} : null;
+      out.push({k: b ? 'range' : 'ref', sheet, a, b}); i += j + m[0].length; continue;
+    }
+    m = RE_COLRANGE.exec(after);
+    if (m){ out.push({k: 'range', sheet, a: {c: colNum(m[2]), r: 0, ca: !!m[1], ra: true}, b: {c: colNum(m[4]), r: ROWS - 1, ca: !!m[3], ra: true}}); i += j + m[0].length; continue; }
+    if (sheet) throw FE.ref;
+    m = new RegExp('^' + NAMECH).exec(rest);
+    if (m){
+      const name = m[0], up = name.toUpperCase(); i += name.length;
+      if (src[i] === '(') out.push({k: 'fn', v: up});
+      else if (up === 'TRUE' || up === 'FALSE') out.push({k: 'bool', v: up === 'TRUE'});
+      else out.push({k: 'name', v: name});
+      continue;
+    }
+    const two = src.substr(i, 2);
+    if (two === '<=' || two === '>=' || two === '<>'){ out.push({k: 'op', v: two}); i += 2; continue; }
+    if ('+-*/^&=<>%'.includes(ch)){ out.push({k: 'op', v: ch}); i++; continue; }
+    if (ch === '('){ out.push({k: '('}); i++; continue; }
+    if (ch === ')'){ out.push({k: ')'}); i++; continue; }
+    if (ch === ',' || ch === ';'){ out.push({k: ','}); i++; continue; }
+    throw FE.err;
+  }
+  return out;
+}
+// --- 문장 구조 만들기 (연산 우선순위는 엑셀과 같음) ---
+const PREC = {'=': 1, '<>': 1, '<': 1, '>': 1, '<=': 1, '>=': 1, '&': 2, '+': 3, '-': 3, '*': 4, '/': 4, '^': 5};
+function parseFormula(src){
+  if (parseCache.has(src)) return parseCache.get(src);
+  const t = tokenize(src); let p = 0;
+  const peek = () => t[p], next = () => t[p++];
+  const postfix = e => { while (peek() && peek().k === 'op' && peek().v === '%'){ next(); e = {k: 'pct', e}; } return e; };
+  function primary(){
+    const k = next(); if (!k) throw FE.err;
+    switch (k.k){
+      case 'num': case 'str': case 'bool': return {k: k.k, v: k.v};
+      case 'ref': case 'range': return {k: k.k, t: k};
+      case 'name': return {k: 'name', v: k.v};
+      case '(': { const e = expr(0); if (!peek() || peek().k !== ')') throw FE.err; next(); return e; }
+      case 'fn': {
+        next(); const args = [];
+        if (peek() && peek().k === ')'){ next(); return {k: 'fn', name: k.v, args}; }
+        for (;;){
+          if (peek() && (peek().k === ',' || peek().k === ')')) args.push({k: 'empty'}); else args.push(expr(0));
+          const n = next(); if (!n) throw FE.err;
+          if (n.k === ')') break; if (n.k !== ',') throw FE.err;
+        }
+        return {k: 'fn', name: k.v, args};
+      }
+      case 'op': if (k.v === '-' || k.v === '+'){ const e = postfix(primary()); return k.v === '-' ? {k: 'neg', e} : e; }
+    }
+    throw FE.err;
+  }
+  function expr(minP){
+    let left = postfix(primary());
+    for (;;){
+      const o = peek(); if (!o || o.k !== 'op' || !(o.v in PREC)) break;
+      const pr = PREC[o.v]; if (pr < minP) break;
+      next(); left = {k: 'bin', op: o.v, a: left, b: expr(o.v === '^' ? pr : pr + 1)};
+    }
+    return left;
+  }
+  const ast = expr(0); if (p < t.length) throw FE.err;
+  parseCache.set(src, ast); return ast;
+}
+
+// --- 계산 ---
+function refSheet(name, ctx){ if (name == null) return ctx.s; return wb.sheets.find(s => s.name.toLowerCase() === name.toLowerCase()) || null; }
+function cellValue(s, r, c){
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return FE.ref;
+  const cell = s.cells[r + ':' + c]; if (!cell || cell.v == null || cell.v === '') return null;
+  if (!isFormula(cell.v)) return literal(cell.v);
+  let m = calcCache.get(s); if (!m){ m = new Map(); calcCache.set(s, m); }
+  const k = r * COLS + c; if (m.has(k)) return m.get(k);
+  const id = wb.sheets.indexOf(s) + ':' + k;
+  if (calcStack.has(id)) return FE.circ;
+  calcStack.add(id);
+  let res;
+  try {
+    res = scalar(evalNode(parseFormula(cell.v.slice(1)), {s, r, c}));
+    if (res === null) res = 0;
+    if (res === FE.name && cell.xr != null) res = literal(cell.xr);   // 엑셀에서 가져온 값 (모눈에 없는 함수)
+  } catch (e){ res = isErr(e) ? e : FE.err; }
+  calcStack.delete(id); m.set(k, res); return res;
+}
+function evalNode(n, ctx){
+  switch (n.k){
+    case 'num': case 'str': case 'bool': return n.v;
+    case 'empty': return null;
+    case 'name': return FE.name;
+    case 'ref': { const s = refSheet(n.t.sheet, ctx); return s ? cellValue(s, n.t.a.r, n.t.a.c) : FE.ref; }
+    case 'range': {
+      const s = refSheet(n.t.sheet, ctx); if (!s) return FE.ref;
+      const {a, b} = n.t; return new RangeV(s, Math.min(a.r, b.r), Math.min(a.c, b.c), Math.min(ROWS - 1, Math.max(a.r, b.r)), Math.min(COLS - 1, Math.max(a.c, b.c)));
+    }
+    case 'neg': { const x = toNum(scalar(evalNode(n.e, ctx))); return isErr(x) ? x : -x; }
+    case 'pct': { const x = toNum(scalar(evalNode(n.e, ctx))); return isErr(x) ? x : x / 100; }
+    case 'bin': return binop(n.op, scalar(evalNode(n.a, ctx)), scalar(evalNode(n.b, ctx)));
+    case 'fn': { const f = FN[n.name]; if (!f) return FE.name; return f(n.args, ctx); }
+  }
+  return FE.err;
+}
+function compareVals(a, b){
+  if (a === null) a = typeof b === 'string' ? '' : typeof b === 'boolean' ? false : 0;
+  if (b === null) b = typeof a === 'string' ? '' : typeof a === 'boolean' ? false : 0;
+  const rank = v => typeof v === 'number' ? 0 : typeof v === 'string' ? 1 : 2;
+  if (rank(a) !== rank(b)) return rank(a) - rank(b);
+  if (typeof a === 'string'){ const x = a.toLowerCase(), y = b.toLowerCase(); return x === y ? 0 : x.localeCompare(y, 'ko'); }
+  return (a > b) - (a < b);
+}
+const cmpOp = (op, d) => op === '=' ? d === 0 : op === '<>' ? d !== 0 : op === '<' ? d < 0 : op === '>' ? d > 0 : op === '<=' ? d <= 0 : d >= 0;
+function binop(op, a, b){
+  if (isErr(a)) return a; if (isErr(b)) return b;
+  if (op === '&') return toStr(a) + toStr(b);
+  if (op in {'=': 1, '<>': 1, '<': 1, '>': 1, '<=': 1, '>=': 1}) return cmpOp(op, compareVals(a, b));
+  const ad = isDateStr(a), bd = isDateStr(b);
+  const x = toNum(a), y = toNum(b); if (isErr(x)) return x; if (isErr(y)) return y;
+  let r;
+  if (op === '+') r = x + y; else if (op === '-') r = x - y; else if (op === '*') r = x * y;
+  else if (op === '/'){ if (y === 0) return FE.div0; r = x / y; }
+  else { r = Math.pow(x, y); if (!isFinite(r) || Number.isNaN(r)) return FE.num; }
+  // 날짜 ± 숫자 → 날짜, 날짜 - 날짜 → 날 수
+  if ((op === '+' && ad !== bd) || (op === '-' && ad && !bd)) return serialToDate(r);
+  return r;
+}
+
+// --- 함수 도우미 ---
+const A = (args, ctx, i) => args[i] ? evalNode(args[i], ctx) : null;
+const S = (args, ctx, i) => scalar(A(args, ctx, i));
+const N = (args, ctx, i, dflt) => { if (!args[i] || args[i].k === 'empty') return dflt ?? 0; return toNum(S(args, ctx, i)); };
+const T = (args, ctx, i) => { const v = S(args, ctx, i); return isErr(v) ? v : toStr(v); };
+// 합계류: 범위 속 숫자만, 직접 쓴 값은 숫자로 바꿔서
+function nums(args, ctx){
+  const out = [];
+  for (const a of args){
+    const v = evalNode(a, ctx);
+    if (v instanceof RangeV){ for (const x of v.values()){ if (isErr(x)) return x; if (typeof x === 'number') out.push(x); } }
+    else { if (isErr(v)) return v; if (v === null) continue; const n = toNum(v); if (isErr(n)) return n; out.push(n); }
+  }
+  return out;
+}
+function allVals(args, ctx){ const out = []; for (const a of args){ const v = evalNode(a, ctx); if (v instanceof RangeV) out.push(...v.list()); else out.push(v); } return out; }
+const err1 = (...xs) => xs.find(isErr);
+// 조건 (COUNTIF 등): ">=80", "<>완료", "김*", 숫자, "" (빈 칸)
+function makeCrit(cv){
+  cv = scalar(cv);
+  if (typeof cv === 'number' || typeof cv === 'boolean') return v => v === cv || (typeof v === 'string' && literal(v) === cv);
+  let s = toStr(cv), op = '=';
+  const m = /^(<=|>=|<>|<|>|=)/.exec(s); if (m){ op = m[1]; s = s.slice(op.length); }
+  const t = s.trim();
+  if (t !== '' && PLAIN.test(t)){
+    const n = parseFloat(t.replace(/,/g, ''));
+    return v => { const x = typeof v === 'number' ? v : null; if (x === null) return op === '<>'; return cmpOp(op, (x > n) - (x < n)); };
+  }
+  if (op === '=' || op === '<>'){
+    if (s === '') return op === '=' ? v => v === null || v === '' : v => !(v === null || v === '');
+    const re = new RegExp('^' + s.split('').map(ch => ch === '*' ? '.*' : ch === '?' ? '.' : reEsc(ch)).join('') + '$', 'i');
+    return op === '=' ? v => re.test(toStr(v)) : v => !re.test(toStr(v));
+  }
+  return v => typeof v === 'string' && cmpOp(op, compareVals(v, s));
+}
+function critPairs(args, ctx, start){
+  const pairs = [];
+  for (let i = start; i + 1 < args.length; i += 2){ const r = A(args, ctx, i); if (!(r instanceof RangeV)) return FE.value; pairs.push([r, makeCrit(A(args, ctx, i + 1))]); }
+  return pairs;
+}
+const pass = (pairs, i, j) => pairs.every(([r, f]) => f(r.at(i, j)));
+function roundTo(x, d, mode){
+  const f = Math.pow(10, d), y = Math.abs(x) * f, s = Math.sign(x);
+  const z = mode === 'up' ? Math.ceil(y - 1e-9) : mode === 'down' ? Math.floor(y + 1e-9) : Math.round(y + 1e-9);
+  return s * z / f;
+}
+function dateParts(v){ const n = toSerial(scalar(v)); if (n == null) return null; const d = new Date(DAY0 + Math.round(n) * 864e5); return {y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), w: d.getUTCDay(), n}; }
+function textFmt(v, f){
+  const n = typeof v === 'number' ? v : toNum(v);
+  if (/[ymd]/i.test(f)){ const p = dateParts(v); if (!p) return toStr(v);
+    return f.replace(/yyyy/gi, p.y).replace(/yy/gi, String(p.y).slice(2)).replace(/mm/g, pad2(p.m)).replace(/m/g, p.m).replace(/dd/gi, pad2(p.d)).replace(/d/gi, p.d); }
+  if (isErr(n)) return toStr(v);
+  const pct = f.includes('%'), x = pct ? n * 100 : n;
+  const dec = (/\.(0+)/.exec(f) || [, ''])[1].length, comma = f.includes(',');
+  const s = Math.abs(x).toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: comma});
+  return (x < 0 ? '-' : '') + f.replace(/[#0,]+(\.0+)?/, s).replace(/"/g, '');
+}
+function lookupExact(arr, x){ const f = makeCrit(typeof x === 'string' ? x.replace(/^([<>=])/, '=$1') : x); for (let i = 0; i < arr.length; i++) if (typeof x === 'string' ? f(arr[i]) : compareVals(arr[i], x) === 0) return i; return -1; }
+function lookupApprox(arr, x){ let best = -1; for (let i = 0; i < arr.length; i++){ if (arr[i] === null) continue; const d = compareVals(arr[i], x); if (d <= 0 && (typeof arr[i] === typeof x)) best = i; else if (d > 0) break; } return best; }
+
+const FN = {
+  SUM: (a, c) => { const v = nums(a, c); return isErr(v) ? v : v.reduce((s, x) => s + x, 0); },
+  AVERAGE: (a, c) => { const v = nums(a, c); return isErr(v) ? v : v.length ? v.reduce((s, x) => s + x, 0) / v.length : FE.div0; },
+  MIN: (a, c) => { const v = nums(a, c); return isErr(v) ? v : v.length ? Math.min(...v) : 0; },
+  MAX: (a, c) => { const v = nums(a, c); return isErr(v) ? v : v.length ? Math.max(...v) : 0; },
+  PRODUCT: (a, c) => { const v = nums(a, c); return isErr(v) ? v : v.reduce((s, x) => s * x, 1); },
+  MEDIAN: (a, c) => { const v = nums(a, c); if (isErr(v)) return v; if (!v.length) return FE.num; v.sort((x, y) => x - y); const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; },
+  COUNT: (a, c) => { let n = 0; for (const x of allVals(a, c)) if (typeof x === 'number') n++; return n; },
+  COUNTA: (a, c) => allVals(a, c).filter(x => x !== null && x !== '').length,
+  COUNTBLANK: (a, c) => { const r = A(a, c, 0); if (!(r instanceof RangeV)) return FE.value; let n = 0; for (let i = 0; i < r.rows; i++) for (let j = 0; j < r.cols; j++){ const x = r.at(i, j); if (x === null || x === '') n++; } return n; },
+  LARGE: (a, c) => { const v = nums([a[0]], c), k = N(a, c, 1); if (isErr(v)) return v; if (isErr(k)) return k; v.sort((x, y) => y - x); return v[k - 1] ?? FE.num; },
+  SMALL: (a, c) => { const v = nums([a[0]], c), k = N(a, c, 1); if (isErr(v)) return v; if (isErr(k)) return k; v.sort((x, y) => x - y); return v[k - 1] ?? FE.num; },
+  RANK: (a, c) => { const x = N(a, c, 0), v = nums([a[1]], c), o = N(a, c, 2, 0); const e = err1(x, v, o); if (e) return e; if (!v.includes(x)) return FE.na; return v.filter(y => o ? y < x : y > x).length + 1; },
+  ROUND: (a, c) => { const x = N(a, c, 0), d = N(a, c, 1); return err1(x, d) || roundTo(x, d); },
+  ROUNDUP: (a, c) => { const x = N(a, c, 0), d = N(a, c, 1); return err1(x, d) || roundTo(x, d, 'up'); },
+  ROUNDDOWN: (a, c) => { const x = N(a, c, 0), d = N(a, c, 1); return err1(x, d) || roundTo(x, d, 'down'); },
+  INT: (a, c) => { const x = N(a, c, 0); return isErr(x) ? x : Math.floor(x); },
+  ABS: (a, c) => { const x = N(a, c, 0); return isErr(x) ? x : Math.abs(x); },
+  MOD: (a, c) => { const x = N(a, c, 0), y = N(a, c, 1); const e = err1(x, y); if (e) return e; if (y === 0) return FE.div0; return x - y * Math.floor(x / y); },
+  POWER: (a, c) => binop('^', N(a, c, 0), N(a, c, 1)),
+  SQRT: (a, c) => { const x = N(a, c, 0); return isErr(x) ? x : x < 0 ? FE.num : Math.sqrt(x); },
+  IF: (a, c) => { const t = truthy(S(a, c, 0)); if (isErr(t)) return t; return t ? (a[1] ? S(a, c, 1) ?? 0 : true) : (a[2] ? S(a, c, 2) ?? 0 : false); },
+  IFS: (a, c) => { for (let i = 0; i + 1 < a.length; i += 2){ const t = truthy(S(a, c, i)); if (isErr(t)) return t; if (t) return S(a, c, i + 1); } return FE.na; },
+  IFERROR: (a, c) => { const v = S(a, c, 0); return isErr(v) ? S(a, c, 1) ?? 0 : v; },
+  IFNA: (a, c) => { const v = S(a, c, 0); return v === FE.na ? S(a, c, 1) ?? 0 : v; },
+  AND: (a, c) => { for (const x of allVals(a, c)){ if (x === null || typeof x === 'string') continue; const t = truthy(x); if (isErr(t)) return t; if (!t) return false; } return true; },
+  OR: (a, c) => { for (const x of allVals(a, c)){ if (x === null || typeof x === 'string') continue; const t = truthy(x); if (isErr(t)) return t; if (t) return true; } return false; },
+  NOT: (a, c) => { const t = truthy(S(a, c, 0)); return isErr(t) ? t : !t; },
+  SUMIF: (a, c) => { const r = A(a, c, 0), f = makeCrit(A(a, c, 1)), sr = a[2] ? A(a, c, 2) : r; if (!(r instanceof RangeV) || !(sr instanceof RangeV)) return FE.value; let s = 0; for (let i = 0; i < r.rows; i++) for (let j = 0; j < r.cols; j++) if (f(r.at(i, j))){ const x = sr.at(i, j); if (typeof x === 'number') s += x; } return s; },
+  COUNTIF: (a, c) => { const r = A(a, c, 0), f = makeCrit(A(a, c, 1)); if (!(r instanceof RangeV)) return FE.value; let n = 0; for (let i = 0; i < r.rows; i++) for (let j = 0; j < r.cols; j++) if (f(r.at(i, j))) n++; return n; },
+  AVERAGEIF: (a, c) => { const r = A(a, c, 0), f = makeCrit(A(a, c, 1)), sr = a[2] ? A(a, c, 2) : r; if (!(r instanceof RangeV) || !(sr instanceof RangeV)) return FE.value; let s = 0, n = 0; for (let i = 0; i < r.rows; i++) for (let j = 0; j < r.cols; j++) if (f(r.at(i, j))){ const x = sr.at(i, j); if (typeof x === 'number'){ s += x; n++; } } return n ? s / n : FE.div0; },
+  SUMIFS: (a, c) => { const sr = A(a, c, 0), p = critPairs(a, c, 1); if (isErr(p)) return p; if (!(sr instanceof RangeV)) return FE.value; let s = 0; for (let i = 0; i < sr.rows; i++) for (let j = 0; j < sr.cols; j++) if (pass(p, i, j)){ const x = sr.at(i, j); if (typeof x === 'number') s += x; } return s; },
+  COUNTIFS: (a, c) => { const p = critPairs(a, c, 0); if (isErr(p)) return p; if (!p.length) return FE.value; const r0 = p[0][0]; let n = 0; for (let i = 0; i < r0.rows; i++) for (let j = 0; j < r0.cols; j++) if (pass(p, i, j)) n++; return n; },
+  AVERAGEIFS: (a, c) => { const sr = A(a, c, 0), p = critPairs(a, c, 1); if (isErr(p)) return p; if (!(sr instanceof RangeV)) return FE.value; let s = 0, n = 0; for (let i = 0; i < sr.rows; i++) for (let j = 0; j < sr.cols; j++) if (pass(p, i, j)){ const x = sr.at(i, j); if (typeof x === 'number'){ s += x; n++; } } return n ? s / n : FE.div0; },
+  SUMPRODUCT: (a, c) => { const rs = a.map(x => evalNode(x, c)); if (rs.some(r => !(r instanceof RangeV))) return FE.value; const R = rs[0]; if (rs.some(r => r.rows !== R.rows || r.cols !== R.cols)) return FE.value; let s = 0; for (let i = 0; i < R.rows; i++) for (let j = 0; j < R.cols; j++){ let p = 1; for (const r of rs){ const x = r.at(i, j); p *= typeof x === 'number' ? x : 0; } s += p; } return s; },
+  VLOOKUP: (a, c) => { const x = S(a, c, 0), t = A(a, c, 1), k = N(a, c, 2), approx = a[3] ? truthy(S(a, c, 3)) : true; const e = err1(x, k, approx); if (e) return e; if (!(t instanceof RangeV)) return FE.value; if (k < 1 || k > t.cols) return FE.ref; const col = []; for (let i = 0; i < t.rows; i++) col.push(t.at(i, 0)); const i = approx ? lookupApprox(col, x) : lookupExact(col, x); return i < 0 ? FE.na : t.at(i, k - 1); },
+  HLOOKUP: (a, c) => { const x = S(a, c, 0), t = A(a, c, 1), k = N(a, c, 2), approx = a[3] ? truthy(S(a, c, 3)) : true; const e = err1(x, k, approx); if (e) return e; if (!(t instanceof RangeV)) return FE.value; if (k < 1 || k > t.rows) return FE.ref; const row = []; for (let j = 0; j < t.cols; j++) row.push(t.at(0, j)); const j = approx ? lookupApprox(row, x) : lookupExact(row, x); return j < 0 ? FE.na : t.at(k - 1, j); },
+  INDEX: (a, c) => { const t = A(a, c, 0), i = N(a, c, 1, 0), j = N(a, c, 2, 0); const e = err1(i, j); if (e) return e; if (!(t instanceof RangeV)) return i <= 1 && j <= 1 ? t : FE.ref; const ri = t.rows === 1 && !a[2] ? 1 : i, ci = t.rows === 1 && !a[2] ? i : j || 1; if (ri < 1 || ri > t.rows || ci < 1 || ci > t.cols) return FE.ref; return t.at(ri - 1, ci - 1); },
+  MATCH: (a, c) => { const x = S(a, c, 0), t = A(a, c, 1), ty = N(a, c, 2, 1); const e = err1(x, ty); if (e) return e; if (!(t instanceof RangeV)) return FE.na; const arr = t.list(); let i; if (ty === 0) i = lookupExact(arr, x); else if (ty > 0) i = lookupApprox(arr, x); else { i = -1; for (let k = 0; k < arr.length; k++){ if (compareVals(arr[k], x) >= 0) i = k; else break; } } return i < 0 ? FE.na : i + 1; },
+  XLOOKUP: (a, c) => { const x = S(a, c, 0), la = A(a, c, 1), ra = A(a, c, 2); if (isErr(x)) return x; if (!(la instanceof RangeV) || !(ra instanceof RangeV)) return FE.value; const arr = la.list(); const i = lookupExact(arr, x); if (i < 0) return a[3] && a[3].k !== 'empty' ? S(a, c, 3) : FE.na; return la.cols === 1 ? ra.at(i, 0) : ra.at(0, i); },
+  CHOOSE: (a, c) => { const i = N(a, c, 0); if (isErr(i)) return i; if (i < 1 || i >= a.length) return FE.value; return S(a, c, Math.floor(i)); },
+  CONCAT: (a, c) => { const v = allVals(a, c), e = v.find(isErr); return e || v.map(toStr).join(''); },
+  CONCATENATE: (a, c) => { const v = a.map((_, i) => S(a, c, i)), e = v.find(isErr); return e || v.map(toStr).join(''); },
+  TEXTJOIN: (a, c) => { const d = T(a, c, 0), ign = truthy(S(a, c, 1)); const v = allVals(a.slice(2), c), e = err1(d, ign, ...v); return e || v.filter(x => !(ign && (x === null || x === ''))).map(toStr).join(d); },
+  LEFT: (a, c) => { const s = T(a, c, 0), n = N(a, c, 1, 1); return err1(s, n) || [...s].slice(0, n).join(''); },
+  RIGHT: (a, c) => { const s = T(a, c, 0), n = N(a, c, 1, 1); return err1(s, n) || (n <= 0 ? '' : [...s].slice(-n).join('')); },
+  MID: (a, c) => { const s = T(a, c, 0), p = N(a, c, 1), n = N(a, c, 2); return err1(s, p, n) || (p < 1 ? FE.value : [...s].slice(p - 1, p - 1 + n).join('')); },
+  LEN: (a, c) => { const s = T(a, c, 0); return isErr(s) ? s : [...s].length; },
+  TRIM: (a, c) => { const s = T(a, c, 0); return isErr(s) ? s : s.trim().replace(/ {2,}/g, ' '); },
+  UPPER: (a, c) => { const s = T(a, c, 0); return isErr(s) ? s : s.toUpperCase(); },
+  LOWER: (a, c) => { const s = T(a, c, 0); return isErr(s) ? s : s.toLowerCase(); },
+  REPT: (a, c) => { const s = T(a, c, 0), n = N(a, c, 1); return err1(s, n) || s.repeat(Math.max(0, Math.floor(n))); },
+  SUBSTITUTE: (a, c) => { const s = T(a, c, 0), o = T(a, c, 1), n = T(a, c, 2); const e = err1(s, o, n); if (e) return e; if (!o) return s; if (a[3]){ const k = N(a, c, 3); let i = -1; for (let j = 0; j < k; j++){ i = s.indexOf(o, i + 1); if (i < 0) return s; } return s.slice(0, i) + n + s.slice(i + o.length); } return s.split(o).join(n); },
+  REPLACE: (a, c) => { const s = T(a, c, 0), p = N(a, c, 1), n = N(a, c, 2), t = T(a, c, 3); return err1(s, p, n, t) || [...s].slice(0, p - 1).join('') + t + [...s].slice(p - 1 + n).join(''); },
+  FIND: (a, c) => { const f = T(a, c, 0), s = T(a, c, 1), p = N(a, c, 2, 1); const e = err1(f, s, p); if (e) return e; const i = s.indexOf(f, p - 1); return i < 0 ? FE.value : i + 1; },
+  SEARCH: (a, c) => { const f = T(a, c, 0), s = T(a, c, 1), p = N(a, c, 2, 1); const e = err1(f, s, p); if (e) return e; const i = s.toLowerCase().indexOf(f.toLowerCase(), p - 1); return i < 0 ? FE.value : i + 1; },
+  TEXT: (a, c) => { const v = S(a, c, 0), f = T(a, c, 1); return err1(v, f) || textFmt(v, f); },
+  VALUE: (a, c) => { const v = S(a, c, 0); return toNum(v); },
+  TODAY: () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; },
+  NOW: () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; },
+  DATE: (a, c) => { const y = N(a, c, 0), m = N(a, c, 1), d = N(a, c, 2); return err1(y, m, d) || serialToDate(dateSerial(y, m, d)); },
+  YEAR: (a, c) => { const p = dateParts(A(a, c, 0)); return p ? p.y : FE.value; },
+  MONTH: (a, c) => { const p = dateParts(A(a, c, 0)); return p ? p.m : FE.value; },
+  DAY: (a, c) => { const p = dateParts(A(a, c, 0)); return p ? p.d : FE.value; },
+  WEEKDAY: (a, c) => { const p = dateParts(A(a, c, 0)), t = N(a, c, 1, 1); if (!p) return FE.value; return t === 2 ? (p.w + 6) % 7 + 1 : t === 3 ? (p.w + 6) % 7 : p.w + 1; },
+  DAYS: (a, c) => { const e = dateParts(A(a, c, 0)), s = dateParts(A(a, c, 1)); return e && s ? e.n - s.n : FE.value; },
+  DATEDIF: (a, c) => { const s = dateParts(A(a, c, 0)), e = dateParts(A(a, c, 1)), u = String(T(a, c, 2)).toUpperCase(); if (!s || !e) return FE.value; if (e.n < s.n) return FE.num; if (u === 'D') return e.n - s.n; let m = (e.y - s.y) * 12 + e.m - s.m; if (e.d < s.d) m--; if (u === 'M') return m; if (u === 'Y') return Math.floor(m / 12); if (u === 'YM') return m % 12; return FE.num; },
+  EDATE: (a, c) => { const s = dateParts(A(a, c, 0)), m = N(a, c, 1); if (!s || isErr(m)) return FE.value; return serialToDate(dateSerial(s.y, s.m + m, s.d)); },
+  ISBLANK: (a, c) => { const v = S(a, c, 0); return v === null; },
+  ISNUMBER: (a, c) => typeof S(a, c, 0) === 'number',
+  ISTEXT: (a, c) => typeof S(a, c, 0) === 'string',
+  ISERROR: (a, c) => isErr(S(a, c, 0)),
+  ISNA: (a, c) => S(a, c, 0) === FE.na,
+  ROW: (a, c) => { if (!a[0]) return c.r + 1; const n = a[0]; return n.t ? n.t.a.r + 1 : FE.value; },
+  COLUMN: (a, c) => { if (!a[0]) return c.c + 1; const n = a[0]; return n.t ? n.t.a.c + 1 : FE.value; },
+  PI: () => Math.PI,
+  RAND: () => Math.random(),
+  RANDBETWEEN: (a, c) => { const x = N(a, c, 0), y = N(a, c, 1); return err1(x, y) || Math.floor(x + Math.random() * (y - x + 1)); },
+};
+FN['RANK.EQ'] = FN.RANK; FN.AVG = FN.AVERAGE;
+
+// 함수 설명 (입력 도우미)
+const FN_HELP = {
+  SUM: ['SUM(범위, …)', '합계'], AVERAGE: ['AVERAGE(범위, …)', '평균'], MIN: ['MIN(범위, …)', '가장 작은 값'], MAX: ['MAX(범위, …)', '가장 큰 값'],
+  COUNT: ['COUNT(범위, …)', '숫자가 든 칸 수'], COUNTA: ['COUNTA(범위, …)', '비어 있지 않은 칸 수'], COUNTBLANK: ['COUNTBLANK(범위)', '빈 칸 수'],
+  COUNTIF: ['COUNTIF(범위, 조건)', '조건에 맞는 칸 수 · 조건 예: ">=80", "완료", "김*"'], COUNTIFS: ['COUNTIFS(범위1, 조건1, 범위2, 조건2, …)', '여러 조건에 모두 맞는 칸 수'],
+  SUMIF: ['SUMIF(범위, 조건, [합계 범위])', '조건에 맞는 값의 합계'], SUMIFS: ['SUMIFS(합계 범위, 범위1, 조건1, …)', '여러 조건에 맞는 값의 합계'],
+  AVERAGEIF: ['AVERAGEIF(범위, 조건, [평균 범위])', '조건에 맞는 값의 평균'], AVERAGEIFS: ['AVERAGEIFS(평균 범위, 범위1, 조건1, …)', '여러 조건 평균'],
+  IF: ['IF(조건, 맞을 때, 아닐 때)', '조건에 따라 다른 값'], IFS: ['IFS(조건1, 값1, 조건2, 값2, …)', '처음 맞는 조건의 값'], IFERROR: ['IFERROR(값, 오류일 때)', '오류면 대신 보여 줄 값'], IFNA: ['IFNA(값, #N/A일 때)', '#N/A면 대신할 값'],
+  AND: ['AND(조건, …)', '모두 맞으면 TRUE'], OR: ['OR(조건, …)', '하나라도 맞으면 TRUE'], NOT: ['NOT(조건)', '반대로'],
+  VLOOKUP: ['VLOOKUP(찾을 값, 표 범위, 열 번호, [FALSE=정확히])', '표 첫 열에서 찾아 같은 행의 값'], HLOOKUP: ['HLOOKUP(찾을 값, 표 범위, 행 번호, [FALSE])', '표 첫 행에서 찾기'],
+  XLOOKUP: ['XLOOKUP(찾을 값, 찾을 범위, 가져올 범위, [없을 때])', '찾아서 다른 범위의 같은 위치 값'], INDEX: ['INDEX(범위, 행 번호, [열 번호])', '범위 속 위치의 값'], MATCH: ['MATCH(찾을 값, 범위, [0=정확히])', '몇 번째인지'],
+  CHOOSE: ['CHOOSE(번호, 값1, 값2, …)', '번호에 맞는 값'], ROUND: ['ROUND(수, 자릿수)', '반올림'], ROUNDUP: ['ROUNDUP(수, 자릿수)', '올림'], ROUNDDOWN: ['ROUNDDOWN(수, 자릿수)', '내림'],
+  INT: ['INT(수)', '정수로 내림'], ABS: ['ABS(수)', '절댓값'], MOD: ['MOD(수, 나눌 수)', '나머지'], POWER: ['POWER(수, 거듭제곱)', '거듭제곱'], SQRT: ['SQRT(수)', '제곱근'],
+  PRODUCT: ['PRODUCT(범위, …)', '곱'], MEDIAN: ['MEDIAN(범위, …)', '가운데 값'], LARGE: ['LARGE(범위, 몇 번째)', 'k번째로 큰 값'], SMALL: ['SMALL(범위, 몇 번째)', 'k번째로 작은 값'],
+  RANK: ['RANK(값, 범위, [1=작은 순])', '순위'], SUMPRODUCT: ['SUMPRODUCT(범위1, 범위2, …)', '같은 위치끼리 곱해서 합계'],
+  CONCAT: ['CONCAT(값, …)', '글자 이어 붙이기'], TEXTJOIN: ['TEXTJOIN(구분자, 빈칸 무시, 값, …)', '구분자를 넣어 이어 붙이기'], CONCATENATE: ['CONCATENATE(값, …)', '글자 이어 붙이기'],
+  LEFT: ['LEFT(글자, [개수])', '왼쪽에서 몇 글자'], RIGHT: ['RIGHT(글자, [개수])', '오른쪽에서 몇 글자'], MID: ['MID(글자, 시작, 개수)', '가운데 몇 글자'], LEN: ['LEN(글자)', '글자 수'],
+  TRIM: ['TRIM(글자)', '앞뒤·겹친 띄어쓰기 없애기'], UPPER: ['UPPER(글자)', '대문자로'], LOWER: ['LOWER(글자)', '소문자로'], REPT: ['REPT(글자, 횟수)', '반복'],
+  SUBSTITUTE: ['SUBSTITUTE(글자, 찾을 것, 바꿀 것, [몇 번째])', '글자 바꾸기'], REPLACE: ['REPLACE(글자, 시작, 개수, 새 글자)', '위치로 바꾸기'],
+  FIND: ['FIND(찾을 글자, 글자, [시작])', '위치 (대소문자 구분)'], SEARCH: ['SEARCH(찾을 글자, 글자, [시작])', '위치'], TEXT: ['TEXT(값, "서식")', '서식대로 글자로 · 예: "#,##0", "0.0%", "yyyy-mm-dd"'], VALUE: ['VALUE(글자)', '숫자로'],
+  TODAY: ['TODAY()', '오늘 날짜'], NOW: ['NOW()', '지금 날짜와 시각'], DATE: ['DATE(년, 월, 일)', '날짜 만들기'], YEAR: ['YEAR(날짜)', '연도'], MONTH: ['MONTH(날짜)', '월'], DAY: ['DAY(날짜)', '일'],
+  WEEKDAY: ['WEEKDAY(날짜, [2=월요일이 1])', '요일 번호 (일요일=1)'], DAYS: ['DAYS(끝 날짜, 시작 날짜)', '두 날짜 사이 날 수'], DATEDIF: ['DATEDIF(시작, 끝, "D"/"M"/"Y")', '기간 (일·개월·년)'], EDATE: ['EDATE(날짜, 개월 수)', '몇 달 뒤 날짜'],
+  ISBLANK: ['ISBLANK(칸)', '비었으면 TRUE'], ISNUMBER: ['ISNUMBER(값)', '숫자면 TRUE'], ISTEXT: ['ISTEXT(값)', '글자면 TRUE'], ISERROR: ['ISERROR(값)', '오류면 TRUE'], ISNA: ['ISNA(값)', '#N/A면 TRUE'],
+  ROW: ['ROW([칸])', '행 번호'], COLUMN: ['COLUMN([칸])', '열 번호'], PI: ['PI()', '원주율'], RAND: ['RAND()', '0~1 무작위 수'], RANDBETWEEN: ['RANDBETWEEN(최소, 최대)', '무작위 정수'],
+};
+
+// --- 화면에 보일 값 ---
+function shownIn(s, r, c){
+  const cell = s.cells[r + ':' + c]; if (!cell || cell.v == null) return '';
+  const v = cell.v;
+  if (!isFormula(v)) return typeof v === 'string' && v[0] === "'" ? v.slice(1) : v;
+  return toStr(cellValue(s, r, c));
+}
+const shown = (r, c) => shownIn(sh, r, c);
+const isFormulaCell = (r, c) => isFormula(getV(r, c));
+
+// --- 참조 고치기: 복사(상대 참조 이동), 행/열 넣기·지우기 ---
+const refText = a => (a.ca ? '$' : '') + colName(a.c) + (a.ra ? '$' : '') + (a.r + 1);
+// 수식 글자 속 참조마다 fn(tok)을 불러 새 글자로 바꾼다 (따옴표 속 글자는 건드리지 않음)
+function mapRefs(f, fn){
+  let out = '', i = 1, prev = '=';
+  out = '=';
+  while (i < f.length){
+    const ch = f[i];
+    if (ch === '"'){ let j = i + 1; for (; j < f.length; j++){ if (f[j] === '"'){ if (f[j + 1] === '"'){ j++; continue; } break; } } out += f.slice(i, j + 1); i = j + 1; prev = '"'; continue; }
+    const rest = f.slice(i);
+    if (!/[\w$.'ㄱ-힝]/.test(prev)){
+      let sheet = null, j = 0;
+      const sm = RE_SHEET.exec(rest); if (sm){ sheet = sm[1] != null ? sm[1].replace(/''/g, "'") : sm[2]; j = sm[0].length; }
+      const after = rest.slice(j);
+      let m = RE_CELLRANGE.exec(after);
+      if (m){
+        const a = {c: colNum(m[2]), r: +m[4] - 1, ca: !!m[1], ra: !!m[3]};
+        const b = m[6] ? {c: colNum(m[6]), r: +m[8] - 1, ca: !!m[5], ra: !!m[7]} : null;
+        const repl = fn({sheet, a, b});
+        out += repl == null ? rest.slice(0, j + m[0].length) : (sm ? sm[0] : '') + repl;
+        i += j + m[0].length; prev = 'A'; continue;
+      }
+      m = RE_COLRANGE.exec(after);
+      if (m){ out += rest.slice(0, j + m[0].length); i += j + m[0].length; prev = 'A'; continue; }
+      if (sm){ out += sm[0]; i += j; prev = '!'; continue; }
+    }
+    out += ch; prev = ch; i++;
+  }
+  return out;
+}
+function shiftFormula(f, dr, dc){
+  if ((!dr && !dc) || !isFormula(f)) return f;
+  return mapRefs(f, ({a, b}) => {
+    const mv = p => ({...p, r: p.ra ? p.r : p.r + dr, c: p.ca ? p.c : p.c + dc});
+    const A2 = mv(a), B2 = b ? mv(b) : null;
+    const bad = p => p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS;
+    if (bad(A2) || (B2 && bad(B2))) return '#REF!';
+    return refText(A2) + (B2 ? ':' + refText(B2) : '');
+  });
+}
+// 행/열 넣기·지우기 때 모든 시트의 수식에서 이 시트를 가리키는 참조를 고친다
+function shiftRefsForAxis(target, axis, at, n, del){
+  const max = axis === 'r' ? ROWS : COLS, key = axis === 'r' ? 'r' : 'c', e = at + n - 1;
+  for (const s of wb.sheets) for (const k in s.cells){
+    const cell = s.cells[k]; if (!isFormula(cell.v)) continue;
+    const nv = mapRefs(cell.v, ({sheet, a, b}) => {
+      const ts = sheet == null ? s : wb.sheets.find(x => x.name.toLowerCase() === sheet.toLowerCase());
+      if (ts !== target) return null;
+      const one = (p, end) => {
+        let i = p[key];
+        if (!del){ if (i >= at) i += n; if (i >= max) return null; }
+        else if (i >= at && i <= e){ if (!b) return null; i = end ? at - 1 : at; }
+        else if (i > e) i -= n;
+        return {...p, [key]: i};
+      };
+      const A2 = one(a, false); if (!b) return A2 ? refText(A2) : '#REF!';
+      const B2 = one(b, true); if (!A2 || !B2 || B2[key] < A2[key]) return '#REF!';
+      return refText(A2) + ':' + refText(B2);
+    });
+    if (nv !== cell.v) cell.v = nv;
+  }
+}
+
+// 입력을 마칠 때: 수식이면 함수 이름·참조를 대문자로 정리
+function normalizeFormula(fm){
+  const g = mapRefs(fm, ({a, b}) => refText(a) + (b ? ':' + refText(b) : ''));
+  return g.split('"').map((seg, i) => i % 2 ? seg : seg.replace(/([A-Za-z][A-Za-z0-9.]*)(?=\()/g, m => m.toUpperCase())).join('"');
+}
+function finalizeInput(v){
+  if (!isFormula(v)) return v;
+  const n = normalizeFormula(v);
+  try { parseFormula(n.slice(1)); } catch (e){ toast('수식에 오류가 있어요. 괄호, 쉼표, 따옴표를 확인해 주세요'); }
+  return n;
+}
+
+// --- 수식 입력 중 칸을 누르면 그 칸 주소가 들어감 (끌면 범위) ---
+let pointRef = null;   // {start, end, r1, c1, r2, c2}: 방금 넣은 참조 글자 위치
+function pointModeOK(){
+  if (!editing || !isFormula(ed.value)) return false;
+  const p = ed.selectionStart;
+  if (pointRef && pointRef.end === p) return true;
+  return /[=(,+\-*/^&<>:]\s*$/.test(ed.value.slice(0, p));
+}
+function pointInsert(r1, c1, r2, c2){
+  const t = refText({r: Math.min(r1, r2), c: Math.min(c1, c2)}) + (r1 !== r2 || c1 !== c2 ? ':' + refText({r: Math.max(r1, r2), c: Math.max(c1, c2)}) : '');
+  const p = ed.selectionStart, keep = pointRef && pointRef.end === p;
+  const start = keep ? pointRef.start : p, end = keep ? pointRef.end : ed.selectionEnd;
+  ed.value = ed.value.slice(0, start) + t + ed.value.slice(end);
+  ed.setSelectionRange(start + t.length, start + t.length);
+  pointRef = {start, end: start + t.length, r1: Math.min(r1, r2), c1: Math.min(c1, c2), r2: Math.max(r1, r2), c2: Math.max(c1, c2)};
+  sizeEditor(); fx.value = ed.value; updateFnHint(); schedule();
+}
+
+// --- 함수 이름 후보와 설명 ---
+const fnHint = document.createElement('div'); fnHint.id = 'fnHint'; fnHint.hidden = true; document.body.appendChild(fnHint);
+let fnList = null, fnSelI = 0;   // 후보 목록이 떠 있을 때 {names, typed}
+function hideFnHint(){ fnHint.hidden = true; fnList = null; }
+function placeFnHint(){ const b = ed.getBoundingClientRect(); fnHint.style.left = Math.max(8, Math.min(b.left, innerWidth - 360)) + 'px'; fnHint.style.top = (b.bottom + 4) + 'px'; }
+// 커서 앞에서 아직 닫히지 않은 가장 안쪽 함수와 몇 번째 값을 쓰는 중인지
+function openCall(before){
+  const stack = []; let inStr = false;
+  for (let i = 0; i < before.length; i++){
+    const ch = before[i];
+    if (ch === '"'){ inStr = !inStr; continue; } if (inStr) continue;
+    if (ch === '('){ const m = /([A-Za-z][A-Za-z0-9.]*)$/.exec(before.slice(0, i)); stack.push({name: m ? m[1].toUpperCase() : '', arg: 0}); }
+    else if (ch === ')') stack.pop();
+    else if ((ch === ',' || ch === ';') && stack.length) stack[stack.length - 1].arg++;
+  }
+  return stack.length ? stack[stack.length - 1] : null;
+}
+function updateFnHint(){
+  if (!editing || !isFormula(ed.value)) return hideFnHint();
+  const before = ed.value.slice(0, ed.selectionStart);
+  const m = /(?:^=|[=(,+\-*/^&<>:\s])([A-Za-z][A-Za-z.]*)$/.exec(before);
+  if (m){
+    const q = m[1].toUpperCase(), names = Object.keys(FN_HELP).filter(n => n.startsWith(q)).slice(0, 7);
+    if (names.length && !(names.length === 1 && names[0] === q && FN[q] && before.endsWith('('))){
+      fnList = {names, typed: m[1].length}; fnSelI = Math.min(fnSelI, names.length - 1);
+      fnHint.innerHTML = names.map((n, i) => `<div class="fh-item${i === fnSelI ? ' on' : ''}" data-n="${n}"><b>${n}</b><span>${FN_HELP[n][1]}</span></div>`).join('') + '<div class="fh-tip">Tab으로 넣기</div>';
+      fnHint.hidden = false; placeFnHint(); return;
+    }
+  }
+  fnList = null;
+  const call = openCall(before);
+  if (call && FN_HELP[call.name]){
+    const [sig, desc] = FN_HELP[call.name];
+    const parts = sig.slice(sig.indexOf('(') + 1, sig.lastIndexOf(')')).split(', ');
+    const argI = Math.min(call.arg, parts.length - 1);
+    const sigHtml = esc(call.name) + '(' + parts.map((p, i) => i === argI || (i === parts.length - 1 && p.includes('…') && call.arg >= i) ? `<b>${esc(p)}</b>` : esc(p)).join(', ') + ')';
+    fnHint.innerHTML = `<div class="fh-sig">${sigHtml}</div><div class="fh-desc">${esc(desc)}</div>`;
+    fnHint.hidden = false; placeFnHint(); return;
+  }
+  hideFnHint();
+}
+function acceptFn(name){
+  if (!fnList) return;
+  const p = ed.selectionStart, start = p - fnList.typed;
+  ed.value = ed.value.slice(0, start) + name + '(' + ed.value.slice(p);
+  const q = start + name.length + 1; ed.setSelectionRange(q, q);
+  fnSelI = 0; sizeEditor(); fx.value = ed.value; updateFnHint(); ed.focus();
+}
+fnHint.addEventListener('mousedown', e => { e.preventDefault(); const it = e.target.closest('[data-n]'); if (it) acceptFn(it.dataset.n); });
+ed.addEventListener('keyup', e => { if (editing && !['Tab', 'ArrowUp', 'ArrowDown', 'Escape', 'Enter'].includes(e.key)) updateFnHint(); });
+ed.addEventListener('click', () => { if (editing) updateFnHint(); });
+
+// --- 자동 합계 (Σ) ---
+function autoSum(fn){
+  if (editing) commitEdit();
+  const multi = (sel.r1 !== sel.r2 || sel.c1 !== sel.c2) && !fullCols(sel) && !fullRows(sel);
+  if (multi){
+    if (sel.r2 > sel.r1 && sel.r2 + 1 < ROWS){
+      const r = sel.r2 + 1;
+      mutate(() => { for (let c = sel.c1; c <= sel.c2; c++) setV(r, c, `=${fn}(${refText({r: sel.r1, c})}:${refText({r: sel.r2, c})})`); });
+      setRange({r1: r, r2: r, c1: sel.c1, c2: sel.c2}); return;
+    }
+    if (sel.c2 + 1 < COLS){
+      const c = sel.c2 + 1;
+      mutate(() => setV(sel.r1, c, `=${fn}(${refText({r: sel.r1, c: sel.c1})}:${refText({r: sel.r1, c: sel.c2})})`));
+      setSel(sel.r1, c); return;
+    }
+  }
+  const r = act.r, c = act.c, isN = (rr, cc) => typeof cellValue(sh, rr, cc) === 'number';
+  let rg = '', r1 = r; while (r1 - 1 >= 0 && isN(r1 - 1, c)) r1--;
+  if (r1 < r) rg = `${refText({r: r1, c})}:${refText({r: r - 1, c})}`;
+  else { let c1 = c; while (c1 - 1 >= 0 && isN(r, c1 - 1)) c1--; if (c1 < c) rg = `${refText({r, c: c1})}:${refText({r, c: c - 1})}`; }
+  const text = `=${fn}(${rg})`;
+  startEdit('edit', text);
+  if (!rg) ed.setSelectionRange(text.length - 1, text.length - 1);
+  focusGrid(); updateFnHint();
+  toast(rg ? 'Enter로 확정하세요 · 범위를 바꾸려면 칸을 끌어서 고르세요' : '합칠 칸을 끌어서 고른 뒤 Enter');
+}
+function sumMenu(el){
+  const b = el.getBoundingClientRect();
+  showMenu(b.left - 10, b.bottom + 4, [
+    {label: '합계 (SUM)', run: () => autoSum('SUM')}, {label: '평균 (AVERAGE)', run: () => autoSum('AVERAGE')}, {label: '숫자 개수 (COUNT)', run: () => autoSum('COUNT')},
+    {label: '최댓값 (MAX)', run: () => autoSum('MAX')}, {label: '최솟값 (MIN)', run: () => autoSum('MIN')}, '-',
+    {label: '함수 목록 보기…', run: showFnCatalog},
+  ]);
+}
+function showFnCatalog(){
+  const rows = Object.entries(FN_HELP).map(([n, [sig, d]]) => `<div class="fc-row" data-n="${n}"><b>${esc(sig)}</b><span>${esc(d)}</span></div>`).join('');
+  modal('함수 목록', `<p>눌러서 선택한 칸에 넣을 수 있습니다. 칸에 =을 치고 이름 몇 글자만 써도 후보가 나와요.</p><input class="ctl" id="fcQ" placeholder="이름이나 설명으로 찾기 (예: 합계, 날짜)"><div class="fc-list">${rows}</div>`, '닫기', () => {}, back => {
+    const q = back.querySelector('#fcQ'), list = back.querySelector('.fc-list');
+    q.oninput = () => { const t = q.value.toLowerCase(); list.querySelectorAll('.fc-row').forEach(r => { r.style.display = r.textContent.toLowerCase().includes(t) ? '' : 'none'; }); };
+    list.onclick = e => { const r = e.target.closest('[data-n]'); if (!r) return; back.remove(); startEdit('edit', '=' + r.dataset.n + '('); focusGrid(); updateFnHint(); };
+  }, {wide: true, noCancel: true});
+}
+
 function applyMove(B, T, copy){
   const inR = (R, r, c) => r >= R.r1 && r <= R.r2 && c >= R.c1 && c <= R.c2;
   const keyRC = k => { const i = k.indexOf(':'); return [+k.slice(0,i), +k.slice(i+1)]; };
@@ -1589,7 +2185,7 @@ function toHTML(R){
     for (let c = R.c1; c <= R.c2; c++){
       const m = mergeOf(r,c);
       if (m && (m.r1 !== r || m.c1 !== c) && contains(R, m)) continue;
-      const s = st(r,c), v = getV(r,c);
+      const s = st(r,c), v = fmtValue(shown(r,c), s);
       const css = [`font-family:'${XL_NAME[s.ff || DEF_FONT] || s.ff || DEF_FONT}'`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
         (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`,
         s.fc && `color:${s.fc}`, s.bg && `background:${s.bg}`, s.ha && `text-align:${s.ha}`, `vertical-align:${s.va || 'middle'}`,
@@ -1608,7 +2204,7 @@ function buildClip(cut){
   const cells = [], lines = [];
   for (let r = R.r1; r <= R.r2; r++){
     const row = [], line = [];
-    for (let c = R.c1; c <= R.c2; c++){ const s = st(r,c); row.push({v:getV(r,c), s: s === EMPTY ? undefined : cloneS(s)}); line.push(tsvCell(getV(r,c))); }
+    for (let c = R.c1; c <= R.c2; c++){ const s = st(r,c); row.push({v:getV(r,c), s: s === EMPTY ? undefined : cloneS(s)}); line.push(tsvCell(fmtValue(shown(r,c), st(r,c)))); }
     cells.push(row); lines.push(line.join('\t'));
   }
   const merges = sh.merges.filter(m => contains(R, m)).map(m => ({r1:m.r1-R.r1, r2:m.r2-R.r1, c1:m.c1-R.c1, c2:m.c2-R.c1}));
@@ -1652,7 +2248,7 @@ function doPaste(text){
       const r = r0+i, c = c0+j; if (r >= ROWS || c >= COLS) continue;
       const src = data.cells[i % h][j % w];
       if (internal){
-        const o = {}; if (src.v !== '') o.v = src.v; if (src.s) o.s = cloneS(src.s);
+        const o = {}; if (src.v !== '') o.v = isFormula(src.v) && !clip.cut ? shiftFormula(src.v, r - (clip.range.r1 + i % h), c - (clip.range.c1 + j % w)) : src.v; if (src.s) o.s = cloneS(src.s);
         if (o.v != null || o.s) sh.cells[r+':'+c] = o; else delete sh.cells[r+':'+c];
       } else setV(r, c, src.v);
     }
@@ -1730,6 +2326,10 @@ cv.addEventListener('pointerdown', e => {
     return;
   }
   if (e.button !== 0) return;
+  if (pointModeOK()){
+    const ph = hit(e);
+    if (ph.type === 'cell'){ pointInsert(ph.r, ph.c, ph.r, ph.c); drag = {mode: 'pointref', a: {r: ph.r, c: ph.c}}; cv.setPointerCapture(e.pointerId); if (!asId) asId = requestAnimationFrame(autoScroll); return; }
+  }
   focusGrid();
   if (editing) commitEdit();
   const h = hit(e);
@@ -1776,6 +2376,7 @@ cv.addEventListener('pointermove', e => {
   lastEv = e; updateDrag(e);
 });
 function updateDrag(e){
+  if (drag.mode === 'pointref'){ const ph = hit(e); pointInsert(drag.a.r, drag.a.c, ph.r, ph.c); return; }
   if (drag.mode === 'imgmove' || drag.mode === 'imgresize') return imageDragMove(e);
   const h = hit(e), z = sh.zoom;
   if (drag.mode === 'colw'){
@@ -1822,6 +2423,7 @@ cv.addEventListener('pointerup', e => {
   if (!drag) return;
   const d = drag; drag = null;
   cancelAnimationFrame(asId); asId = 0;
+  if (d.mode === 'pointref'){ ed.focus(); schedule(); return; }
   if (d.mode === 'imgmove' || d.mode === 'imgresize'){ if (d.moved) afterChange(); else undoStack.pop(); schedule(); }
   else if (d.mode === 'colw' || d.mode === 'rowh'){ afterChange(); }
   else if (d.mode === 'fill'){ if (d.target) applyFill(d.base, d.target, e.ctrlKey || e.metaKey); else schedule(); }
@@ -1950,6 +2552,11 @@ new ResizeObserver(() => schedule()).observe(wrap);
 ed.addEventListener('keydown', e => {
   const k = e.key, ctrl = e.ctrlKey || e.metaKey;
   if (e.isComposing || k === 'Process') return;
+  if (editing && fnList && !fnHint.hidden){
+    if (k === 'Tab'){ e.preventDefault(); acceptFn(fnList.names[fnSelI]); return; }
+    if (k === 'ArrowDown' || k === 'ArrowUp'){ e.preventDefault(); fnSelI = (fnSelI + (k === 'ArrowDown' ? 1 : -1) + fnList.names.length) % fnList.names.length; updateFnHint(); return; }
+    if (k === 'Escape'){ e.preventDefault(); hideFnHint(); return; }
+  }
   // 칸 안에서 줄 바꾸기: Alt+Enter(엑셀), Ctrl+Enter(구글 시트). 편집 중이 아니면 편집을 시작하고 끝에 줄을 바꾼다
   if (k === 'Enter' && (e.altKey || ctrl)){
     e.preventDefault();
@@ -1966,6 +2573,7 @@ ed.addEventListener('keydown', e => {
     if (ctrl && ['b','i','u'].includes(k.toLowerCase())){ e.preventDefault(); commitEdit(); toggle({b:'b', i:'i', u:'u'}[k.toLowerCase()]); return; }
     return;
   }
+  if (k === '=' && e.altKey && !ctrl){ e.preventDefault(); autoSum('SUM'); return; }
   if (selImg && !ctrl){
     if (k === 'Delete' || k === 'Backspace'){ e.preventDefault(); deleteImage(selImg); return; }
     if (k === 'Escape'){ selImg = null; schedule(); return; }
@@ -2001,7 +2609,7 @@ ed.addEventListener('keydown', e => {
     }
   }
 });
-ed.addEventListener('input', () => { if (!editing) startEdit('enter', null); sizeEditor(); fx.value = ed.value; });
+ed.addEventListener('input', () => { pointRef = null; if (!editing) startEdit('enter', null); sizeEditor(); fx.value = ed.value; });
 ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter', null); });
 ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
@@ -2027,11 +2635,11 @@ fx.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.isComposing){
     e.preventDefault();
     if (editing){ ed.value = fx.value; commitEdit(); }
-    else if (fx.value !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, fx.value));
+    else if (fx.value !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, finalizeInput(fx.value)));
     focusGrid(); move(1, 0);
   } else if (e.key === 'Escape'){ e.preventDefault(); if (editing) cancelEdit(); fx.value = getV(act.r, act.c); focusGrid(); }
 });
-fx.addEventListener('change', () => { if (!editing && fx.value !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, fx.value)); });
+fx.addEventListener('change', () => { if (!editing && fx.value !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, finalizeInput(fx.value))); });
 nameBox.addEventListener('keydown', e => {
   if (e.key === 'Escape'){ refreshUI(); focusGrid(); return; }
   if (e.key !== 'Enter') return;
@@ -2066,8 +2674,14 @@ function setStatus(msg){
   if (msg){ el.textContent = msg; return; }
   const R = sel.r2-sel.r1+1, C = sel.c2-sel.c1+1, m = mergeOf(act.r, act.c);
   if (R*C > 1 && !(m && contains(m, sel))){
-    let n = 0; for (const k in sh.cells){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (sh.cells[k].v != null && r >= sel.r1 && r <= sel.r2 && c >= sel.c1 && c <= sel.c2) n++; }
-    el.textContent = `${R}행 × ${C}열 선택 · 내용 있는 칸 ${n}개`;
+    let n = 0, cnt = 0, sum = 0;
+    for (const k in sh.cells){
+      const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1);
+      if (sh.cells[k].v == null || r < sel.r1 || r > sel.r2 || c < sel.c1 || c > sel.c2 || hiddenRows.has(r)) continue;
+      n++; const x = cellValue(sh, r, c); if (typeof x === 'number'){ cnt++; sum += x; }
+    }
+    const f = x => Number(x.toPrecision(12)).toLocaleString('en-US', {maximumFractionDigits: 4});
+    el.textContent = cnt ? `합계 ${f(sum)} · 평균 ${f(sum / cnt)} · 개수 ${n}` : `${R}행 × ${C}열 선택 · 개수 ${n}`;
   } else el.textContent = touchMode ? '두 번 탭: 편집 · 길게 누르기: 메뉴 · 두 손가락: 확대/축소' : '더블클릭으로 편집 · 오른쪽 아래 점을 끌면 이어 채우기';
 }
 function updateDoc(){
@@ -2338,7 +2952,7 @@ function run(cmd, el){
     clear: clearFormats,
     decUp: () => stepDecimals(1), decDown: () => stepDecimals(-1),
     sortAsc: () => quickSort(false), sortDesc: () => quickSort(true), filter: toggleFilter, sortMenu: () => sortMenu(el),
-    freezeMenu: () => freezeMenu(el), find: () => openFind(false),
+    freezeMenu: () => freezeMenu(el), find: () => openFind(false), autoSum: () => autoSum('SUM'), sumMenu: () => sumMenu(el),
     image: () => $('#imgIn').click(),
     grid: () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); },
   };
@@ -2463,7 +3077,7 @@ function newFile(){
 }
 function loadWorkbook(obj){
   wb = {sheets: obj.sheets.map(normSheet), active: Math.min(obj.active || 0, obj.sheets.length - 1), media: obj.media || {}};
-  IMG.clear(); selImg = null;
+  IMG.clear(); selImg = null; clearCalc();
   if (!wb.sheets.length) wb.sheets = [newSheet('Sheet1')];
   sh = wb.sheets[wb.active];
   undoStack = []; redoStack = []; clip = null; painter = null; updatePainter();
@@ -2557,7 +3171,9 @@ async function buildXlsx(){
         const es = st(r,c);
         if (v !== ''){
           const dm = (es.nf === 'date' || es.nf === 'date2') && DATE.exec(v.trim());
-          cell.value = dm ? new Date(Date.UTC(+dm[1], +dm[3] - 1, +dm[4])) : es.nf !== 'text' && PLAIN.test(v.trim()) && !/^0\d/.test(v.trim()) ? parseFloat(v.replace(/,/g, '')) : v;
+          const fres = isFormula(v) ? cellValue(s, r, c) : null;
+          if (isFormula(v)) cell.value = {formula: v.slice(1), result: isErr(fres) ? (fres === FE.circ ? undefined : {error: fres.code}) : fres};
+          else cell.value = dm ? new Date(Date.UTC(+dm[1], +dm[3] - 1, +dm[4])) : es.nf !== 'text' && PLAIN.test(v.trim()) && !/^0\d/.test(v.trim()) ? parseFloat(v.replace(/,/g, '')) : v;
         }
         if (es !== EMPTY) cell.style = toXStyle(es);
       }
@@ -2624,7 +3240,10 @@ async function importXlsx(buf){
           else { try { v = cell.text == null ? '' : String(cell.text); } catch (e) { v = ''; } }
         }
         const sty = fromXStyle(cell.style), o = {};
-        if (v !== '') o.v = v; if (sty) o.s = sty;
+        let fm = null; if (!slave){ try { fm = cell.formula || null; } catch (e) {} }
+        if (fm){ o.v = '=' + fm; if (v !== '') o.xr = v; }
+        else if (v !== '') o.v = v;
+        if (sty) o.s = sty;
         if (o.v != null || o.s) s.cells[(rn-1)+':'+(cn-1)] = o;
       });
     });
