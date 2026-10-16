@@ -70,6 +70,7 @@ button{font:inherit;color:inherit}
 .glyph{font-size:15px;line-height:1;font-family:Georgia,"Times New Roman",serif}
 .ctl{height:30px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit;padding:0 6px}
 #fontSel{width:150px}
+#nfSel{width:132px}
 #sizeIn{width:60px;font-variant-numeric:tabular-nums}
 .tb:focus-visible,.fbtn:focus-visible,.ctl:focus-visible,.tab:focus-visible,.mi:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
@@ -174,6 +175,20 @@ button{font:inherit;color:inherit}
   .mi{padding:10px 12px}
 }
 #installBtn[hidden]{display:none}
+.findbar{position:fixed;z-index:15;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px;display:grid;gap:6px;width:min(400px,calc(100vw - 32px))}
+.findbar[hidden]{display:none}
+.frow{display:flex;gap:4px;align-items:center}
+.frow[hidden]{display:none}
+.frow .ctl{flex:1;min-width:0}
+.frow .pbtn{flex:none;padding:0 12px;height:30px}
+#findCount{font-size:12px;color:var(--muted);min-width:52px;text-align:center;font-variant-numeric:tabular-nums}
+.fpop{width:270px}
+.fpop .flist{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:4px;margin:6px 0}
+.fpop label{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:4px;cursor:pointer}
+.fpop label:hover{background:var(--hover)}
+.fpop label input{accent-color:var(--accent)}
+.fpop label .n{margin-left:auto;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.fpop .ctl{width:100%}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
 </style>
 </head>
@@ -241,6 +256,27 @@ button{font:inherit;color:inherit}
       <button class="tb" data-cmd="clear" title="서식 지우기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M8 16 4 12l7.5-7.5 5 5L11 16z"/><path d="M7 9l5 5M8 16h9"/></svg></button>
       <button class="tb" data-cmd="grid" id="tbGrid" title="눈금선 보이기/숨기기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="14" height="14" rx="1"/><path d="M3 7.7h14M3 12.3h14M7.7 3v14M12.3 3v14"/></svg></button>
     </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <select class="ctl" id="nfSel" title="숫자 서식">
+        <option value="">일반</option><option value="num">숫자 1,234</option><option value="cur">통화 ₩1,234</option><option value="pct">백분율 12%</option>
+        <option value="date">날짜 2026-10-05</option><option value="date2">날짜 2026년 10월 5일</option><option value="text">텍스트</option>
+      </select>
+      <button class="tb" data-cmd="decUp" title="소수 자릿수 늘리기"><span class="glyph" style="font-family:inherit;font-size:11px;letter-spacing:-.02em">+.0</span></button>
+      <button class="tb" data-cmd="decDown" title="소수 자릿수 줄이기"><span class="glyph" style="font-family:inherit;font-size:11px;letter-spacing:-.02em">−.0</span></button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="tb" data-cmd="sortAsc" title="오름차순 정렬 (가→하, 작은 수→큰 수)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5v13M3 14l2.5 2.5L8 14M11 5h3M11 10h5M11 15h7"/></svg></button>
+      <button class="tb" data-cmd="sortDesc" title="내림차순 정렬 (하→가, 큰 수→작은 수)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5v13M3 14l2.5 2.5L8 14M11 5h7M11 10h5M11 15h3"/></svg></button>
+      <button class="tb" data-cmd="filter" id="tbFilter" title="필터 (Ctrl+Shift+L)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 4h14l-5.5 6.5V16l-3-1.5v-4z"/></svg></button>
+      <button class="tb caret" data-cmd="sortMenu" title="정렬·필터 더 보기"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="tb labeled" data-cmd="freezeMenu" id="tbFreeze" title="틀 고정: 제목 줄·열을 스크롤해도 보이게"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="3" y="3" width="14" height="14" rx="1" stroke-width="1.3"/><path d="M3 7.5h14M7.5 3v14" stroke-width="2.4"/></svg><span>틀 고정</span></button>
+      <button class="tb" data-cmd="find" title="찾기 (Ctrl+F) · 바꾸기 (Ctrl+H)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.5 12.5 4.5 4.5"/></svg></button>
+    </div>
   </div>
 
   <div class="fxbar">
@@ -266,6 +302,21 @@ button{font:inherit;color:inherit}
       <span id="zoomV">100%</span>
     </div>
   </footer>
+</div>
+<div id="findBar" class="findbar" hidden>
+  <div class="frow">
+    <input class="ctl" id="findQ" placeholder="찾을 내용" spellcheck="false" autocomplete="off">
+    <span id="findCount"></span>
+    <button class="tb" id="findPrev" title="이전 (Shift+Enter)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 5-5 5 5"/></svg></button>
+    <button class="tb" id="findNext" title="다음 (Enter)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 7.5 5 5 5-5"/></svg></button>
+    <button class="tb" id="findToggle" title="바꾸기 열기/닫기 (Ctrl+H)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11l-3-3M16 13H5l3 3"/></svg></button>
+    <button class="tb" id="findClose" title="닫기 (Esc)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
+  </div>
+  <div class="frow" id="replRow" hidden>
+    <input class="ctl" id="replQ" placeholder="바꿀 내용" spellcheck="false" autocomplete="off">
+    <button class="pbtn" id="replOne">바꾸기</button>
+    <button class="pbtn" id="replAll">모두 바꾸기</button>
+  </div>
 </div>
 <div id="pop" class="pop" hidden></div>
 <div id="ctx" class="menu" hidden></div>
@@ -309,7 +360,8 @@ function normSheet(s){
   return o;
 }
 const cw = c => sh.colW[c] ?? DEF_W;
-const rh = r => sh.rowH[r] ?? DEF_H;
+let hiddenRows = new Set();   // 필터로 숨긴 행 (높이 0으로 그림)
+const rh = r => hiddenRows.has(r) ? 0 : (sh.rowH[r] ?? DEF_H);
 const getV = (r,c) => { const x = sh.cells[r+':'+c]; return x && x.v != null ? x.v : ''; };
 function setV(r,c,v){
   const k = r+':'+c; let cell = sh.cells[k];
@@ -330,6 +382,7 @@ function st(r,c){
   return Object.assign({}, cs, rs, cell && cell.s);
 }
 function buildMerges(){
+  computeHidden();
   mergeIdx = new Map();
   for (const m of sh.merges) for (let r = m.r1; r <= m.r2; r++) for (let c = m.c1; c <= m.c2; c++) mergeIdx.set(r*COLS+c, m);
 }
@@ -432,13 +485,42 @@ function render(){
   }
   ctx.setTransform(dpr,0,0,dpr,0,0);
   const z = sh.zoom, sl = wrap.scrollLeft, stp = wrap.scrollTop;
-  const X = c => HW + colX[c]*z - sl, Y = r => HH + rowY[r]*z - stp;
-  const c0 = colAt(sl/z), c1 = colAt((sl + W - HW)/z), r0 = rowAt(stp/z), r1 = rowAt((stp + H - HH)/z);
-  V = {X, Y, c0, c1, r0, r1, W, H, z};
-
+  const f = frz(), fx = HW + colX[f.c]*z, fy = HH + rowY[f.r]*z;
   ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H);
+  // 틀 고정: 화면을 최대 네 부분(스크롤 영역, 위쪽 고정 행, 왼쪽 고정 열, 고정 모서리)으로 나눠 각자 그린다
+  const panes = [
+    {x0: fx, y0: fy, x1: W, y1: H, sx: sl, sy: stp, fc: false, fr: false},
+    {x0: fx, y0: HH, x1: W, y1: fy, sx: sl, sy: 0, fc: false, fr: true},
+    {x0: HW, y0: fy, x1: fx, y1: H, sx: 0, sy: stp, fc: true, fr: false},
+    {x0: HW, y0: HH, x1: fx, y1: fy, sx: 0, sy: 0, fc: true, fr: true},
+  ];
+  const paneV = p => ({
+    X: c => HW + colX[c]*z - p.sx, Y: r => HH + rowY[r]*z - p.sy, W, H, z,
+    c0: p.fc ? 0 : colAt((p.x0 - HW + p.sx)/z), c1: p.fc ? f.c - 1 : colAt((p.x1 - HW + p.sx)/z),
+    r0: p.fr ? 0 : rowAt((p.y0 - HH + p.sy)/z), r1: p.fr ? f.r - 1 : rowAt((p.y1 - HH + p.sy)/z),
+  });
+  for (const p of panes){
+    if (p.x1 - p.x0 <= 0 || p.y1 - p.y0 <= 0) continue;
+    V = paneV(p);
+    ctx.save(); ctx.beginPath(); ctx.rect(p.x0, p.y0, p.x1 - p.x0, p.y1 - p.y0); ctx.clip();
+    drawCells();
+    drawSelection();
+    ctx.restore();
+  }
+  V = paneV(panes[0]);
   ctx.save(); ctx.beginPath(); ctx.rect(HW, HH, W-HW, H-HH); ctx.clip();
+  drawImages();
+  drawImageSelection();
+  ctx.fillStyle = '#8D97A8';
+  if (f.c) ctx.fillRect(Math.round(fx) - 1, HH, 1, H - HH);
+  if (f.r) ctx.fillRect(HW, Math.round(fy) - 1, W - HW, 1);
+  ctx.restore();
+  drawHeaders(f, fx, fy, sl, stp, z, W, H);
+}
 
+// 지금 V(그리는 부분)의 칸들을 그린다: 눈금선, 채우기, 글자, 테두리, 필터 단추
+function drawCells(){
+  const {X, Y, c0, c1, r0, r1, W, H} = V;
   // 눈금선
   if (sh.grid){
     ctx.fillStyle = GRIDC;
@@ -467,6 +549,7 @@ function render(){
 
   // 글자
   for (let r = r0; r <= r1; r++){
+    if (hiddenRows.has(r)) continue;
     for (let c = 0; c < COLS; c++){
       const cell = sh.cells[r+':'+c];
       if (!cell || cell.v == null || cell.v === '' || mergeOf(r,c)) continue;
@@ -480,27 +563,38 @@ function render(){
   }
 
   // 테두리
-  for (let r = Math.max(0,r0-1); r <= Math.min(ROWS-1,r1+1); r++) for (let c = Math.max(0,c0-1); c <= Math.min(COLS-1,c1+1); c++){
-    if (mergeOf(r,c)) continue;
-    const s = st(r,c);
-    if (s.bt || s.bb || s.bl || s.br) drawBorders(X(c), Y(r), X(c+1), Y(r+1), s);
+  for (let r = Math.max(0,r0-1); r <= Math.min(ROWS-1,r1+1); r++){
+    if (hiddenRows.has(r)) continue;
+    for (let c = Math.max(0,c0-1); c <= Math.min(COLS-1,c1+1); c++){
+      if (mergeOf(r,c)) continue;
+      const s = st(r,c);
+      if (s.bt || s.bb || s.bl || s.br) drawBorders(X(c), Y(r), X(c+1), Y(r+1), s);
+    }
   }
   for (const m of vm) drawBorders(X(m.c1), Y(m.r1), X(m.c2+1), Y(m.r2+1), st(m.r1,m.c1));
 
-  drawImages();
-  drawSelection();
-  drawImageSelection();
-  ctx.restore();
-  drawHeaders();
+  // 필터 단추 (제목 칸 오른쪽의 ▾)
+  const F = sh.filter;
+  if (F && F.r1 >= r0 && F.r1 <= r1) for (let c = Math.max(F.c1, c0); c <= Math.min(F.c2, c1); c++){
+    const b = filterBtnBox(c, X, Y), on = F.hide && F.hide[c] && F.hide[c].length;
+    ctx.beginPath(); ctx.roundRect(b.x + 0.5, b.y + 0.5, b.s - 1, b.s - 1, 3);
+    ctx.fillStyle = on ? TH.sel : '#fff'; ctx.fill();
+    ctx.strokeStyle = on ? TH.sel : '#9AA3B2'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = on ? '#fff' : '#4A5263'; ctx.beginPath();
+    const cx = b.x + b.s/2, cy = b.y + b.s/2, k = b.s/16;
+    if (on){ ctx.moveTo(cx - 5*k, cy - 4*k); ctx.lineTo(cx + 5*k, cy - 4*k); ctx.lineTo(cx + 1.2*k, cy + 0.5*k); ctx.lineTo(cx + 1.2*k, cy + 4.5*k); ctx.lineTo(cx - 1.2*k, cy + 3.5*k); ctx.lineTo(cx - 1.2*k, cy + 0.5*k); }
+    else { ctx.moveTo(cx - 4*k, cy - 2*k); ctx.lineTo(cx + 4*k, cy - 2*k); ctx.lineTo(cx, cy + 2.5*k); }
+    ctx.closePath(); ctx.fill();
+  }
 }
 
 function drawText(r, c, rect, isMerge){
   const {X, z, W} = V;
-  const v = getV(r,c), s = st(r,c);
+  const raw = getV(r,c), s = st(r,c), v = fmtValue(raw, s);
   ensureFont(s.ff, s.b);
   ctx.font = fontStr(s, z);
   const px = (s.fs || DEF_FS) * 4/3 * z, pad = 3*z + 1;
-  const ha = s.ha || (isNum(v) ? 'right' : 'left'), va = s.va || 'middle';
+  const ha = s.ha || (isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left'), va = s.va || 'middle';
   const lines = s.wrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
   let clip = rect, tw = 0, spill = false;
   if (!isMerge && !s.wrap){
@@ -635,32 +729,52 @@ function drawSelection(){
     ctx.strokeRect(T.x1-0.75, T.y1-0.75, T.x2-T.x1, T.y2-T.y1); ctx.setLineDash([]);
   }
 }
-function drawHeaders(){
-  const {X, Y, c0, c1, r0, r1, W, H} = V;
+function drawHeaders(f, fx, fy, sl, stp, z, W, H){
   ctx.font = '500 11.5px "IBM Plex Sans KR", "Malgun Gothic", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const fc = fullCols(sel), fr = fullRows(sel);
+  const fcs = fullCols(sel), frs = fullRows(sel);
+  const F = sh.filter, filtered = F && hiddenRows.size > 0;
   ctx.fillStyle = TH.head; ctx.fillRect(0, 0, W, HH);
-  for (let c = c0; c <= c1; c++){
-    const x = X(c), w = X(c+1) - x, on = c >= sel.c1 && c <= sel.c2;
-    if (on){ ctx.fillStyle = fc ? TH.sel : TH['head-sel']; ctx.fillRect(x, 0, w, HH); }
-    ctx.fillStyle = on ? (fc ? '#fff' : TH['head-sel-ink']) : TH['head-ink'];
-    if (w > 14) ctx.fillText(colName(c), x + w/2, HH/2 + 1);
-    ctx.fillStyle = TH['head-line']; ctx.fillRect(Math.round(X(c+1))-1, 0, 1, HH);
-    if (on && !fc){ ctx.fillStyle = TH.sel; ctx.fillRect(x, HH-2, w, 2); }
-  }
+  const colSeg = (c0, c1, sx, x0, x1) => {
+    if (x1 <= x0) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(x0, 0, x1 - x0, HH); ctx.clip();
+    const X = c => HW + colX[c]*z - sx;
+    for (let c = c0; c <= c1; c++){
+      const x = X(c), w = X(c+1) - x, on = c >= sel.c1 && c <= sel.c2;
+      if (on){ ctx.fillStyle = fcs ? TH.sel : TH['head-sel']; ctx.fillRect(x, 0, w, HH); }
+      ctx.fillStyle = on ? (fcs ? '#fff' : TH['head-sel-ink']) : TH['head-ink'];
+      if (w > 14) ctx.fillText(colName(c), x + w/2, HH/2 + 1);
+      ctx.fillStyle = TH['head-line']; ctx.fillRect(Math.round(X(c+1))-1, 0, 1, HH);
+      if (on && !fcs){ ctx.fillStyle = TH.sel; ctx.fillRect(x, HH-2, w, 2); }
+    }
+    ctx.restore();
+  };
+  if (f.c) colSeg(0, f.c - 1, 0, HW, fx);
+  colSeg(colAt((fx - HW + sl)/z), colAt((W - HW + sl)/z), sl, fx, W);
   ctx.fillStyle = TH['head-line']; ctx.fillRect(0, HH-1, W, 1);
   ctx.fillStyle = TH.head; ctx.fillRect(0, HH, HW, H-HH);
-  for (let r = r0; r <= r1; r++){
-    const y = Y(r), h = Y(r+1) - y, on = r >= sel.r1 && r <= sel.r2;
-    if (y + h < HH) continue;
-    if (on){ ctx.fillStyle = fr ? TH.sel : TH['head-sel']; ctx.fillRect(0, y, HW, h); }
-    ctx.fillStyle = on ? (fr ? '#fff' : TH['head-sel-ink']) : TH['head-ink'];
-    if (h > 10) ctx.fillText(String(r+1), HW/2, y + h/2 + 1);
-    ctx.fillStyle = TH['head-line']; ctx.fillRect(0, Math.round(Y(r+1))-1, HW, 1);
-    if (on && !fr){ ctx.fillStyle = TH.sel; ctx.fillRect(HW-2, y, 2, h); }
-  }
+  const rowSeg = (r0, r1, sy, y0, y1) => {
+    if (y1 <= y0) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, y0, HW, y1 - y0); ctx.clip();
+    const Y = r => HH + rowY[r]*z - sy;
+    for (let r = r0; r <= r1; r++){
+      const y = Y(r), h = Y(r+1) - y, on = r >= sel.r1 && r <= sel.r2;
+      if (h <= 0) continue;
+      if (on){ ctx.fillStyle = frs ? TH.sel : TH['head-sel']; ctx.fillRect(0, y, HW, h); }
+      // 필터로 일부 행이 숨겨진 표의 행 번호는 엑셀처럼 파랗게
+      ctx.fillStyle = on ? (frs ? '#fff' : TH['head-sel-ink']) : (filtered && r > F.r1 && r <= F.r2 ? TH.sel : TH['head-ink']);
+      if (h > 10) ctx.fillText(String(r+1), HW/2, y + h/2 + 1);
+      ctx.fillStyle = TH['head-line']; ctx.fillRect(0, Math.round(Y(r+1))-1, HW, 1);
+      if (on && !frs){ ctx.fillStyle = TH.sel; ctx.fillRect(HW-2, y, 2, h); }
+    }
+    ctx.restore();
+  };
+  if (f.r) rowSeg(0, f.r - 1, 0, HH, fy);
+  rowSeg(rowAt((fy - HH + stp)/z), rowAt((H - HH + stp)/z), stp, fy, H);
   ctx.fillStyle = TH['head-line']; ctx.fillRect(HW-1, HH, 1, H-HH);
+  ctx.fillStyle = '#8D97A8';
+  if (f.c) ctx.fillRect(Math.round(fx) - 1, 0, 1, HH);
+  if (f.r) ctx.fillRect(0, Math.round(fy) - 1, HW, 1);
   ctx.fillStyle = TH.head; ctx.fillRect(0, 0, HW, HH);
   ctx.fillStyle = TH['head-line']; ctx.fillRect(HW-1, 0, 1, HH); ctx.fillRect(0, HH-1, HW, 1);
   ctx.fillStyle = TH['head-ink']; ctx.globalAlpha = .45;
@@ -697,6 +811,7 @@ function move(dr, dc){
   let r = dr > 0 ? u.r2 + dr : dr < 0 ? u.r1 + dr : act.r;
   let c = dc > 0 ? u.c2 + dc : dc < 0 ? u.c1 + dc : act.c;
   r = Math.max(0, Math.min(ROWS-1, r)); c = Math.max(0, Math.min(COLS-1, c));
+  if (dr){ const g = Math.sign(dr); while (hiddenRows.has(r) && r + g >= 0 && r + g < ROWS) r += g; }
   setSel(r, c); ensureVisible(act.r, act.c);
 }
 function extendSel(dr, dc, jump){
@@ -728,10 +843,16 @@ function arrow(k, shift, ctrl){
   move(d[0], d[1]);
 }
 function ensureVisible(r, c){
-  const z = sh.zoom, vw = wrap.clientWidth - HW, vh = wrap.clientHeight - HH;
-  const x1 = colX[c]*z, x2 = colX[c+1]*z, y1 = rowY[r]*z, y2 = rowY[r+1]*z;
-  if (x1 < wrap.scrollLeft) wrap.scrollLeft = x1; else if (x2 > wrap.scrollLeft + vw) wrap.scrollLeft = x2 - vw;
-  if (y1 < wrap.scrollTop) wrap.scrollTop = y1; else if (y2 > wrap.scrollTop + vh) wrap.scrollTop = y2 - vh;
+  const z = sh.zoom, f = frz();
+  const vw = wrap.clientWidth - HW - colX[f.c]*z, vh = wrap.clientHeight - HH - rowY[f.r]*z;
+  if (c >= f.c){
+    const x1 = (colX[c] - colX[f.c])*z, x2 = (colX[c+1] - colX[f.c])*z;
+    if (x1 < wrap.scrollLeft) wrap.scrollLeft = x1; else if (x2 > wrap.scrollLeft + vw) wrap.scrollLeft = x2 - vw;
+  }
+  if (r >= f.r){
+    const y1 = (rowY[r] - rowY[f.r])*z, y2 = (rowY[r+1] - rowY[f.r])*z;
+    if (y1 < wrap.scrollTop) wrap.scrollTop = y1; else if (y2 > wrap.scrollTop + vh) wrap.scrollTop = y2 - vh;
+  }
 }
 function selectAll(){ setRange({r1:0, c1:0, r2:ROWS-1, c2:COLS-1}, act); }
 // 터치로 쓸 때는 편집 중이 아니면 키보드가 올라오지 않도록 포커스를 주지 않는다
@@ -745,8 +866,9 @@ const focusGrid = () => {
 function positionEditor(){
   if (!colX) return;
   const m = unitOf(act.r, act.c), z = sh.zoom;
-  ed.style.left = (HW + colX[m.c1]*z) + 'px';
-  ed.style.top = (HH + rowY[m.r1]*z) + 'px';
+  const fz = frz();
+  ed.style.left = (HW + colX[m.c1]*z + (m.c1 < fz.c ? wrap.scrollLeft : 0)) + 'px';
+  ed.style.top = (HH + rowY[m.r1]*z + (m.r1 < fz.r ? wrap.scrollTop : 0)) + 'px';
   edMinW = (colX[m.c2+1] - colX[m.c1])*z; edMinH = (rowY[m.r2+1] - rowY[m.r1])*z;
   sizeEditor();
 }
@@ -964,7 +1086,7 @@ function mergeToggle(){
 
 // ===== 크기 =====
 function textWidthOf(r, c){
-  const v = getV(r,c); if (v === '' || mergeOf(r,c)) return 0;
+  const v = fmtValue(getV(r,c), st(r,c)); if (v === '' || mergeOf(r,c)) return 0;
   const s = st(r,c); if (s.wrap) return 0;
   mctx.font = fontStr(s, 1);
   let w = 0; for (const l of String(v).split('\n')) w = Math.max(w, mctx.measureText(l).width);
@@ -1107,6 +1229,311 @@ function applyFill(base, t, copyOnly){
   });
   setRange(t, act);
 }
+
+// ===== 틀 고정 =====
+const frz = () => ({r: Math.min((sh && sh.freeze && sh.freeze.r) || 0, ROWS - 1), c: Math.min((sh && sh.freeze && sh.freeze.c) || 0, COLS - 1)});
+function setFreeze(r, c){
+  if (editing) commitEdit();
+  const z = sh.zoom;
+  if ((r || c) && (HW + colX[c]*z > wrap.clientWidth - 80 || HH + rowY[r]*z > wrap.clientHeight - 60)) return toast('고정할 부분이 화면보다 커요. 더 위쪽/왼쪽 칸을 고르세요');
+  mutate(() => { if (!r && !c) delete sh.freeze; else sh.freeze = {r, c}; });
+  wrap.scrollTo(0, 0); positionEditor(); schedule();
+  toast(!r && !c ? '틀 고정을 풀었습니다' : r && c ? `${r}행과 ${colName(c - 1)}열까지 고정했습니다` : r ? `${r}행까지 고정했습니다` : `${colName(c - 1)}열까지 고정했습니다`);
+}
+function freezeMenu(el){
+  const b = el.getBoundingClientRect(), on = sh.freeze && (sh.freeze.r || sh.freeze.c);
+  showMenu(b.left - 10, b.bottom + 4, [
+    {label: `${ref(act.r, act.c)} 위쪽 행과 왼쪽 열 고정`, run: () => setFreeze(act.r, act.c)},
+    {label: '첫 행 고정', run: () => setFreeze(1, 0)},
+    {label: '첫 열 고정', run: () => setFreeze(0, 1)},
+    ...(on ? ['-', {label: '틀 고정 취소', run: () => setFreeze(0, 0)}] : []),
+  ]);
+}
+
+// ===== 숫자 서식 (보여 주는 모양만 바꾸고 값은 그대로) =====
+const pad2 = n => String(n).padStart(2, '0');
+function fmtValue(v, s){
+  if (!s || !s.nf || v === '' || v == null || s.nf === 'text') return v;
+  const t = String(v).trim();
+  if (s.nf === 'date' || s.nf === 'date2'){
+    const m = DATE.exec(t); if (!m) return v;
+    return s.nf === 'date' ? `${m[1]}-${pad2(+m[3])}-${pad2(+m[4])}` : `${m[1]}년 ${+m[3]}월 ${+m[4]}일`;
+  }
+  const pct = t.endsWith('%');
+  if (!PLAIN.test(pct ? t.slice(0, -1) : t)) return v;
+  let n = parseFloat(t.replace(/[,%]/g, '')); if (pct) n /= 100;
+  const nd = Math.max(0, Math.min(10, s.nd ?? 0));
+  const show = x => Math.abs(x).toLocaleString('en-US', {minimumFractionDigits: nd, maximumFractionDigits: nd});
+  if (s.nf === 'num') return (n < 0 ? '-' : '') + show(n);
+  if (s.nf === 'cur') return (n < 0 ? '-₩' : '₩') + show(n);
+  if (s.nf === 'pct') return (n < 0 ? '-' : '') + show(n * 100) + '%';
+  return v;
+}
+function numFmtOf(s){
+  const nd = Math.max(0, s.nd ?? 0), dec = nd ? '.' + '0'.repeat(nd) : '';
+  return {num: '#,##0' + dec, cur: '"₩"#,##0' + dec, pct: '0' + dec + '%', date: 'yyyy-mm-dd', date2: 'yyyy"년" m"월" d"일"', text: '@'}[s.nf] || null;
+}
+function stepDecimals(d){
+  const s = st(act.r, act.c);
+  let nd = s.nd;
+  if (nd == null){ const m = /\.(\d+)/.exec(String(getV(act.r, act.c)).replace(/,/g, '')); nd = m ? m[1].length : 0; }
+  applyStyle({nf: s.nf && s.nf !== 'text' && !s.nf.startsWith('date') ? s.nf : 'num', nd: Math.max(0, Math.min(10, nd + d))});
+  growColsToFit(sel.c1, Math.min(sel.c2, sel.c1 + 60));
+}
+// 서식을 바꿔서 글자가 칸보다 길어지면 열을 넓힘 (좁히지는 않음). 같은 실행 취소 단계에 포함
+function growColsToFit(c1, c2){
+  let changed = false;
+  for (let c = c1; c <= c2; c++){
+    let need = 0;
+    for (const k in sh.cells){ const i = k.indexOf(':'); if (+k.slice(i + 1) === c) need = Math.max(need, textWidthOf(+k.slice(0, i), c)); }
+    if (need > cw(c)){ sh.colW[c] = Math.ceil(need) + 4; changed = true; }
+  }
+  if (changed) afterChange();
+}
+$('#nfSel').addEventListener('change', e => { applyStyle({nf: e.target.value || null}); growColsToFit(sel.c1, Math.min(sel.c2, sel.c1 + 60)); focusGrid(); });
+
+// ===== 정렬 =====
+function rowHasData(r, c1, c2){ for (let c = c1; c <= c2; c++) if (getV(r, c) !== '') return true; return false; }
+function colHasData(c, r1, r2){ for (let r = r1; r <= r2; r++) if (getV(r, c) !== '') return true; return false; }
+// 선택한 칸이 들어 있는 표 범위 (빈 행·빈 열로 둘러싸인 덩어리, 엑셀의 '현재 영역')
+function currentRegion(r, c){
+  const R = {r1: r, r2: r, c1: c, c2: c};
+  for (let ch = true; ch;){
+    ch = false;
+    const ca = Math.max(0, R.c1 - 1), cb = Math.min(COLS - 1, R.c2 + 1), ra = Math.max(0, R.r1 - 1), rb = Math.min(ROWS - 1, R.r2 + 1);
+    if (R.r1 > 0 && rowHasData(R.r1 - 1, ca, cb)){ R.r1--; ch = true; }
+    if (R.r2 < ROWS - 1 && rowHasData(R.r2 + 1, ca, cb)){ R.r2++; ch = true; }
+    if (R.c1 > 0 && colHasData(R.c1 - 1, ra, rb)){ R.c1--; ch = true; }
+    if (R.c2 < COLS - 1 && colHasData(R.c2 + 1, ra, rb)){ R.c2++; ch = true; }
+  }
+  return R;
+}
+// 첫 행이 제목 줄인지 추측: 굵게/채우기가 있거나, 아래는 숫자인데 첫 칸만 글자면 제목
+function guessHeader(R, col){
+  if (R.r2 <= R.r1) return false;
+  for (let c = R.c1; c <= R.c2; c++){ const s = st(R.r1, c); if (s.b || s.bg) return true; }
+  const top = getV(R.r1, col), below = [];
+  for (let r = R.r1 + 1; r <= Math.min(R.r2, R.r1 + 20); r++) below.push(getV(R.r1 === r ? r : r, col));
+  const nums = below.filter(v => isNum(v)).length;
+  return top !== '' && !isNum(top) && nums > 0 && nums >= below.length / 2;
+}
+function sortRows(R, col, desc, header){
+  if (editing) commitEdit();
+  const r1 = header ? R.r1 + 1 : R.r1;
+  if (r1 >= R.r2) return toast('정렬하려면 두 줄 이상 있어야 합니다');
+  const body = {r1, r2: R.r2, c1: R.c1, c2: R.c2};
+  if (sh.merges.some(m => inter(m, body))) return toast('병합된 칸이 있어서 정렬할 수 없어요. 병합을 먼저 풀어 주세요');
+  const num = v => parseFloat(String(v).replace(/[,%]/g, ''));
+  const isN = v => { const t = String(v).trim(); return PLAIN.test(t.endsWith('%') ? t.slice(0, -1) : t); };
+  const rows = [];
+  for (let r = r1; r <= R.r2; r++){
+    const cells = []; for (let c = R.c1; c <= R.c2; c++) cells.push(sh.cells[r + ':' + c]);
+    rows.push({cells, key: getV(r, col), i: r});
+  }
+  // 엑셀과 같은 순서: 오름차순은 숫자 → 글자, 빈 칸은 항상 맨 아래
+  rows.sort((a, b) => {
+    const A = a.key, B = b.key;
+    if (A === '' || B === '') return A === B ? a.i - b.i : A === '' ? 1 : -1;
+    const an = isN(A), bn = isN(B);
+    let d = an && bn ? num(A) - num(B) : an ? -1 : bn ? 1 : String(A).localeCompare(String(B), 'ko', {numeric: true});
+    if (desc) d = -d;
+    return d || a.i - b.i;
+  });
+  mutate(() => rows.forEach((row, k) => row.cells.forEach((cell, j) => {
+    const key = (r1 + k) + ':' + (R.c1 + j);
+    if (cell) sh.cells[key] = cell; else delete sh.cells[key];
+  })));
+  toast(`${colName(col)}열 기준 ${desc ? '내림차순' : '오름차순'}으로 정렬했습니다${header ? ' (첫 행은 제목이라 그대로 둠)' : ''}`);
+}
+function sortTarget(){
+  if (sh.filter && act.r >= sh.filter.r1 && act.r <= sh.filter.r2 && act.c >= sh.filter.c1 && act.c <= sh.filter.c2)
+    return {R: {r1: sh.filter.r1, r2: sh.filter.r2, c1: sh.filter.c1, c2: sh.filter.c2}, header: true};
+  const multi = (sel.r1 !== sel.r2 || sel.c1 !== sel.c2) && !fullCols(sel) && !fullRows(sel);
+  const R = multi ? {...sel} : currentRegion(act.r, act.c);
+  return {R, header: guessHeader(R, act.c)};
+}
+function quickSort(desc){
+  const {R, header} = sortTarget();
+  if (R.r1 === R.r2) return toast('정렬할 표 안의 칸을 선택하세요');
+  sortRows(R, act.c, desc, header);
+}
+function customSort(){
+  const {R, header} = sortTarget();
+  if (R.r1 === R.r2) return toast('정렬할 표 안의 칸을 선택하세요');
+  const name = c => { const t = getV(R.r1, c); return header && t !== '' ? `${colName(c)}열 (${esc(String(t).slice(0, 20))})` : `${colName(c)}열`; };
+  const opts = range(R.c1, R.c2).map(c => `<option value="${c}"${c === act.c ? ' selected' : ''}>${name(c)}</option>`).join('');
+  modal('정렬', `<p>${ref(R.r1, R.c1)}:${ref(R.r2, R.c2)} 범위를 정렬합니다.</p>
+    <div class="bkset"><label>기준 <select class="ctl" id="srtCol">${opts}</select></label>
+    <label>순서 <select class="ctl" id="srtDir"><option value="0">오름차순 (가→하, 1→9)</option><option value="1">내림차순 (하→가, 9→1)</option></select></label>
+    <label class="chk"><input type="checkbox" id="srtHead"${header ? ' checked' : ''}> 첫 행은 제목 (정렬하지 않음)</label></div>`, '정렬', b => {
+    sortRows(R, +b.querySelector('#srtCol').value, b.querySelector('#srtDir').value === '1', b.querySelector('#srtHead').checked);
+  });
+}
+function sortMenu(el){
+  const b = el.getBoundingClientRect();
+  showMenu(b.left - 10, b.bottom + 4, [
+    {label: '오름차순 정렬 (가→하, 1→9)', run: () => quickSort(false)},
+    {label: '내림차순 정렬 (하→가, 9→1)', run: () => quickSort(true)},
+    {label: '정렬 기준 고르기…', run: customSort},
+    '-',
+    {label: sh.filter ? '필터 끄기' : '필터 켜기', kbd: 'Ctrl+Shift+L', run: toggleFilter},
+    ...(sh.filter ? [{label: '필터 조건 모두 지우기', run: () => mutate(() => { sh.filter.hide = {}; })}] : []),
+  ]);
+}
+
+// ===== 필터 =====
+function toggleFilter(){
+  if (editing) commitEdit();
+  if (sh.filter){ mutate(() => { delete sh.filter; }); toast('필터를 껐습니다'); return; }
+  const multi = (sel.r1 !== sel.r2 || sel.c1 !== sel.c2) && !fullCols(sel) && !fullRows(sel);
+  const R = multi ? {...sel} : currentRegion(act.r, act.c);
+  if (R.r1 === R.r2 && getV(R.r1, R.c1) === '') return toast('필터를 걸 표 안의 칸을 선택하세요');
+  mutate(() => { sh.filter = {r1: R.r1, c1: R.c1, c2: R.c2, r2: Math.max(R.r2, R.r1 + 1), hide: {}}; });
+  toast('필터를 켰습니다 · 제목 칸의 ▾ 단추로 보고 싶은 값만 고르세요');
+}
+function computeHidden(){
+  hiddenRows = new Set();
+  const F = sh && sh.filter; if (!F || !F.hide) return;
+  const cols = Object.keys(F.hide).filter(c => F.hide[c] && F.hide[c].length).map(Number);
+  if (!cols.length) return;
+  for (let r = F.r1 + 1; r <= F.r2; r++) for (const c of cols)
+    if (F.hide[c].includes(String(fmtValue(getV(r, c), st(r, c))))){ hiddenRows.add(r); break; }
+}
+function filterBtnBox(c, X, Y){
+  const F = sh.filter, s = Math.max(14, Math.round(16 * sh.zoom));
+  const y1 = Y(F.r1), y2 = Y(F.r1 + 1);
+  return {x: X(c + 1) - s - 3, y: y1 + (y2 - y1 - s) / 2, s};
+}
+function filterBtnAt(x, y){
+  const F = sh.filter; if (!F) return null;
+  const z = sh.zoom, fz = frz(), sl = wrap.scrollLeft, stp = wrap.scrollTop;
+  const Y = r => HH + rowY[r]*z - (F.r1 >= fz.r ? stp : 0);
+  for (let c = F.c1; c <= F.c2; c++){
+    const X = cc => HW + colX[cc]*z - (c >= fz.c ? sl : 0);
+    const b = filterBtnBox(c, X, Y);
+    if (x >= b.x - 2 && x <= b.x + b.s + 2 && y >= b.y - 2 && y <= b.y + b.s + 2) return c;
+  }
+  return null;
+}
+function openFilterPop(c, cx, cy){
+  if (editing) commitEdit();
+  const F = sh.filter;
+  let r2 = F.r2; while (r2 + 1 < ROWS && rowHasData(r2 + 1, F.c1, F.c2)) r2++;   // 아래에 새로 적은 줄도 포함
+  if (r2 !== F.r2){ F.r2 = r2; computeHidden(); }
+  const counts = new Map();
+  for (let r = F.r1 + 1; r <= F.r2; r++){ const t = String(fmtValue(getV(r, c), st(r, c))); counts.set(t, (counts.get(t) || 0) + 1); }
+  const list = [...counts.keys()].sort((a, b) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b, 'ko', {numeric: true}));
+  const hidden = new Set((F.hide && F.hide[c]) || []);
+  const title = getV(F.r1, c);
+  hideMenus();
+  pop.innerHTML = `<div class="fpop">
+    <div class="plabel">${colName(c)}열${title !== '' ? ' · ' + esc(String(title).slice(0, 24)) : ''}</div>
+    <div class="prow" style="margin-top:0"><button class="pbtn" data-srt="0">오름차순</button><button class="pbtn" data-srt="1">내림차순</button></div>
+    ${list.length > 8 ? '<input class="ctl" id="fltQ" placeholder="값 찾기" style="margin-top:8px">' : ''}
+    <div class="flist">
+      <label><input type="checkbox" id="fltAll"${hidden.size ? '' : ' checked'}> <b>모두 선택</b></label>
+      ${list.map((v, i) => `<label data-t="${esc(v.toLowerCase())}"><input type="checkbox" data-i="${i}"${hidden.has(v) ? '' : ' checked'}> <span>${v === '' ? '(빈 칸)' : esc(v)}</span><span class="n">${counts.get(v)}</span></label>`).join('')}
+    </div>
+    <div class="prow"><button class="pbtn" id="fltClear">이 열 필터 지우기</button><button class="pbtn on" id="fltOk">확인</button></div>
+  </div>`;
+  const boxes = [...pop.querySelectorAll('input[data-i]')], all = pop.querySelector('#fltAll');
+  all.onchange = () => boxes.forEach(x => { if (x.closest('label').style.display !== 'none') x.checked = all.checked; });
+  boxes.forEach(x => x.onchange = () => { all.checked = boxes.every(y => y.checked); });
+  const q = pop.querySelector('#fltQ');
+  if (q) q.oninput = () => { const t = q.value.toLowerCase(); boxes.forEach(x => { const l = x.closest('label'); l.style.display = l.dataset.t.includes(t) ? '' : 'none'; }); };
+  pop.querySelectorAll('[data-srt]').forEach(b => b.onclick = () => { hideMenus(); sortRows({r1: F.r1, r2: F.r2, c1: F.c1, c2: F.c2}, c, b.dataset.srt === '1', true); });
+  pop.querySelector('#fltClear').onclick = () => { hideMenus(); mutate(() => { delete F.hide[c]; }); };
+  pop.querySelector('#fltOk').onclick = () => {
+    const hide = list.filter((v, i) => !boxes[i].checked);
+    if (hide.length === list.length) return toast('하나 이상 골라 주세요');
+    hideMenus();
+    mutate(() => { F.hide = F.hide || {}; if (hide.length) F.hide[c] = hide; else delete F.hide[c]; });
+    toast(hiddenRows.size ? `${hiddenRows.size}행을 숨겼습니다` : '모든 행을 보이게 했습니다');
+    focusGrid();
+  };
+  place(pop, cx - 20, cy + 10);
+  menuOpenedAt = Date.now();
+}
+
+// ===== 찾기/바꾸기 =====
+let findHits = [];
+const findBar = $('#findBar'), findQ = $('#findQ'), replQ = $('#replQ');
+function placeFind(){ const b = wrap.getBoundingClientRect(); findBar.style.top = (b.top + 8) + 'px'; findBar.style.right = Math.max(8, innerWidth - b.right + 18) + 'px'; }
+function openFind(withReplace){
+  if (editing) commitEdit();
+  findBar.hidden = false;
+  if (withReplace) $('#replRow').hidden = false;
+  placeFind();
+  const cur = getV(act.r, act.c);
+  if (!findQ.value && cur !== '' && String(cur).length < 40 && !String(cur).includes('\n')) findQ.value = cur;
+  setTimeout(() => { findQ.focus(); findQ.select(); }, 0);
+  runFind();
+}
+function closeFind(){ findBar.hidden = true; focusGrid(); }
+function runFind(){
+  const q = findQ.value.toLowerCase();
+  findHits = [];
+  if (q) for (const k in sh.cells){
+    const [r, c] = k.split(':').map(Number), v = getV(r, c);
+    if (v === '' || hiddenRows.has(r)) continue;
+    const m = mergeOf(r, c); if (m && (m.r1 !== r || m.c1 !== c)) continue;
+    if (String(v).toLowerCase().includes(q) || String(fmtValue(v, st(r, c))).toLowerCase().includes(q)) findHits.push([r, c]);
+  }
+  findHits.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  updFindCount();
+}
+function updFindCount(){
+  const el = $('#findCount');
+  if (!findQ.value){ el.textContent = ''; return; }
+  if (!findHits.length){ el.textContent = '없음'; return; }
+  const i = findHits.findIndex(([r, c]) => r === act.r && c === act.c);
+  el.textContent = i >= 0 ? `${i + 1}/${findHits.length}` : `${findHits.length}개`;
+}
+function findGo(d){
+  runFind();
+  if (!findHits.length) return toast('찾는 내용이 없습니다');
+  let i = d > 0 ? findHits.findIndex(([r, c]) => r > act.r || (r === act.r && c > act.c))
+                : findHits.map(([r, c]) => r < act.r || (r === act.r && c < act.c)).lastIndexOf(true);
+  if (i < 0) i = d > 0 ? 0 : findHits.length - 1;
+  const [r, c] = findHits[i];
+  setSel(r, c); ensureVisible(r, c); updFindCount();
+}
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function replaceIn(v){ return String(v).replace(new RegExp(reEsc(findQ.value), 'gi'), () => replQ.value); }
+function replaceOne(){
+  if (!findQ.value) return;
+  runFind();
+  const onHit = findHits.some(([r, c]) => r === act.r && c === act.c) && String(getV(act.r, act.c)).toLowerCase().includes(findQ.value.toLowerCase());
+  if (!onHit) return findGo(1);
+  mutate(() => setV(act.r, act.c, replaceIn(getV(act.r, act.c))));
+  findGo(1);
+}
+function replaceAll(){
+  if (!findQ.value) return;
+  runFind();
+  const targets = findHits.filter(([r, c]) => String(getV(r, c)).toLowerCase().includes(findQ.value.toLowerCase()));
+  if (!targets.length) return toast('바꿀 내용이 없습니다');
+  mutate(() => { for (const [r, c] of targets) setV(r, c, replaceIn(getV(r, c))); });
+  runFind();
+  toast(`${targets.length}칸에서 바꿨습니다 · Ctrl+Z로 되돌릴 수 있어요`);
+}
+findQ.addEventListener('input', runFind);
+findQ.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); findGo(e.shiftKey ? -1 : 1); }
+  else if (e.key === 'Escape'){ e.preventDefault(); closeFind(); }
+});
+replQ.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); replaceOne(); }
+  else if (e.key === 'Escape'){ e.preventDefault(); closeFind(); }
+});
+findBar.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+$('#findNext').onclick = () => findGo(1);
+$('#findPrev').onclick = () => findGo(-1);
+$('#findClose').onclick = closeFind;
+$('#findToggle').onclick = () => { const r = $('#replRow'); r.hidden = !r.hidden; if (!r.hidden) replQ.focus(); };
+$('#replOne').onclick = replaceOne;
+$('#replAll').onclick = replaceAll;
+window.addEventListener('resize', () => { if (!findBar.hidden) placeFind(); });
 
 // ===== 끌어서 옮기기 =====
 function applyMove(B, T, copy){
@@ -1261,25 +1688,27 @@ function updatePainter(){ $('#painterBtn').classList.toggle('on', !!painter); wr
 // ===== 마우스 =====
 function hit(e){
   const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
-  const z = sh.zoom, sl = wrap.scrollLeft, stp = wrap.scrollTop;
-  const res = {x, y, c: colAt((x - HW + sl)/z), r: rowAt((y - HH + stp)/z)};
+  const z = sh.zoom, sl = wrap.scrollLeft, stp = wrap.scrollTop, fz = frz();
+  const sx = x < HW + colX[fz.c]*z ? 0 : sl, sy = y < HH + rowY[fz.r]*z ? 0 : stp;
+  const res = {x, y, c: colAt((x - HW + sx)/z), r: rowAt((y - HH + sy)/z)};
   const touch = e.pointerType === 'touch', te = touch ? 9 : 4, th = touch ? 16 : 6;   // 손가락은 잡는 범위를 넓게
   if (x < HW && y < HH) res.type = 'corner';
   else if (y < HH){
     res.type = 'colh';
-    const xr = HW + colX[res.c+1]*z - sl, xl = HW + colX[res.c]*z - sl;
+    const xr = HW + colX[res.c+1]*z - sx, xl = HW + colX[res.c]*z - sx;
     if (Math.abs(x - xr) <= te) res.edge = res.c; else if (Math.abs(x - xl) <= te && res.c > 0) res.edge = res.c-1;
   } else if (x < HW){
     res.type = 'rowh';
-    const yb = HH + rowY[res.r+1]*z - stp, yt = HH + rowY[res.r]*z - stp;
+    const yb = HH + rowY[res.r+1]*z - sy, yt = HH + rowY[res.r]*z - sy;
     if (Math.abs(y - yb) <= te - 1) res.edge = res.r; else if (Math.abs(y - yt) <= te - 1 && res.r > 0) res.edge = res.r-1;
   } else {
     res.type = 'cell';
-    const hx = HW + colX[sel.c2+1]*z - sl, hy = HH + rowY[sel.r2+1]*z - stp;
+    const fb = filterBtnAt(x, y); if (fb != null){ res.filterBtn = fb; return res; }
+    const hx = HW + colX[sel.c2+1]*z - (sel.c2 >= fz.c ? sl : 0), hy = HH + rowY[sel.r2+1]*z - (sel.r2 >= fz.r ? stp : 0);
     if (!editing && Math.abs(x - hx) <= th && Math.abs(y - hy) <= th) res.handle = true;
     else if (!editing && !touch && !fullCols(sel) && !fullRows(sel)){
       // 선택 범위 테두리 근처: 잡고 끌어서 옮기기
-      const x1 = HW + colX[sel.c1]*z - sl, y1 = HH + rowY[sel.r1]*z - stp;
+      const x1 = HW + colX[sel.c1]*z - (sel.c1 >= fz.c ? sl : 0), y1 = HH + rowY[sel.r1]*z - (sel.r1 >= fz.r ? stp : 0);
       const inY = y >= y1 - 3 && y <= hy + 3, inX = x >= x1 - 3 && x <= hx + 3;
       if (((Math.abs(x - x1) <= 3 || Math.abs(x - hx) <= 3) && inY) || ((Math.abs(y - y1) <= 3 || Math.abs(y - hy) <= 3) && inX)) res.moveEdge = true;
     }
@@ -1321,6 +1750,7 @@ cv.addEventListener('pointerdown', e => {
       drag = {mode:'rows', a};
     }
   } else {
+    if (h.filterBtn != null){ openFilterPop(h.filterBtn, e.clientX, e.clientY); return; }
     if (h.handle){ drag = {mode:'fill', base:{...sel}, target:null}; }
     else if (h.moveEdge){
       const B = {...sel};
@@ -1340,7 +1770,7 @@ cv.addEventListener('pointermove', e => {
   if (e.pointerType === 'touch'){ touchMove(e); return; }
   if (!drag){
     const h = hit(e);
-    cv.style.cursor = h.type === 'colh' && h.edge != null ? 'col-resize' : h.type === 'rowh' && h.edge != null ? 'row-resize' : h.handle ? 'crosshair' : h.moveEdge ? 'move' : h.type === 'colh' ? 's-resize' : h.type === 'rowh' ? 'e-resize' : '';
+    cv.style.cursor = h.filterBtn != null ? 'pointer' : h.type === 'colh' && h.edge != null ? 'col-resize' : h.type === 'rowh' && h.edge != null ? 'row-resize' : h.handle ? 'crosshair' : h.moveEdge ? 'move' : h.type === 'colh' ? 's-resize' : h.type === 'rowh' ? 'e-resize' : '';
     return;
   }
   lastEv = e; updateDrag(e);
@@ -1481,6 +1911,7 @@ function touchUp(e){   // 여기서 다 처리했으면 true, 마우스와 같�
   else if (h.type === 'colh') setRange({r1:0, r2:ROWS-1, c1:h.c, c2:h.c}, {r: rowAt(wrap.scrollTop/sh.zoom), c:h.c});
   else if (h.type === 'rowh') setRange({r1:h.r, r2:h.r, c1:0, c2:COLS-1}, {r:h.r, c: colAt(wrap.scrollLeft/sh.zoom)});
   else {
+    if (h.filterBtn != null){ openFilterPop(h.filterBtn, e.clientX, e.clientY); return true; }
     const now = Date.now(), m = unitOf(h.r, h.c);
     const again = now - lastTap.t < 450 && lastTap.r === m.r1 && lastTap.c === m.c1;
     lastTap = {t: now, r: m.r1, c: m.c1};
@@ -1508,7 +1939,7 @@ cv.addEventListener('dblclick', e => {
   if (h.type === 'cell' && !h.handle){ setSel(h.r, h.c); startEdit('edit', getV(act.r, act.c)); focusGrid(); }
 });
 cv.addEventListener('contextmenu', e => { e.preventDefault(); if (imageAt(e)) return; openCellMenu(e.clientX, e.clientY); });
-wrap.addEventListener('scroll', () => schedule());
+wrap.addEventListener('scroll', () => { const fz = frz(); if (fz.c || fz.r) positionEditor(); schedule(); });
 wrap.addEventListener('wheel', e => {
   if (!(e.ctrlKey || e.metaKey)) return;
   e.preventDefault(); setZoom(sh.zoom + (e.deltaY < 0 ? 0.1 : -0.1));
@@ -1546,7 +1977,8 @@ ed.addEventListener('keydown', e => {
     if (kl === 'x'){ prepareCopy(true); return; }
     if (kl === 'v') return;
     const map = {z: e.shiftKey ? redo : undo, y: redo, b: () => toggle('b'), i: () => toggle('i'), u: () => toggle('u'), '5': () => toggle('st'),
-      s: () => saveFile(e.shiftKey), o: openFile, a: selectAll, e: () => applyStyle({ha:'center'}), '1': null};
+      s: () => saveFile(e.shiftKey), o: openFile, a: selectAll, e: () => applyStyle({ha:'center'}), '1': null,
+      f: () => openFind(false), h: () => openFind(true), l: e.shiftKey ? toggleFilter : null};
     if (map[kl]){ e.preventDefault(); map[kl](); return; }
     if (k.startsWith('Arrow')){ e.preventDefault(); arrow(k, e.shiftKey, true); return; }
     if (k === 'Home'){ e.preventDefault(); setSel(0, 0); ensureVisible(0, 0); return; }
@@ -1617,6 +2049,8 @@ function refreshUI(){
   setOn('tbAL', s.ha === 'left'); setOn('tbAC', s.ha === 'center'); setOn('tbAR', s.ha === 'right');
   setOn('tbVT', s.va === 'top'); setOn('tbVM', !s.va || s.va === 'middle'); setOn('tbVB', s.va === 'bottom');
   setOn('tbWrap', s.wrap); setOn('tbMerge', mergeOf(act.r, act.c)); setOn('tbGrid', sh.grid);
+  setOn('tbFilter', !!sh.filter); setOn('tbFreeze', !!(sh.freeze && (sh.freeze.r || sh.freeze.c)));
+  const nfs = $('#nfSel'); if (nfs && document.activeElement !== nfs) nfs.value = s.nf || '';
   const ff = s.ff || DEF_FONT, fs = $('#fontSel');
   if (![...fs.options].some(o => o.value === ff)) fs.add(new Option(ff, ff));
   if (document.activeElement !== fs) fs.value = ff;
@@ -1737,7 +2171,12 @@ function showPop(anchor, html, bind){
   place(pop, r.left - 10, r.bottom + 4);
 }
 function hideMenus(){ menuEl.hidden = true; pop.hidden = true; }
-document.addEventListener('mousedown', e => { if (!menuEl.contains(e.target) && !pop.contains(e.target) && !e.target.closest('.caret')) hideMenus(); });
+// 바깥을 누르면 메뉴 닫기. 단, 방금 연 메뉴는 그 누름 자체로 닫히지 않게 잠깐 무시
+let menuOpenedAt = 0;
+document.addEventListener('mousedown', e => {
+  if (Date.now() - menuOpenedAt < 350) return;
+  if (!menuEl.contains(e.target) && !pop.contains(e.target) && !e.target.closest('.caret')) hideMenus();
+});
 document.addEventListener('keydown', e => { if (e.key === 'Escape') hideMenus(); });
 
 function modal(title, body, okLabel, onOk, onOpen, opts = {}){
@@ -1897,6 +2336,9 @@ function run(cmd, el){
     wrap: () => toggle('wrap'), merge: mergeToggle, mergeMenu: () => mergePop(el),
     border: () => applyBorder(lastBorder), borderMenu: () => borderPop(el),
     clear: clearFormats,
+    decUp: () => stepDecimals(1), decDown: () => stepDecimals(-1),
+    sortAsc: () => quickSort(false), sortDesc: () => quickSort(true), filter: toggleFilter, sortMenu: () => sortMenu(el),
+    freezeMenu: () => freezeMenu(el), find: () => openFind(false),
     image: () => $('#imgIn').click(),
     grid: () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); },
   };
@@ -2074,6 +2516,7 @@ function toXStyle(s){
   if (s.ha) o.alignment.horizontal = s.ha; if (s.wrap) o.alignment.wrapText = true;
   const bd = {}; if (s.bt) bd.top = toXB(s.bt); if (s.bb) bd.bottom = toXB(s.bb); if (s.bl) bd.left = toXB(s.bl); if (s.br) bd.right = toXB(s.br);
   if (Object.keys(bd).length) o.border = bd;
+  const nf = numFmtOf(s); if (nf) o.numFmt = nf;
   return o;
 }
 function fromXStyle(x){
@@ -2100,7 +2543,8 @@ async function buildXlsx(){
     const X = new ExcelJS.Workbook(); X.creator = '모눈';
     for (const s of wb.sheets){
       sh = s; buildMerges();
-      const ws = X.addWorksheet(s.name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Sheet', {views:[{showGridLines: s.grid}]});
+      const fzx = s.freeze && (s.freeze.r || s.freeze.c) ? {state: 'frozen', xSplit: s.freeze.c || 0, ySplit: s.freeze.r || 0} : {};
+      const ws = X.addWorksheet(s.name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Sheet', {views:[{showGridLines: s.grid, ...fzx}]});
       const {mr, mc} = usedMax();
       const maxC = Math.max(mc, ...Object.keys(s.colW).map(Number), 0);
       for (let c = 0; c <= maxC; c++) ws.getColumn(c+1).width = Math.max(1, (cw(c) - 5) / 7);
@@ -2110,8 +2554,16 @@ async function buildXlsx(){
       for (const r in s.rowStyle) for (let c = 0; c <= mc; c++) keys.add(r+':'+c);
       for (const k of keys){
         const [r, c] = k.split(':').map(Number), v = getV(r,c), cell = ws.getCell(r+1, c+1);
-        if (v !== '') cell.value = PLAIN.test(v.trim()) && !/^0\d/.test(v.trim()) ? parseFloat(v.replace(/,/g, '')) : v;
-        const es = st(r,c); if (es !== EMPTY) cell.style = toXStyle(es);
+        const es = st(r,c);
+        if (v !== ''){
+          const dm = (es.nf === 'date' || es.nf === 'date2') && DATE.exec(v.trim());
+          cell.value = dm ? new Date(Date.UTC(+dm[1], +dm[3] - 1, +dm[4])) : es.nf !== 'text' && PLAIN.test(v.trim()) && !/^0\d/.test(v.trim()) ? parseFloat(v.replace(/,/g, '')) : v;
+        }
+        if (es !== EMPTY) cell.style = toXStyle(es);
+      }
+      if (s.filter){
+        ws.autoFilter = {from: {row: s.filter.r1 + 1, column: s.filter.c1 + 1}, to: {row: s.filter.r2 + 1, column: s.filter.c2 + 1}};
+        for (const r of hiddenRows) ws.getRow(r + 1).hidden = true;
       }
       for (const im of (s.images || [])){
         const m = /^data:image\/(png|jpe?g|gif);base64,(.*)$/.exec((wb.media || {})[im.id] || ''); if (!m) continue;
@@ -2158,6 +2610,7 @@ async function importXlsx(buf){
   X.eachSheet(ws => {
     const s = newSheet(ws.name);
     if (ws.views && ws.views[0] && ws.views[0].showGridLines === false) s.grid = false;
+    if (ws.views && ws.views[0] && ws.views[0].state === 'frozen' && (ws.views[0].xSplit || ws.views[0].ySplit)) s.freeze = {r: ws.views[0].ySplit || 0, c: ws.views[0].xSplit || 0};
     for (let c = 1; c <= Math.min(ws.columnCount, COLS); c++){ const w = ws.getColumn(c).width; if (w) s.colW[c-1] = Math.round(w*7 + 5); }
     ws.eachRow({includeEmpty:true}, (row, rn) => {
       if (rn > ROWS) return;
@@ -2336,7 +2789,8 @@ function imgEl(id){
 const imgAbs = im => ({x: colX[im.c] + im.dx, y: rowY[im.r] + im.dy});
 function imgRect(im){
   const z = sh.zoom, a = imgAbs(im);
-  return {x: HW + a.x * z - wrap.scrollLeft, y: HH + a.y * z - wrap.scrollTop, w: im.w * z, h: im.h * z};
+  const fz = frz();
+  return {x: HW + a.x * z - (im.c >= fz.c ? wrap.scrollLeft : 0), y: HH + a.y * z - (im.r >= fz.r ? wrap.scrollTop : 0), w: im.w * z, h: im.h * z};
 }
 function reanchor(im, x, y){
   x = Math.max(0, x); y = Math.max(0, y);
