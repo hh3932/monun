@@ -175,6 +175,8 @@ button{font:inherit;color:inherit}
   .mi{padding:10px 12px}
 }
 #installBtn[hidden]{display:none}
+.cf-sw{flex:none;width:30px;height:24px;border:1px solid var(--line);border-radius:4px;display:grid;place-items:center;font-size:12px}
+.modal code{font-family:"IBM Plex Mono",Consolas,monospace;background:var(--hover);padding:1px 4px;border-radius:3px}
 #fnHint{position:fixed;z-index:25;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:4px;max-width:360px;font-size:12.5px;color:var(--ink)}
 #fnHint[hidden]{display:none}
 .fh-item{display:flex;gap:10px;align-items:baseline;padding:4px 8px;border-radius:5px;cursor:pointer}
@@ -217,6 +219,7 @@ button{font:inherit;color:inherit}
     <div class="doc"><span id="docName">제목 없음</span><span id="saveState"></span><span id="bkState"></span></div>
     <div class="filebtns">
       <button class="fbtn" data-cmd="install" id="installBtn" title="이 기기에 앱으로 설치" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="2.5" width="9" height="15" rx="2"/><path d="M10 6v6M7.5 9.5 10 12l2.5-2.5M8.5 15h3"/></svg><span>앱으로 설치</span></button>
+      <button class="fbtn" data-cmd="print" title="인쇄 / PDF로 저장 (Ctrl+P)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 7V3h8v4"/><rect x="3" y="7" width="14" height="7" rx="1.5"/><path d="M6 12h8v5H6z"/></svg><span>인쇄</span></button>
       <button class="fbtn" data-cmd="backups" title="자동 백업 설정과 복원"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6"/><path d="M3 3.5v3.2h3.2"/><path d="M10 6.5V10l2.5 1.6"/></svg><span>백업·복원</span></button>
       <button class="fbtn" data-cmd="new" title="새로 만들기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15"/></svg><span>새로 만들기</span></button>
       <button class="fbtn" data-cmd="open" title="열기 (Ctrl+O)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 5h5l1.5 2h8.5v9h-15z"/></svg><span>열기</span></button>
@@ -289,6 +292,8 @@ button{font:inherit;color:inherit}
     </div>
     <div class="sep"></div>
     <div class="grp">
+      <button class="tb labeled" data-cmd="cfMenu" title="조건부 서식: 값에 따라 자동으로 색칠"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="14" height="14" rx="1"/><path d="M3 8h14M3 13h14M8 3v14"/><rect x="8.6" y="8.6" width="8" height="3.8" fill="currentColor" stroke="none" opacity=".55"/></svg><span>조건부 서식</span></button>
+      <button class="tb" data-cmd="chartMenu" title="차트 넣기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 17h14"/><rect x="4.5" y="9" width="2.8" height="8" fill="currentColor" stroke="none"/><rect x="8.6" y="5" width="2.8" height="12" fill="currentColor" stroke="none" opacity=".7"/><rect x="12.7" y="11" width="2.8" height="6" fill="currentColor" stroke="none" opacity=".45"/></svg></button>
       <button class="tb labeled" data-cmd="freezeMenu" id="tbFreeze" title="틀 고정: 제목 줄·열을 스크롤해도 보이게"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="3" y="3" width="14" height="14" rx="1" stroke-width="1.3"/><path d="M3 7.5h14M7.5 3v14" stroke-width="2.4"/></svg><span>틀 고정</span></button>
       <button class="tb" data-cmd="autoSum" title="자동 합계 (Alt+=)"><span class="glyph" style="font-family:Georgia,serif;font-size:17px">Σ</span></button>
       <button class="tb caret" data-cmd="sumMenu" title="평균·개수·최댓값… 함수 목록"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
@@ -551,14 +556,15 @@ function drawCells(){
 
   // 채우기
   for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++){
-    if (mergeOf(r,c)) continue;
-    const s = st(r,c); if (!s.bg) continue;
-    const x = Math.round(X(c)), y = Math.round(Y(r));
-    ctx.fillStyle = s.bg; ctx.fillRect(x-1, y-1, Math.round(X(c+1))-x+1, Math.round(Y(r+1))-y+1);
+    if (mergeOf(r,c) || hiddenRows.has(r)) continue;
+    const s = stShow(r,c); if (!s.bg && !s._bar) continue;
+    const x = Math.round(X(c)), y = Math.round(Y(r)), w = Math.round(X(c+1))-x, hh = Math.round(Y(r+1))-y;
+    if (s.bg){ ctx.fillStyle = s.bg; ctx.fillRect(x-1, y-1, w+1, hh+1); }
+    if (s._bar){ ctx.fillStyle = s._bar.color; ctx.globalAlpha = .55; ctx.fillRect(x + 2, y + 3, Math.max(0, (w - 5) * Math.min(1, s._bar.t)), Math.max(0, hh - 7)); ctx.globalAlpha = 1; }
   }
   const vm = sh.merges.filter(m => m.r2 >= r0 && m.r1 <= r1 && m.c2 >= c0 && m.c1 <= c1);
   for (const m of vm){
-    const s = st(m.r1,m.c1);
+    const s = stShow(m.r1,m.c1);
     const x = Math.round(X(m.c1)), y = Math.round(Y(m.r1)), w = Math.round(X(m.c2+1))-x, h = Math.round(Y(m.r2+1))-y;
     if (s.bg){ ctx.fillStyle = s.bg; ctx.fillRect(x-1, y-1, w+1, h+1); }
     else { ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w-1, h-1); }
@@ -607,7 +613,7 @@ function drawCells(){
 
 function drawText(r, c, rect, isMerge){
   const {X, z, W} = V;
-  const raw = shown(r,c), s = st(r,c), v = fmtValue(raw, s), errCell = raw !== '' && String(raw)[0] === '#' && isFormulaCell(r, c);
+  const raw = shown(r,c), s = stShow(r,c), v = fmtValue(raw, s), errCell = raw !== '' && String(raw)[0] === '#' && isFormulaCell(r, c);
   ensureFont(s.ff, s.b);
   ctx.font = fontStr(s, z);
   const px = (s.fs || DEF_FS) * 4/3 * z, pad = 3*z + 1;
@@ -1160,6 +1166,12 @@ function shiftAxis(axis, at, n, del){
     const i = map(im[axis]);
     if (i >= 0) im[axis] = i; else { im[axis] = Math.min(at, max - 1); im[axis === 'r' ? 'dy' : 'dx'] = 0; }
   }
+  if (sh.cf) sh.cf = sh.cf.filter(rule => {
+    let a = rule.range[a1], b = rule.range[a2];
+    if (!del){ if (a >= at) a += n; if (b >= at) b += n; b = Math.min(b, max - 1); if (a > max - 1) return false; }
+    else { const e = at + n - 1; a = a < at ? a : a > e ? a - n : at; b = b < at ? b : b > e ? b - n : at - 1; if (b < a) return false; }
+    rule.range = {...rule.range, [a1]: a, [a2]: b}; return true;
+  });
 }
 function insertRows(){ const n = sel.r2-sel.r1+1; if (n >= ROWS) return; mutate(() => shiftAxis('r', sel.r1, n, false)); }
 function deleteRows(){ const n = sel.r2-sel.r1+1; mutate(() => shiftAxis('r', sel.r1, n, true)); clampSel(); afterSel(); }
@@ -1572,7 +1584,7 @@ const FE = {div0: new FErr('#DIV/0!'), value: new FErr('#VALUE!'), ref: new FErr
 const isErr = x => x instanceof FErr;
 let calcCache = new Map(), calcStack = new Set();
 const parseCache = new Map();
-function clearCalc(){ calcCache = new Map(); }
+function clearCalc(){ calcCache = new Map(); cfStats = new Map(); }
 
 // --- 날짜: 엑셀처럼 1899-12-30부터 센 날 수로 계산 ---
 const DAY0 = Date.UTC(1899, 11, 30);
@@ -2132,6 +2144,378 @@ function showFnCatalog(){
   }, {wide: true, noCancel: true});
 }
 
+// ===== 조건부 서식 =====
+// sh.cf = [{range, type, ...}] · 그릴 때만 겹쳐 보여 준다(칸 서식 자체는 그대로)
+const CF_PRESETS = [
+  {label: '연한 빨강 + 진한 빨강 글자', bg: '#FFC7CE', fc: '#9C0006'},
+  {label: '노랑 + 진한 노랑 글자', bg: '#FFEB9C', fc: '#9C5700'},
+  {label: '초록 + 진한 초록 글자', bg: '#C6EFCE', fc: '#006100'},
+  {label: '연한 빨강 채우기', bg: '#FFC7CE'},
+  {label: '빨강 글자', fc: '#C00000'},
+  {label: '굵은 파랑 글자', fc: '#1F4E9C', b: true},
+];
+let cfStats = new Map();
+const inRect = (R, r, c) => r >= R.r1 && r <= R.r2 && c >= R.c1 && c <= R.c2;
+function cfNums(rule){
+  let st = cfStats.get(rule); if (st) return st;
+  const vals = [], texts = new Map();
+  for (let r = rule.range.r1; r <= rule.range.r2; r++) for (let c = rule.range.c1; c <= rule.range.c2; c++){
+    const x = cellValue(sh, r, c);
+    if (typeof x === 'number') vals.push(x);
+    if (x !== null && x !== '') { const k = toStr(x).toLowerCase(); texts.set(k, (texts.get(k) || 0) + 1); }
+  }
+  const sorted = [...vals].sort((a, b) => a - b);
+  st = {min: sorted[0] ?? 0, max: sorted[sorted.length - 1] ?? 0, avg: vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : 0, sorted, texts};
+  cfStats.set(rule, st); return st;
+}
+function lerpColor(a, b, t){
+  const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), A = p(a), B = p(b);
+  return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+// 이 칸에 맞는 규칙들의 모양 (채우기·글자색·굵게, 데이터 막대)
+function cfLook(r, c){
+  const rules = sh.cf; if (!rules || !rules.length) return null;
+  let look = null;
+  for (const rule of rules){
+    if (!inRect(rule.range, r, c)) continue;
+    const x = cellValue(sh, r, c);
+    let hitR = false, extra = null;
+    switch (rule.type){
+      case 'gt': hitR = typeof x === 'number' && x > rule.a; break;
+      case 'lt': hitR = typeof x === 'number' && x < rule.a; break;
+      case 'between': hitR = typeof x === 'number' && x >= Math.min(rule.a, rule.b) && x <= Math.max(rule.a, rule.b); break;
+      case 'eq': hitR = x !== null && (typeof rule.a === 'number' ? x === rule.a : toStr(x).toLowerCase() === String(rule.a).toLowerCase()); break;
+      case 'text': hitR = x !== null && toStr(x).toLowerCase().includes(String(rule.a).toLowerCase()); break;
+      case 'dup': hitR = x !== null && x !== '' && cfNums(rule).texts.get(toStr(x).toLowerCase()) > 1; break;
+      case 'top': { const s = cfNums(rule).sorted; hitR = typeof x === 'number' && s.length && x >= s[Math.max(0, s.length - rule.n)]; break; }
+      case 'bottom': { const s = cfNums(rule).sorted; hitR = typeof x === 'number' && s.length && x <= s[Math.min(s.length - 1, rule.n - 1)]; break; }
+      case 'aboveAvg': hitR = typeof x === 'number' && x > cfNums(rule).avg; break;
+      case 'formula': { const f = shiftFormula(rule.f, r - rule.range.r1, c - rule.range.c1); let v; try { v = scalar(evalNode(parseFormula(f.slice(1)), {s: sh, r, c})); } catch (e) { v = false; } const t = truthy(v); hitR = t === true; break; }
+      case 'scale': if (typeof x === 'number'){ const st = cfNums(rule), t = st.max > st.min ? (x - st.min) / (st.max - st.min) : 0.5;
+          const [c1, c2, c3] = rule.colors; extra = {bg: c3 ? (t < 0.5 ? lerpColor(c1, c2, t * 2) : lerpColor(c2, c3, (t - 0.5) * 2)) : lerpColor(c1, c2, t)}; hitR = true; } break;
+      case 'bar': if (typeof x === 'number'){ const st = cfNums(rule), lo = Math.min(0, st.min), hi = Math.max(st.max, lo + 1e-9); extra = {bar: {t: (x - lo) / (hi - lo), color: rule.color}}; hitR = true; } break;
+    }
+    if (!hitR) continue;
+    look = Object.assign(look || {}, extra || {}, rule.bg ? {bg: rule.bg} : {}, rule.fc ? {fc: rule.fc} : {}, rule.b ? {b: true} : {});
+  }
+  return look;
+}
+// 그리기용 서식: 칸 서식 + 조건부 서식
+function stShow(r, c){
+  const s = st(r, c), L = sh.cf && sh.cf.length ? cfLook(r, c) : null;
+  if (!L) return s;
+  const o = Object.assign({}, s); if (L.bg) o.bg = L.bg; if (L.fc) o.fc = L.fc; if (L.b) o.b = true; if (L.bar) o._bar = L.bar;
+  return o;
+}
+function cfTarget(){
+  const multi = (sel.r1 !== sel.r2 || sel.c1 !== sel.c2) && !fullCols(sel) && !fullRows(sel);
+  if (multi) return {...sel};
+  if (fullCols(sel) || fullRows(sel)){ const {mr, mc} = usedMax(); return {r1: sel.r1, c1: sel.c1, r2: Math.min(sel.r2, Math.max(mr, sel.r1)), c2: Math.min(sel.c2, Math.max(mc, sel.c1))}; }
+  return currentRegion(act.r, act.c);
+}
+function addCF(rule){
+  mutate(() => { sh.cf = sh.cf || []; sh.cf.push(rule); });
+  toast(`${ref(rule.range.r1, rule.range.c1)}:${ref(rule.range.r2, rule.range.c2)}에 조건부 서식을 넣었습니다`);
+}
+const presetOpts = () => CF_PRESETS.map((p, i) => `<option value="${i}">${p.label}</option>`).join('');
+function cfAsk(type, title, label, two){
+  const R = cfTarget();
+  const body = `<p>${label} <span style="color:var(--muted)">(${ref(R.r1, R.c1)}:${ref(R.r2, R.c2)})</span></p>
+    <div class="bkset">${type === 'top' || type === 'bottom' ? '<label>개수 <input class="ctl" id="cfA" type="number" min="1" value="10" style="width:90px;margin:0"></label>'
+      : `<label>값 <input class="ctl" id="cfA" style="margin:0" autocomplete="off"></label>${two ? '<label>그리고 <input class="ctl" id="cfB" style="margin:0" autocomplete="off"></label>' : ''}`}
+    <label>모양 <select class="ctl" id="cfP">${presetOpts()}</select></label></div>`;
+  modal(title, body, '적용', b => {
+    const raw = b.querySelector('#cfA').value.trim(), p = CF_PRESETS[+b.querySelector('#cfP').value];
+    const num = v => { const t = String(v).replace(/,/g, ''); return t !== '' && !isNaN(+t) ? +t : null; };
+    const rule = {range: R, type, ...p}; delete rule.label;
+    if (type === 'top' || type === 'bottom'){ rule.n = Math.max(1, parseInt(raw, 10) || 10); }
+    else if (type === 'text'){ if (!raw) { toast('찾을 글자를 적어 주세요'); return false; } rule.a = raw; }
+    else if (type === 'eq'){ if (raw === '') { toast('값을 적어 주세요'); return false; } rule.a = num(raw) ?? raw; }
+    else { const a = num(raw); if (a == null){ toast('숫자를 적어 주세요'); return false; } rule.a = a;
+      if (two){ const bb = num(b.querySelector('#cfB').value); if (bb == null){ toast('두 번째 숫자를 적어 주세요'); return false; } rule.b = bb; } }
+    addCF(rule);
+  });
+}
+function cfFormulaAsk(){
+  const R = cfTarget();
+  modal('수식으로 조건 정하기', `<p>${ref(R.r1, R.c1)}:${ref(R.r2, R.c2)} 범위에서, 맨 왼쪽 위 칸(${ref(R.r1, R.c1)}) 기준으로 수식을 적으세요. 결과가 TRUE인 칸에 모양을 입힙니다.</p>
+    <p style="margin-top:-6px">예: <code>=$E${R.r1 + 1}="완료"</code> (같은 행의 E열이 완료면 행 전체 색칠), <code>=${ref(R.r1, R.c1)}&lt;0</code></p>
+    <div class="bkset"><label>수식 <input class="ctl" id="cfF" style="margin:0" value="=" autocomplete="off" spellcheck="false"></label><label>모양 <select class="ctl" id="cfP">${presetOpts()}</select></label></div>`, '적용', b => {
+    let f = b.querySelector('#cfF').value.trim(); if (!f.startsWith('=')) f = '=' + f;
+    try { parseFormula(f.slice(1)); } catch (e){ toast('수식에 오류가 있어요'); return false; }
+    const p = CF_PRESETS[+b.querySelector('#cfP').value], rule = {range: R, type: 'formula', f: normalizeFormula(f), ...p}; delete rule.label;
+    addCF(rule);
+  });
+}
+const CF_NAMES = {gt: '보다 큼', lt: '보다 작음', between: '사이', eq: '같음', text: '글자 포함', dup: '중복 값', top: '상위', bottom: '하위', aboveAvg: '평균 초과', scale: '색조', bar: '데이터 막대', formula: '수식'};
+function cfDesc(r){
+  const v = r.type === 'between' ? `${r.a} ~ ${r.b}` : r.type === 'top' || r.type === 'bottom' ? `${r.n}개` : r.type === 'formula' ? r.f : r.a != null ? String(r.a) : '';
+  return `${CF_NAMES[r.type]}${v ? ' · ' + v : ''}`;
+}
+function cfManage(){
+  const list = sh.cf || [];
+  const rows = list.length ? list.map((r, i) => `<div class="bkrow"><div><b>${ref(r.range.r1, r.range.c1)}:${ref(r.range.r2, r.range.c2)}</b><span>${esc(cfDesc(r))}</span></div>
+      <span class="cf-sw" style="background:${r.bg || (r.colors ? `linear-gradient(90deg,${r.colors.join(',')})` : r.color || '#fff')};color:${r.fc || '#111'};font-weight:${r.b ? 700 : 400}">가</span>
+      <button class="pbtn" data-del="${i}">지우기</button></div>`).join('') : '<p class="bkempty">이 시트에는 조건부 서식이 없습니다.</p>';
+  modal('조건부 서식 규칙', `<div class="bklist">${rows}</div>`, '닫기', () => {}, back => {
+    back.querySelectorAll('[data-del]').forEach(btn => btn.onclick = () => { const i = +btn.dataset.del; back.remove(); mutate(() => { sh.cf.splice(i, 1); }); cfManage(); });
+  }, {wide: true, noCancel: true});
+}
+function cfMenu(el){
+  const b = el.getBoundingClientRect();
+  const R = () => cfTarget();
+  showMenu(b.left - 10, b.bottom + 4, [
+    {label: '보다 큼…', run: () => cfAsk('gt', '보다 큰 값 강조', '이 값보다 큰 칸')},
+    {label: '보다 작음…', run: () => cfAsk('lt', '보다 작은 값 강조', '이 값보다 작은 칸')},
+    {label: '사이…', run: () => cfAsk('between', '사이 값 강조', '두 값 사이(포함)인 칸', true)},
+    {label: '같음…', run: () => cfAsk('eq', '같은 값 강조', '이 값과 같은 칸')},
+    {label: '글자 포함…', run: () => cfAsk('text', '글자 포함 강조', '이 글자가 들어간 칸')},
+    {label: '중복 값', run: () => addCF({range: R(), type: 'dup', bg: '#FFC7CE', fc: '#9C0006'})},
+    '-',
+    {label: '상위 10개…', run: () => cfAsk('top', '상위 값 강조', '큰 값부터 몇 개')},
+    {label: '하위 10개…', run: () => cfAsk('bottom', '하위 값 강조', '작은 값부터 몇 개')},
+    {label: '평균보다 큰 값', run: () => addCF({range: R(), type: 'aboveAvg', bg: '#C6EFCE', fc: '#006100'})},
+    '-',
+    {label: '데이터 막대 (파랑)', run: () => addCF({range: R(), type: 'bar', color: '#5B8DEF'})},
+    {label: '데이터 막대 (초록)', run: () => addCF({range: R(), type: 'bar', color: '#63BE7B'})},
+    {label: '색조: 흰색 → 초록', run: () => addCF({range: R(), type: 'scale', colors: ['#FFFFFF', '#63BE7B']})},
+    {label: '색조: 빨강 → 노랑 → 초록', run: () => addCF({range: R(), type: 'scale', colors: ['#F8696B', '#FFEB84', '#63BE7B']})},
+    '-',
+    {label: '수식으로 정하기…', run: cfFormulaAsk},
+    {label: '규칙 보기·지우기…', run: cfManage},
+    ...(sh.cf && sh.cf.length ? [{label: '선택 범위의 규칙 지우기', run: () => { const T = cfTarget(); mutate(() => { sh.cf = sh.cf.filter(r => !inter(r.range, T)); }); toast('규칙을 지웠습니다'); }}] : []),
+  ]);
+}
+
+// ===== 차트 =====
+// 그림처럼 떠 있는 개체(sh.images 안에 kind: 'chart'). 데이터 범위가 바뀌면 바로 다시 그린다.
+const CHART_COLORS = ['#2E5BD0', '#F28C28', '#2BA36B', '#D64545', '#8E5CD9', '#1BA3B8', '#C7A21B', '#6B7385'];
+const CHART_TYPES = {col: '세로 막대', bar: '가로 막대', line: '꺾은선', pie: '원형'};
+function chartData(ch){
+  const R = ch.range, isNumAt = (r, c) => typeof cellValue(sh, r, c) === 'number';
+  // 첫 열이 글자면 항목 이름, 첫 행이 글자면 계열 이름
+  let firstColCat = false; for (let r = R.r1 + 1; r <= R.r2; r++){ const v = cellValue(sh, r, R.c1); if (v !== null && typeof v !== 'number'){ firstColCat = true; break; } }
+  const dc1 = firstColCat ? R.c1 + 1 : R.c1;
+  let header = false; for (let c = dc1; c <= R.c2; c++){ const v = cellValue(sh, R.r1, c); if (v !== null && typeof v !== 'number'){ header = true; break; } }
+  if (!firstColCat && R.r2 > R.r1){ const v = cellValue(sh, R.r1, R.c1); if (header && v !== null && typeof v !== 'number') firstColCat = true; }
+  const dr1 = header ? R.r1 + 1 : R.r1, cc1 = firstColCat ? R.c1 + 1 : R.c1;
+  let cats = [], series = [];
+  if (!ch.byRow){
+    for (let r = dr1; r <= R.r2; r++) cats.push(firstColCat ? shown(r, R.c1) : String(r - dr1 + 1));
+    for (let c = cc1; c <= R.c2; c++) series.push({name: header ? shown(R.r1, c) : `계열 ${c - cc1 + 1}`, values: range(dr1, R.r2).map(r => { const v = cellValue(sh, r, c); return typeof v === 'number' ? v : null; })});
+  } else {
+    for (let c = cc1; c <= R.c2; c++) cats.push(header ? shown(R.r1, c) : String(c - cc1 + 1));
+    for (let r = dr1; r <= R.r2; r++) series.push({name: firstColCat ? shown(r, R.c1) : `계열 ${r - dr1 + 1}`, values: range(cc1, R.c2).map(c => { const v = cellValue(sh, r, c); return typeof v === 'number' ? v : null; })});
+  }
+  return {cats, series};
+}
+function niceScale(lo, hi, ticks){
+  if (lo === hi){ hi = lo + 1; }
+  const span = hi - lo, step0 = span / ticks, mag = Math.pow(10, Math.floor(Math.log10(step0))), f = step0 / mag;
+  const step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+  return {lo: Math.floor(lo / step) * step, hi: Math.ceil(hi / step) * step, step};
+}
+const shortNum = x => { const a = Math.abs(x); return a >= 1e8 ? Number((x / 1e8).toPrecision(3)) + '억' : a >= 1e4 ? Number((x / 1e4).toPrecision(4)) + '만' : Number(x.toPrecision(6)).toLocaleString('en-US'); };
+function drawChart(g, ch, R){
+  const k = R.w / ch.w, F = (px, w) => `${w || 400} ${Math.max(8, px * k)}px "IBM Plex Sans KR", "Malgun Gothic", sans-serif`;
+  g.save();
+  g.beginPath(); g.rect(R.x, R.y, R.w, R.h); g.clip();
+  g.fillStyle = '#fff'; g.fillRect(R.x, R.y, R.w, R.h);
+  g.strokeStyle = '#D5DAE3'; g.lineWidth = 1; g.strokeRect(R.x + 0.5, R.y + 0.5, R.w - 1, R.h - 1);
+  const {cats, series} = chartData(ch);
+  const pad = 14 * k; let top = R.y + pad, left = R.x + pad, right = R.x + R.w - pad, bottom = R.y + R.h - pad;
+  g.textBaseline = 'middle';
+  if (ch.title){ g.fillStyle = '#1A2130'; g.font = F(15, 600); g.textAlign = 'center'; g.fillText(ch.title, R.x + R.w / 2, top + 9 * k); top += 26 * k; }
+  if (!series.length || !cats.length){ g.fillStyle = '#6B7385'; g.font = F(12); g.textAlign = 'center'; g.fillText('차트로 그릴 숫자가 없습니다', R.x + R.w / 2, R.y + R.h / 2); g.restore(); return; }
+  // 범례
+  const legendItems = ch.type === 'pie' ? cats : series.map(s => s.name);
+  if (legendItems.length > 1 || ch.type === 'pie'){
+    g.font = F(11); g.textAlign = 'left';
+    const iw = Math.min(140 * k, Math.max(...legendItems.map(t => g.measureText(String(t)).width)) + 22 * k);
+    const lh = 18 * k, maxRows = Math.floor((bottom - top) / lh);
+    legendItems.slice(0, maxRows).forEach((t, i) => {
+      const y = top + i * lh + lh / 2; g.fillStyle = CHART_COLORS[i % CHART_COLORS.length]; g.fillRect(right - iw, y - 5 * k, 10 * k, 10 * k);
+      g.fillStyle = '#3B4252'; g.fillText(String(t).slice(0, 14), right - iw + 15 * k, y);
+    });
+    right -= iw + 10 * k;
+  }
+  if (ch.type === 'pie'){
+    const vals = series[0].values.map(v => v > 0 ? v : 0), total = vals.reduce((s, x) => s + x, 0);
+    const cx = (left + right) / 2, cy = (top + bottom) / 2, rad = Math.max(10, Math.min(right - left, bottom - top) / 2 - 4 * k);
+    let a0 = -Math.PI / 2;
+    vals.forEach((v, i) => {
+      if (!v || !total) return; const a1 = a0 + v / total * Math.PI * 2;
+      g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, rad, a0, a1); g.closePath(); g.fillStyle = CHART_COLORS[i % CHART_COLORS.length]; g.fill();
+      g.strokeStyle = '#fff'; g.lineWidth = 1.5 * k; g.stroke();
+      const pct = v / total; if (pct > 0.04){ const am = (a0 + a1) / 2; g.fillStyle = '#fff'; g.font = F(11, 600); g.textAlign = 'center'; g.fillText(Math.round(pct * 100) + '%', cx + Math.cos(am) * rad * 0.62, cy + Math.sin(am) * rad * 0.62); }
+      a0 = a1;
+    });
+    g.restore(); return;
+  }
+  const all = series.flatMap(s => s.values).filter(v => v != null);
+  const sc = niceScale(Math.min(0, ...all), Math.max(0, ...all), 5);
+  const horiz = ch.type === 'bar';
+  g.font = F(10.5);
+  const valW = Math.max(...range(0, Math.round((sc.hi - sc.lo) / sc.step)).map(i => g.measureText(shortNum(sc.lo + i * sc.step)).width));
+  const catW = Math.min(110 * k, Math.max(...cats.map(t => g.measureText(String(t)).width)));
+  if (horiz){ left += catW + 8 * k; bottom -= 16 * k; } else { left += valW + 8 * k; bottom -= 18 * k; }
+  const n = Math.round((sc.hi - sc.lo) / sc.step);
+  // 눈금과 가로(또는 세로) 보조선
+  for (let i = 0; i <= n; i++){
+    const v = sc.lo + i * sc.step, t = (v - sc.lo) / (sc.hi - sc.lo);
+    g.strokeStyle = v === 0 ? '#9AA3B2' : '#EDF0F4'; g.lineWidth = 1;
+    g.fillStyle = '#6B7385'; g.font = F(10.5);
+    if (horiz){ const x = Math.round(left + t * (right - left)) + 0.5; g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.textAlign = 'center'; g.fillText(shortNum(v), x, bottom + 9 * k); }
+    else { const y = Math.round(bottom - t * (bottom - top)) + 0.5; g.beginPath(); g.moveTo(left, y); g.lineTo(right, y); g.stroke(); g.textAlign = 'right'; g.fillText(shortNum(v), left - 6 * k, y); }
+  }
+  const N = cats.length, band = (horiz ? bottom - top : right - left) / N;
+  const pos = v => (v - sc.lo) / (sc.hi - sc.lo);
+  // 항목 이름
+  g.fillStyle = '#3B4252'; g.font = F(10.5);
+  const every = Math.max(1, Math.ceil(N * (horiz ? 14 * k : catW + 6 * k) / (horiz ? bottom - top : right - left)));
+  cats.forEach((t, i) => { if (i % every) return; const m = (horiz ? top : left) + band * (i + 0.5);
+    if (horiz){ g.textAlign = 'right'; g.fillText(String(t).slice(0, 12), left - 6 * k, m); } else { g.textAlign = 'center'; g.fillText(String(t).slice(0, 10), m, bottom + 10 * k); } });
+  if (ch.type === 'line'){
+    series.forEach((s, si) => {
+      const col = CHART_COLORS[si % CHART_COLORS.length]; g.strokeStyle = col; g.lineWidth = 2 * k; g.beginPath(); let on = false;
+      s.values.forEach((v, i) => { if (v == null){ on = false; return; } const x = left + band * (i + 0.5), y = bottom - pos(v) * (bottom - top); on ? g.lineTo(x, y) : g.moveTo(x, y); on = true; });
+      g.stroke(); g.fillStyle = col;
+      s.values.forEach((v, i) => { if (v == null) return; g.beginPath(); g.arc(left + band * (i + 0.5), bottom - pos(v) * (bottom - top), 3 * k, 0, Math.PI * 2); g.fill(); });
+    });
+  } else {
+    const S = series.length, gap = band * 0.22, bw = (band - gap) / S, z0 = pos(Math.max(sc.lo, Math.min(0, sc.hi)));
+    series.forEach((s, si) => {
+      g.fillStyle = CHART_COLORS[si % CHART_COLORS.length];
+      s.values.forEach((v, i) => {
+        if (v == null) return; const a = (horiz ? top : left) + band * i + gap / 2 + bw * si, p = pos(v);
+        if (horiz){ const x0 = left + z0 * (right - left), x1 = left + p * (right - left); g.fillRect(Math.min(x0, x1), a, Math.abs(x1 - x0), bw * 0.92); }
+        else { const y0 = bottom - z0 * (bottom - top), y1 = bottom - p * (bottom - top); g.fillRect(a, Math.min(y0, y1), bw * 0.92, Math.abs(y1 - y0)); }
+      });
+    });
+  }
+  g.restore();
+}
+function chartToDataURL(ch, scale){
+  const c = document.createElement('canvas'); c.width = Math.round(ch.w * scale); c.height = Math.round(ch.h * scale);
+  drawChart(c.getContext('2d'), ch, {x: 0, y: 0, w: c.width, h: c.height});
+  return c.toDataURL('image/png');
+}
+function insertChart(type){
+  if (editing) commitEdit();
+  const multi = (sel.r1 !== sel.r2 || sel.c1 !== sel.c2) && !fullCols(sel) && !fullRows(sel);
+  const R = multi ? {...sel} : currentRegion(act.r, act.c);
+  if (R.r1 === R.r2 && R.c1 === R.c2) return toast('차트로 만들 표를 먼저 선택하세요 (제목 줄 포함)');
+  const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const T = currentRegion(R.r1, R.c1);   // 표 전체 오른쪽에 둠 (선택 범위 바로 옆이 아니라)
+  const ch = {id, kind: 'chart', type, range: R, r: R.r1, c: Math.min(COLS - 1, Math.max(T.c2, R.c2) + 2), dx: 0, dy: 0, w: 480, h: 300, title: ''};
+  const d = chartData(ch);
+  if (!d.series.length || !d.series.some(s => s.values.some(v => v != null))) return toast('선택한 범위에 숫자가 없어요');
+  ch.title = d.series.length === 1 ? String(d.series[0].name) : '';
+  mutate(() => { sh.images = sh.images || []; sh.images.push(ch); });
+  selImg = id; schedule(); ensureVisible(ch.r, ch.c);
+  toast(`${CHART_TYPES[type]} 차트를 넣었습니다 · 오른쪽 클릭으로 편집`);
+}
+function editChart(ch){
+  const typeOpts = Object.entries(CHART_TYPES).map(([k, v]) => `<option value="${k}"${ch.type === k ? ' selected' : ''}>${v}</option>`).join('');
+  modal('차트 편집', `<div class="bkset">
+    <label>종류 <select class="ctl" id="chT">${typeOpts}</select></label>
+    <label>제목 <input class="ctl" id="chTitle" style="margin:0" value="${esc(ch.title || '')}"></label>
+    <label>데이터 범위 <input class="ctl" id="chR" style="margin:0" value="${ref(ch.range.r1, ch.range.c1)}:${ref(ch.range.r2, ch.range.c2)}"></label>
+    <label class="chk"><input type="checkbox" id="chRow"${ch.byRow ? ' checked' : ''}> 행을 계열로 (기본은 열마다 한 계열)</label></div>`, '적용', b => {
+    const [p, q] = b.querySelector('#chR').value.split(':').map(t => parseRef(t || ''));
+    if (!p || !q){ toast('범위는 A1:C5 처럼 적어 주세요'); return false; }
+    mutate(() => { ch.type = b.querySelector('#chT').value; ch.title = b.querySelector('#chTitle').value; ch.byRow = b.querySelector('#chRow').checked;
+      ch.range = {r1: Math.min(p.r, q.r), c1: Math.min(p.c, q.c), r2: Math.max(p.r, q.r), c2: Math.max(p.c, q.c)}; });
+  });
+}
+function chartMenu(el){
+  const b = el.getBoundingClientRect();
+  showMenu(b.left - 10, b.bottom + 4, Object.entries(CHART_TYPES).map(([k, v]) => ({label: v + ' 차트', run: () => insertChart(k)})));
+}
+
+// ===== 인쇄 / PDF =====
+function printArea(useSel){
+  if (useSel && (sel.r1 !== sel.r2 || sel.c1 !== sel.c2) && !fullCols(sel) && !fullRows(sel)) return {...sel};
+  let r2 = -1, c2 = -1;
+  for (const k in sh.cells){ const [r, c] = k.split(':').map(Number); const cell = sh.cells[k]; if ((cell.v != null && cell.v !== '') || (cell.s && (cell.s.bg || cell.s.bt || cell.s.bb || cell.s.bl || cell.s.br))){ r2 = Math.max(r2, r); c2 = Math.max(c2, c); } }
+  for (const m of sh.merges){ r2 = Math.max(r2, m.r2); c2 = Math.max(c2, m.c2); }
+  for (const im of (sh.images || [])){ const a = imgAbs(im); r2 = Math.max(r2, rowAt(a.y + im.h)); c2 = Math.max(c2, colAt(a.x + im.w)); }
+  return r2 < 0 ? null : {r1: 0, c1: 0, r2, c2};
+}
+function buildPrintHTML(o){
+  const A = o.area, cols = range(A.c1, A.c2), x0 = colX[A.c1], y0 = rowY[A.r1];
+  const tw = cols.reduce((s, c) => s + cw(c), 0), th = rowY[A.r2 + 1] - y0;
+  const pw = o.landscape ? 1032 : 703, ph = o.landscape ? 703 : 1032;
+  const scale = o.fit === 'width' ? Math.min(1, pw / tw) : o.fit === 'page' ? Math.min(1, pw / tw, ph / th) : 1;
+  const grid = o.grid ? '1px solid #D9DCE1' : 'none';
+  const bc = b => b ? `${b.s === 'double' ? 3 : b.w}px ${b.s} ${b.c}` : null;
+  const fz = frz(), headRows = fz.r > A.r1 ? Math.min(fz.r, A.r2 + 1) : A.r1;
+  const rowHtml = r => {
+    if (hiddenRows.has(r)) return '';
+    let h = `<tr style="height:${rh(r)}px">`;
+    for (const c of cols){
+      const m = mergeOf(r, c);
+      if (m && (m.r1 !== r || m.c1 !== c)){ if (!(r === A.r1 && m.r1 < A.r1) && !(c === A.c1 && m.c1 < A.c1)) continue; }
+      const s = stShow(r, c), raw = shown(r, c), v = fmtValue(raw, s);
+      const ha = s.ha || (isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left');
+      const span = m ? ` rowspan="${Math.min(m.r2, A.r2) - Math.max(m.r1, A.r1) + 1}" colspan="${Math.min(m.c2, A.c2) - Math.max(m.c1, A.c1) + 1}"` : '';
+      const css = [`font-family:'${s.ff || DEF_FONT}','Malgun Gothic',sans-serif`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
+        (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`, `color:${s.fc || '#111'}`, s.bg && `background:${s.bg}`,
+        `text-align:${ha}`, `vertical-align:${s.va === 'top' ? 'top' : s.va === 'bottom' ? 'bottom' : 'middle'}`, s.wrap ? 'white-space:pre-wrap;word-break:keep-all' : 'white-space:pre',
+        `border-top:${bc(s.bt) || grid}`, `border-bottom:${bc(s.bb) || grid}`, `border-left:${bc(s.bl) || grid}`, `border-right:${bc(s.br) || grid}`].filter(Boolean).join(';');
+      const bar = s._bar ? `<div style="position:absolute;left:2px;top:3px;bottom:3px;width:calc(${Math.round(s._bar.t * 100)}% - 4px);background:${s._bar.color};opacity:.55"></div>` : '';
+      h += `<td${span} style="${css}">${bar}<div class="v">${esc(v)}</div></td>`;
+    }
+    return h + '</tr>';
+  };
+  let thead = '', tbody = '';
+  for (let r = A.r1; r <= A.r2; r++){ if (r < headRows) thead += rowHtml(r); else tbody += rowHtml(r); }
+  const pics = (sh.images || []).map(im => {
+    const a = imgAbs(im); if (a.x + im.w < x0 || a.y + im.h < y0 || a.x > colX[A.c2 + 1] || a.y > rowY[A.r2 + 1]) return '';
+    const src = im.kind === 'chart' ? chartToDataURL(im, 2) : (wb.media || {})[im.id]; if (!src) return '';
+    return `<img src="${src}" style="position:absolute;left:${a.x - x0}px;top:${a.y - y0}px;width:${im.w}px;height:${im.h}px">`;
+  }).join('');
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(baseName())}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=Gowun+Dodum&family=Do+Hyeon&family=Black+Han+Sans&family=Nanum+Pen+Script&display=swap">
+<style>@page{size:A4 ${o.landscape ? 'landscape' : 'portrait'};margin:12mm}html,body{margin:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sheet{position:relative;width:${tw}px;zoom:${scale}}table{border-collapse:collapse;table-layout:fixed;width:${tw}px}td{padding:0 4px;overflow:hidden;position:relative}
+.v{position:relative;overflow:hidden}thead{display:table-header-group}tr{break-inside:avoid}</style></head>
+<body><div class="sheet"><table><colgroup>${cols.map(c => `<col style="width:${cw(c)}px">`).join('')}</colgroup>${thead ? `<thead>${thead}</thead>` : ''}<tbody>${tbody}</tbody></table>${pics}</div></body></html>`;
+}
+function openPrint(){
+  if (editing) commitEdit();
+  const multi = (sel.r1 !== sel.r2 || sel.c1 !== sel.c2) && !fullCols(sel) && !fullRows(sel);
+  modal('인쇄 / PDF', `<div class="bkset">
+    <label>범위 <select class="ctl" id="prA"><option value="all">시트 전체 (내용 있는 곳)</option>${multi ? `<option value="sel" selected>선택한 범위 (${ref(sel.r1, sel.c1)}:${ref(sel.r2, sel.c2)})</option>` : ''}</select></label>
+    <label>방향 <select class="ctl" id="prO"><option value="p">세로</option><option value="l">가로</option></select></label>
+    <label>크기 <select class="ctl" id="prF"><option value="width">한 페이지 너비에 맞추기</option><option value="page">한 페이지에 모두 넣기</option><option value="none">실제 크기</option></select></label>
+    <label class="chk"><input type="checkbox" id="prG"> 눈금선도 인쇄</label></div>
+    <p style="margin:6px 0 14px">틀 고정한 제목 줄은 페이지마다 다시 나옵니다.</p>
+    <div class="prow" style="margin:0 0 14px"><button class="pbtn" id="prPdf">PDF로 저장</button><button class="pbtn on" id="prGo">인쇄</button></div>`, '닫기', () => {}, back => {
+    const go = async pdf => {
+      const area = printArea(back.querySelector('#prA').value === 'sel');
+      if (!area) return toast('인쇄할 내용이 없습니다');
+      const opts = {area, landscape: back.querySelector('#prO').value === 'l', fit: back.querySelector('#prF').value, grid: back.querySelector('#prG').checked};
+      const html = buildPrintHTML(opts);
+      back.remove(); focusGrid();
+      if (NATIVE && NATIVE.printHTML){
+        const r = await NATIVE.printHTML(html, {pdf, landscape: opts.landscape, name: baseName()});
+        if (pdf && r) toast('PDF로 저장했습니다: ' + r);
+        return;
+      }
+      const w = window.open('', '_blank');
+      if (!w) return toast('새 창이 막혀 있어요. 브라우저에서 팝업을 허용해 주세요');
+      w.document.open(); w.document.write(html); w.document.close();
+      const fire = () => { w.focus(); w.print(); };
+      if (w.document.readyState === 'complete') setTimeout(fire, 400); else w.addEventListener('load', () => setTimeout(fire, 300));
+      if (pdf) toast('인쇄 창에서 대상(프린터)을 "PDF로 저장"으로 고르세요');
+    };
+    back.querySelector('#prGo').onclick = () => go(false);
+    back.querySelector('#prPdf').onclick = () => go(true);
+  }, {noCancel: true});
+}
+
+// ===== 끌어서 옮기기 =====
 function applyMove(B, T, copy){
   const inR = (R, r, c) => r >= R.r1 && r <= R.r2 && c >= R.c1 && c <= R.c2;
   const keyRC = k => { const i = k.indexOf(':'); return [+k.slice(0,i), +k.slice(i+1)]; };
@@ -2535,6 +2919,7 @@ function autoScroll(){
   asId = requestAnimationFrame(autoScroll);
 }
 cv.addEventListener('dblclick', e => {
+  const ih = imageAt(e); if (ih){ if (ih.im.kind === 'chart') editChart(ih.im); return; }
   const h = hit(e);
   if (h.type === 'colh' && h.edge != null) return autofitCols(selCols(h.edge));
   if (h.type === 'rowh' && h.edge != null) return autofitRows(selRows(h.edge));
@@ -2586,7 +2971,7 @@ ed.addEventListener('keydown', e => {
     if (kl === 'v') return;
     const map = {z: e.shiftKey ? redo : undo, y: redo, b: () => toggle('b'), i: () => toggle('i'), u: () => toggle('u'), '5': () => toggle('st'),
       s: () => saveFile(e.shiftKey), o: openFile, a: selectAll, e: () => applyStyle({ha:'center'}), '1': null,
-      f: () => openFind(false), h: () => openFind(true), l: e.shiftKey ? toggleFilter : null};
+      f: () => openFind(false), h: () => openFind(true), l: e.shiftKey ? toggleFilter : null, p: openPrint};
     if (map[kl]){ e.preventDefault(); map[kl](); return; }
     if (k.startsWith('Arrow')){ e.preventDefault(); arrow(k, e.shiftKey, true); return; }
     if (k === 'Home'){ e.preventDefault(); setSel(0, 0); ensureVisible(0, 0); return; }
@@ -2773,6 +3158,7 @@ function place(el, x, y){
 }
 function showMenu(x, y, items){
   hideMenus();
+  menuOpenedAt = Date.now();
   menuEl.innerHTML = items.map((it, i) => it === '-' ? '<div class="msep"></div>' :
     `<button class="mi" data-i="${i}">${it.icon || '<span class="sp"></span>'}<span>${it.label}</span>${it.kbd ? `<kbd>${it.kbd}</kbd>` : ''}</button>`).join('');
   menuEl.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; hideMenus(); items[+b.dataset.i].run(); };
@@ -2933,7 +3319,7 @@ document.addEventListener('click', e => {
   run(b.dataset.cmd, b);
 });
 function run(cmd, el){
-  const fileCmds = {new: newFile, open: openFile, save: () => saveFile(false), saveAs: () => saveFile(true), export: exportXlsx, backups: openBackups, install: installApp};
+  const fileCmds = {new: newFile, open: openFile, save: () => saveFile(false), saveAs: () => saveFile(true), export: exportXlsx, backups: openBackups, install: installApp, print: openPrint};
   if (fileCmds[cmd]){ if (editing) commitEdit(); fileCmds[cmd](); return; }
   const s = () => st(act.r, act.c);
   const C = {
@@ -2952,7 +3338,7 @@ function run(cmd, el){
     clear: clearFormats,
     decUp: () => stepDecimals(1), decDown: () => stepDecimals(-1),
     sortAsc: () => quickSort(false), sortDesc: () => quickSort(true), filter: toggleFilter, sortMenu: () => sortMenu(el),
-    freezeMenu: () => freezeMenu(el), find: () => openFind(false), autoSum: () => autoSum('SUM'), sumMenu: () => sumMenu(el),
+    freezeMenu: () => freezeMenu(el), find: () => openFind(false), cfMenu: () => cfMenu(el), chartMenu: () => chartMenu(el), autoSum: () => autoSum('SUM'), sumMenu: () => sumMenu(el),
     image: () => $('#imgIn').click(),
     grid: () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); },
   };
@@ -3177,12 +3563,26 @@ async function buildXlsx(){
         }
         if (es !== EMPTY) cell.style = toXStyle(es);
       }
+      for (const rule of (s.cf || [])){
+        const refStr = `${ref(rule.range.r1, rule.range.c1)}:${ref(rule.range.r2, rule.range.c2)}`, tl = ref(rule.range.r1, rule.range.c1);
+        const style = {}; if (rule.bg) style.fill = {type: 'pattern', pattern: 'solid', bgColor: {argb: argb(rule.bg)}}; if (rule.fc || rule.b) style.font = {...(rule.fc ? {color: {argb: argb(rule.fc)}} : {}), ...(rule.b ? {bold: true} : {})};
+        const q = v => typeof v === 'number' ? String(v) : '"' + String(v).replace(/"/g, '""') + '"';
+        const abs = `$${colName(rule.range.c1)}$${rule.range.r1 + 1}:$${colName(rule.range.c2)}$${rule.range.r2 + 1}`;
+        const x = {gt: {type: 'cellIs', operator: 'greaterThan', formulae: [q(rule.a)]}, lt: {type: 'cellIs', operator: 'lessThan', formulae: [q(rule.a)]},
+          between: {type: 'cellIs', operator: 'between', formulae: [q(Math.min(rule.a, rule.b)), q(Math.max(rule.a, rule.b))]}, eq: {type: 'cellIs', operator: 'equal', formulae: [q(rule.a)]},
+          text: {type: 'containsText', operator: 'containsText', text: String(rule.a)}, dup: {type: 'expression', formulae: [`COUNTIF(${abs},${tl})>1`]},
+          top: {type: 'top10', rank: rule.n}, bottom: {type: 'top10', rank: rule.n, bottom: true}, aboveAvg: {type: 'aboveAverage'},
+          formula: {type: 'expression', formulae: [String(rule.f).slice(1)]},
+          scale: {type: 'colorScale', cfvo: rule.colors.length === 3 ? [{type: 'min'}, {type: 'percentile', value: 50}, {type: 'max'}] : [{type: 'min'}, {type: 'max'}], color: rule.colors.map(cl => ({argb: argb(cl)}))},
+          bar: {type: 'dataBar', cfvo: [{type: 'min'}, {type: 'max'}], color: {argb: argb(rule.color)}}}[rule.type];
+        if (x) try { ws.addConditionalFormatting({ref: refStr, rules: [{priority: 1, ...x, ...(Object.keys(style).length && !['scale', 'bar'].includes(rule.type) ? {style} : {})}]}); } catch (e) {}
+      }
       if (s.filter){
         ws.autoFilter = {from: {row: s.filter.r1 + 1, column: s.filter.c1 + 1}, to: {row: s.filter.r2 + 1, column: s.filter.c2 + 1}};
         for (const r of hiddenRows) ws.getRow(r + 1).hidden = true;
       }
       for (const im of (s.images || [])){
-        const m = /^data:image\/(png|jpe?g|gif);base64,(.*)$/.exec((wb.media || {})[im.id] || ''); if (!m) continue;
+        const m = /^data:image\/(png|jpe?g|gif);base64,(.*)$/.exec(im.kind === 'chart' ? chartToDataURL(im, 2) : (wb.media || {})[im.id] || ''); if (!m) continue;
         const iid = X.addImage({base64: m[2], extension: m[1] === 'jpg' ? 'jpeg' : m[1]});
         // 칸 안 위치는 엑셀 단위(EMU, 1px = 9525)로 정확히
         ws.addImage(iid, {tl: {nativeCol: im.c, nativeColOff: Math.round(im.dx * 9525), nativeRow: im.r, nativeRowOff: Math.round(im.dy * 9525)}, ext: {width: im.w, height: im.h}, editAs: 'oneCell'});
@@ -3420,6 +3820,7 @@ function drawImages(){
   for (const im of (sh.images || [])){
     const R = imgRect(im);
     if (R.x > V.W || R.y > V.H || R.x + R.w < HW || R.y + R.h < HH) continue;
+    if (im.kind === 'chart'){ drawChart(ctx, im, R); continue; }
     const el = imgEl(im.id);
     if (el.complete && el.naturalWidth) ctx.drawImage(el, R.x, R.y, R.w, R.h);
     else { ctx.fillStyle = '#EEF0F3'; ctx.fillRect(R.x, R.y, R.w, R.h); }
@@ -3472,7 +3873,7 @@ function imageDragMove(e){
     // 모서리를 끌면 가로세로 비율 유지 (Shift를 누르면 자유롭게)
     const k = drag.k, left = k === 0 || k === 2, top = k === 0 || k === 1;
     let w = Math.max(12, drag.ow + (left ? -dx : dx)), hh = Math.max(12, drag.oh + (top ? -dy : dy));
-    if (!e.shiftKey){ const s = Math.max(w / drag.ow, hh / drag.oh); w = Math.max(12, drag.ow * s); hh = Math.max(12, drag.oh * s); }
+    if (!e.shiftKey && im.kind !== 'chart'){ const s = Math.max(w / drag.ow, hh / drag.oh); w = Math.max(12, drag.ow * s); hh = Math.max(12, drag.oh * s); }
     im.w = Math.round(w); im.h = Math.round(hh);
     reanchor(im, left ? drag.ox + drag.ow - im.w : drag.ox, top ? drag.oy + drag.oh - im.h : drag.oy);
     setStatus(`그림 크기 ${im.w} × ${im.h}px`);
@@ -3482,7 +3883,7 @@ function imageDragMove(e){
 function deleteImage(id){
   if (!id) return;
   mutate(() => { sh.images = sh.images.filter(i => i.id !== id); });
-  selImg = null; schedule(); toast('그림을 지웠습니다 · Ctrl+Z로 되돌릴 수 있어요');
+  selImg = null; schedule(); toast('지웠습니다 · Ctrl+Z로 되돌릴 수 있어요');
 }
 function nudgeImage(k, n){
   const im = sh.images.find(i => i.id === selImg); if (!im) return;
@@ -3492,6 +3893,13 @@ function nudgeImage(k, n){
 function openImageMenu(x, y){
   const im = sh.images.find(i => i.id === selImg); if (!im) return;
   const idx = () => sh.images.findIndex(i => i.id === im.id);
+  if (im.kind === 'chart') return showMenu(x, y, [
+    {label: '차트 편집…', run: () => editChart(im)},
+    {label: '차트 지우기', kbd: 'Delete', run: () => deleteImage(im.id)},
+    '-',
+    {label: '맨 앞으로 가져오기', run: () => mutate(() => sh.images.push(sh.images.splice(idx(), 1)[0]))},
+    {label: '맨 뒤로 보내기', run: () => mutate(() => sh.images.unshift(sh.images.splice(idx(), 1)[0]))},
+  ]);
   showMenu(x, y, [
     {label:'그림 지우기', kbd:'Delete', run: () => deleteImage(im.id)},
     {label:'원래 크기로', run: () => { const el = imgEl(im.id); if (el.naturalWidth) mutate(() => { im.w = el.naturalWidth; im.h = el.naturalHeight; }); }},
