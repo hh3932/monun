@@ -237,6 +237,7 @@ button{font:inherit;color:inherit}
     <div class="grp">
       <button class="tb" data-cmd="border" id="tbBorder" title="테두리"></button>
       <button class="tb caret" data-cmd="borderMenu" title="테두리 종류, 두께, 색"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
+      <button class="tb" data-cmd="image" title="그림 넣기 (Ctrl+V로 붙여넣거나 그림 파일을 끌어다 놓아도 됩니다)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="13" rx="1.5"/><circle cx="7" cy="8" r="1.6"/><path d="m3 15 4.5-4.5 3 3 2.5-2.5 4.5 4.5"/></svg></button>
       <button class="tb" data-cmd="clear" title="서식 지우기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M8 16 4 12l7.5-7.5 5 5L11 16z"/><path d="M7 9l5 5M8 16h9"/></svg></button>
       <button class="tb" data-cmd="grid" id="tbGrid" title="눈금선 보이기/숨기기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="14" height="14" rx="1"/><path d="M3 7.7h14M3 12.3h14M7.7 3v14M12.3 3v14"/></svg></button>
     </div>
@@ -270,6 +271,7 @@ button{font:inherit;color:inherit}
 <div id="ctx" class="menu" hidden></div>
 <div id="toast"></div>
 <input type="file" id="fileIn" accept=".monun,.json,.xlsx" hidden>
+<input type="file" id="imgIn" accept="image/*" hidden>
 
 <script>
 (() => {
@@ -299,7 +301,7 @@ let recent = [];
 const TH = {};
 
 // ===== 모델 =====
-function newSheet(name){ return {name, cells:{}, colW:{}, rowH:{}, rowManual:{}, colStyle:{}, rowStyle:{}, merges:[], grid:true, zoom:1}; }
+function newSheet(name){ return {name, cells:{}, colW:{}, rowH:{}, rowManual:{}, colStyle:{}, rowStyle:{}, merges:[], images:[], grid:true, zoom:1}; }
 function normSheet(s){
   const o = Object.assign(newSheet(s.name || 'Sheet'), s);
   // rowManual에는 직접 정한 높이(최소 높이)를 담는다. 예전 파일은 1로 표시돼 있어 그때 높이로 바꿔 줌
@@ -485,7 +487,9 @@ function render(){
   }
   for (const m of vm) drawBorders(X(m.c1), Y(m.r1), X(m.c2+1), Y(m.r2+1), st(m.r1,m.c1));
 
+  drawImages();
   drawSelection();
+  drawImageSelection();
   ctx.restore();
   drawHeaders();
 }
@@ -681,7 +685,7 @@ function setRange(R, a){
   const m = mergeOf(act.r, act.c); if (m) act = {r:m.r1, c:m.c1};
   afterSel();
 }
-function afterSel(){ if (!editing) ed.value = ''; positionEditor(); refreshUI(); schedule(); }
+function afterSel(){ selImg = null; if (!editing) ed.value = ''; positionEditor(); refreshUI(); schedule(); }
 function clampSel(){
   const cl = (v, n) => Math.max(0, Math.min(n-1, v));
   act = {r:cl(act.r,ROWS), c:cl(act.c,COLS)};
@@ -760,6 +764,7 @@ function sizeEditor(){
 }
 function startEdit(mode, text){
   if (editing) return;
+  if (selImg){ selImg = null; schedule(); }
   editing = true; editMode = mode;
   if (text != null) ed.value = text;
   const s = st(act.r, act.c);
@@ -795,16 +800,17 @@ function insertAtCaret(t){
 }
 
 // ===== 변경과 실행 취소 =====
-function snap(){ undoStack.push(JSON.stringify(wb)); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; }
+const snapJSON = () => JSON.stringify(wb, (k, v) => k === 'media' ? undefined : v);
+function snap(){ undoStack.push(snapJSON()); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; }
 function afterChange(){ changedSinceBackup = true; buildMerges(); autoRows(); layout(); fileDirty = true; updateDoc(); queueAutosave(); refreshUI(); schedule(); }
 function mutate(fn){ snap(); fn(); afterChange(); }
 function restore(json){
-  wb = JSON.parse(json); wb.sheets = wb.sheets.map(normSheet); sh = wb.sheets[wb.active]; changedSinceBackup = true;
+  const media = wb.media; wb = JSON.parse(json); wb.media = media || {}; wb.sheets = wb.sheets.map(normSheet); sh = wb.sheets[wb.active]; changedSinceBackup = true; selImg = null;
   buildMerges(); layout(); clampSel(); renderTabs();
   fileDirty = true; updateDoc(); queueAutosave(); afterSel();
 }
-function undo(){ if (editing) cancelEdit(); if (!undoStack.length) return toast('되돌릴 작업이 없습니다'); redoStack.push(JSON.stringify(wb)); restore(undoStack.pop()); }
-function redo(){ if (editing) cancelEdit(); if (!redoStack.length) return toast('다시 실행할 작업이 없습니다'); undoStack.push(JSON.stringify(wb)); restore(redoStack.pop()); }
+function undo(){ if (editing) cancelEdit(); if (!undoStack.length) return toast('되돌릴 작업이 없습니다'); redoStack.push(snapJSON()); restore(undoStack.pop()); }
+function redo(){ if (editing) cancelEdit(); if (!redoStack.length) return toast('다시 실행할 작업이 없습니다'); undoStack.push(snapJSON()); restore(redoStack.pop()); }
 let asT = 0;
 function queueAutosave(){ clearTimeout(asT); asT = setTimeout(() => writeSession(false), 400); }
 // 지금 상태를 비상 복구용으로 기록 (프로그램: 디스크 파일, 웹: 브라우저 저장소)
@@ -1003,6 +1009,10 @@ function shiftAxis(axis, at, n, del){
     out.push(nm);
   }
   sh.merges = out;
+  for (const im of (sh.images || [])){
+    const i = map(im[axis]);
+    if (i >= 0) im[axis] = i; else { im[axis] = Math.min(at, max - 1); im[axis === 'r' ? 'dy' : 'dx'] = 0; }
+  }
 }
 function insertRows(){ const n = sel.r2-sel.r1+1; if (n >= ROWS) return; mutate(() => shiftAxis('r', sel.r1, n, false)); }
 function deleteRows(){ const n = sel.r2-sel.r1+1; mutate(() => shiftAxis('r', sel.r1, n, true)); clampSel(); afterSel(); }
@@ -1278,6 +1288,7 @@ function hit(e){
 }
 cv.addEventListener('mousedown', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
+  if (imagePointerDown(e)) return;
   if (e.pointerType === 'touch'){ touchMode = true; touchDown(e); return; }
   touchMode = false;
   hideMenus();
@@ -1335,6 +1346,7 @@ cv.addEventListener('pointermove', e => {
   lastEv = e; updateDrag(e);
 });
 function updateDrag(e){
+  if (drag.mode === 'imgmove' || drag.mode === 'imgresize') return imageDragMove(e);
   const h = hit(e), z = sh.zoom;
   if (drag.mode === 'colw'){
     const w = Math.max(6, Math.round(drag.sw + (h.x - drag.sx)/z));
@@ -1380,7 +1392,8 @@ cv.addEventListener('pointerup', e => {
   if (!drag) return;
   const d = drag; drag = null;
   cancelAnimationFrame(asId); asId = 0;
-  if (d.mode === 'colw' || d.mode === 'rowh'){ afterChange(); }
+  if (d.mode === 'imgmove' || d.mode === 'imgresize'){ if (d.moved) afterChange(); else undoStack.pop(); schedule(); }
+  else if (d.mode === 'colw' || d.mode === 'rowh'){ afterChange(); }
   else if (d.mode === 'fill'){ if (d.target) applyFill(d.base, d.target, e.ctrlKey || e.metaKey); else schedule(); }
   else if (d.mode === 'move'){ cv.style.cursor = ''; if (d.target) applyMove(d.base, d.target, e.ctrlKey || e.metaKey); else schedule(); }
   else if (d.mode === 'cells' && painter) applyPainter();
@@ -1494,7 +1507,7 @@ cv.addEventListener('dblclick', e => {
   if (h.type === 'rowh' && h.edge != null) return autofitRows(selRows(h.edge));
   if (h.type === 'cell' && !h.handle){ setSel(h.r, h.c); startEdit('edit', getV(act.r, act.c)); focusGrid(); }
 });
-cv.addEventListener('contextmenu', e => { e.preventDefault(); openCellMenu(e.clientX, e.clientY); });
+cv.addEventListener('contextmenu', e => { e.preventDefault(); if (imageAt(e)) return; openCellMenu(e.clientX, e.clientY); });
 wrap.addEventListener('scroll', () => schedule());
 wrap.addEventListener('wheel', e => {
   if (!(e.ctrlKey || e.metaKey)) return;
@@ -1521,6 +1534,11 @@ ed.addEventListener('keydown', e => {
     if (ctrl && k.toLowerCase() === 's'){ e.preventDefault(); commitEdit(); saveFile(e.shiftKey); return; }
     if (ctrl && ['b','i','u'].includes(k.toLowerCase())){ e.preventDefault(); commitEdit(); toggle({b:'b', i:'i', u:'u'}[k.toLowerCase()]); return; }
     return;
+  }
+  if (selImg && !ctrl){
+    if (k === 'Delete' || k === 'Backspace'){ e.preventDefault(); deleteImage(selImg); return; }
+    if (k === 'Escape'){ selImg = null; schedule(); return; }
+    if (k.startsWith('Arrow')){ e.preventDefault(); nudgeImage(k, e.shiftKey ? 10 : 1); return; }
   }
   if (ctrl){
     const kl = k.toLowerCase();
@@ -1555,7 +1573,15 @@ ed.addEventListener('input', () => { if (!editing) startEdit('enter', null); siz
 ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter', null); });
 ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
-ed.addEventListener('paste', e => { if (editing) return; e.preventDefault(); const t = e.clipboardData.getData('text/plain'); if (t !== '') doPaste(t); });
+ed.addEventListener('paste', e => {
+  if (editing) return;
+  e.preventDefault();
+  const t = e.clipboardData.getData('text/plain');
+  const img = [...(e.clipboardData.files || [])].find(x => x.type.startsWith('image/'))
+    || [...(e.clipboardData.items || [])].map(i => i.kind === 'file' && i.type.startsWith('image/') ? i.getAsFile() : null).find(Boolean);
+  if (img && t.trim() === '') return insertImage(img, null);
+  if (t !== '') doPaste(t);
+});
 
 fx.addEventListener('input', () => { if (editing){ ed.value = fx.value; sizeEditor(); } });
 fx.addEventListener('keydown', e => {
@@ -1871,6 +1897,7 @@ function run(cmd, el){
     wrap: () => toggle('wrap'), merge: mergeToggle, mergeMenu: () => mergePop(el),
     border: () => applyBorder(lastBorder), borderMenu: () => borderPop(el),
     clear: clearFormats,
+    image: () => $('#imgIn').click(),
     grid: () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); },
   };
   if (C[cmd]){ C[cmd](); if (!/Menu$/.test(cmd)) focusGrid(); }
@@ -1899,7 +1926,11 @@ function download(blob, name){
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
-const monunJSON = () => JSON.stringify({app:'monun', version:1, wb});
+const monunJSON = () => {
+  const used = new Set(); for (const s of wb.sheets) for (const im of (s.images || [])) used.add(im.id);
+  const media = {}; for (const id of used) if (wb.media && wb.media[id]) media[id] = wb.media[id];
+  return JSON.stringify({app:'monun', version:1, wb: {...wb, media}});
+};
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const touchDevice = () => matchMedia('(pointer:coarse)').matches;
 async function shareOrDownload(blob, name){
@@ -1989,7 +2020,8 @@ function newFile(){
   confirmDiscard(() => { loadWorkbook({sheets:[newSheet('Sheet1')], active:0}); fileHandle = null; filePath = null; fileName = '제목 없음'; fileDirty = false; updateDoc(); queueAutosave(); });
 }
 function loadWorkbook(obj){
-  wb = {sheets: obj.sheets.map(normSheet), active: Math.min(obj.active || 0, obj.sheets.length - 1)};
+  wb = {sheets: obj.sheets.map(normSheet), active: Math.min(obj.active || 0, obj.sheets.length - 1), media: obj.media || {}};
+  IMG.clear(); selImg = null;
   if (!wb.sheets.length) wb.sheets = [newSheet('Sheet1')];
   sh = wb.sheets[wb.active];
   undoStack = []; redoStack = []; clip = null; painter = null; updatePainter();
@@ -2000,6 +2032,10 @@ window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', async e => {
   e.preventDefault();
   const f = e.dataTransfer.files[0]; if (!f) return;
+  if (f.type.startsWith('image/')){
+    const b = cv.getBoundingClientRect(), z = sh.zoom;
+    return insertImage(f, {x: Math.max(0, (e.clientX - b.left - HW + wrap.scrollLeft) / z), y: Math.max(0, (e.clientY - b.top - HH + wrap.scrollTop) / z)});
+  }
   const p = NATIVE ? NATIVE.pathOf(f) : '';
   if (NATIVE) return openNative({name: f.name, data: await f.arrayBuffer(), path: p || null});
   await openData(f.name, await f.arrayBuffer(), {path: p || null});
@@ -2077,6 +2113,12 @@ async function buildXlsx(){
         if (v !== '') cell.value = PLAIN.test(v.trim()) && !/^0\d/.test(v.trim()) ? parseFloat(v.replace(/,/g, '')) : v;
         const es = st(r,c); if (es !== EMPTY) cell.style = toXStyle(es);
       }
+      for (const im of (s.images || [])){
+        const m = /^data:image\/(png|jpe?g|gif);base64,(.*)$/.exec((wb.media || {})[im.id] || ''); if (!m) continue;
+        const iid = X.addImage({base64: m[2], extension: m[1] === 'jpg' ? 'jpeg' : m[1]});
+        // 칸 안 위치는 엑셀 단위(EMU, 1px = 9525)로 정확히
+        ws.addImage(iid, {tl: {nativeCol: im.c, nativeColOff: Math.round(im.dx * 9525), nativeRow: im.r, nativeRowOff: Math.round(im.dy * 9525)}, ext: {width: im.w, height: im.h}, editAs: 'oneCell'});
+      }
       for (const m of s.merges){
         ws.mergeCells(m.r1+1, m.c1+1, m.r2+1, m.c2+1);
         const a = st(m.r1, m.c1), base = ws.getCell(m.r1+1, m.c1+1).style || {};
@@ -2112,7 +2154,7 @@ async function exportXlsx(){
 }
 async function importXlsx(buf){
   const X = new ExcelJS.Workbook(); await X.xlsx.load(buf);
-  const out = {sheets:[], active:0};
+  const out = {sheets:[], active:0, media:{}};
   X.eachSheet(ws => {
     const s = newSheet(ws.name);
     if (ws.views && ws.views[0] && ws.views[0].showGridLines === false) s.grid = false;
@@ -2144,6 +2186,7 @@ async function importXlsx(buf){
       if (bc && bc.s && bc.s.bb) anchor.s.bb = bc.s.bb;
       if (!Object.keys(anchor.s).length) delete anchor.s;
     }
+    try { importImages(X, ws, s, out.media); } catch (e) {}
     out.sheets.push(s);
   });
   if (!out.sheets.length) out.sheets.push(newSheet('Sheet1'));
@@ -2279,6 +2322,169 @@ async function installApp(){
     return;
   }
   modal('앱으로 설치하기', '<p>브라우저 메뉴(⋮)에서 <b>“앱 설치”</b> 또는 <b>“홈 화면에 추가”</b>를 누르세요.</p>', '알겠어요', () => {}, null, {noCancel: true});
+}
+
+// ===== 그림 (붙여넣기, 끌어다 놓기, 옮기기, 크기 조절) =====
+// 그림은 칸에 붙어 있다(r, c + 칸 안 위치 dx, dy). 열 너비가 바뀌거나 행이 들어가면 그 칸을 따라 움직인다.
+let selImg = null;
+const IMG = new Map();
+function imgEl(id){
+  let el = IMG.get(id);
+  if (!el){ el = new Image(); el.onload = () => schedule(); el.src = (wb.media || {})[id] || ''; IMG.set(id, el); }
+  return el;
+}
+const imgAbs = im => ({x: colX[im.c] + im.dx, y: rowY[im.r] + im.dy});
+function imgRect(im){
+  const z = sh.zoom, a = imgAbs(im);
+  return {x: HW + a.x * z - wrap.scrollLeft, y: HH + a.y * z - wrap.scrollTop, w: im.w * z, h: im.h * z};
+}
+function reanchor(im, x, y){
+  x = Math.max(0, x); y = Math.max(0, y);
+  im.c = colAt(x); im.r = rowAt(y); im.dx = x - colX[im.c]; im.dy = y - rowY[im.r];
+}
+const imgHandles = R => [[R.x, R.y], [R.x + R.w, R.y], [R.x, R.y + R.h], [R.x + R.w, R.y + R.h]];
+function drawImages(){
+  for (const im of (sh.images || [])){
+    const R = imgRect(im);
+    if (R.x > V.W || R.y > V.H || R.x + R.w < HW || R.y + R.h < HH) continue;
+    const el = imgEl(im.id);
+    if (el.complete && el.naturalWidth) ctx.drawImage(el, R.x, R.y, R.w, R.h);
+    else { ctx.fillStyle = '#EEF0F3'; ctx.fillRect(R.x, R.y, R.w, R.h); }
+  }
+}
+function drawImageSelection(){
+  const im = (sh.images || []).find(i => i.id === selImg); if (!im) return;
+  const R = imgRect(im);
+  ctx.strokeStyle = TH.sel; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+  ctx.strokeRect(R.x - 0.5, R.y - 0.5, R.w + 1, R.h + 1);
+  for (const [x, y] of imgHandles(R)){ ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+}
+// 누른 곳의 그림 (선택한 그림의 손잡이 먼저, 그다음 위에 있는 그림부터)
+function imageAt(e){
+  const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+  if (x < HW || y < HH) return null;
+  const tol = e.pointerType === 'touch' ? 16 : 7;
+  const cur = (sh.images || []).find(i => i.id === selImg);
+  if (cur){ const hs = imgHandles(imgRect(cur)); for (let k = 0; k < 4; k++) if (Math.hypot(x - hs[k][0], y - hs[k][1]) <= tol) return {im: cur, handle: k, x, y}; }
+  for (let i = (sh.images || []).length - 1; i >= 0; i--){
+    const im = sh.images[i], R = imgRect(im);
+    if (x >= R.x && x <= R.x + R.w && y >= R.y && y <= R.y + R.h) return {im, x, y};
+  }
+  return null;
+}
+function imagePointerDown(e){
+  if (e.button !== 0 && e.button !== 2 && e.pointerType !== 'touch') return false;
+  const hit = imageAt(e);
+  if (!hit){ if (selImg){ selImg = null; schedule(); } return false; }
+  hideMenus(); if (editing) commitEdit();
+  touchMode = e.pointerType === 'touch';
+  selImg = hit.im.id; schedule();
+  if (e.button === 2){ focusGrid(); openImageMenu(e.clientX, e.clientY); return true; }
+  snap();
+  const a = imgAbs(hit.im);
+  drag = {mode: hit.handle != null ? 'imgresize' : 'imgmove', im: hit.im, k: hit.handle, sx: hit.x, sy: hit.y, ox: a.x, oy: a.y, ow: hit.im.w, oh: hit.im.h, moved: false};
+  if (e.pointerType === 'touch') touches.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  cv.setPointerCapture(e.pointerId);
+  focusGrid();
+  return true;
+}
+function imageDragMove(e){
+  const b = cv.getBoundingClientRect(), z = sh.zoom;
+  const dx = (e.clientX - b.left - drag.sx) / z, dy = (e.clientY - b.top - drag.sy) / z;
+  if (!drag.moved && Math.hypot(dx, dy) * z < 3) return;
+  drag.moved = true;
+  const im = drag.im;
+  if (drag.mode === 'imgmove'){ reanchor(im, drag.ox + dx, drag.oy + dy); setStatus('그림 옮기는 중'); }
+  else {
+    // 모서리를 끌면 가로세로 비율 유지 (Shift를 누르면 자유롭게)
+    const k = drag.k, left = k === 0 || k === 2, top = k === 0 || k === 1;
+    let w = Math.max(12, drag.ow + (left ? -dx : dx)), hh = Math.max(12, drag.oh + (top ? -dy : dy));
+    if (!e.shiftKey){ const s = Math.max(w / drag.ow, hh / drag.oh); w = Math.max(12, drag.ow * s); hh = Math.max(12, drag.oh * s); }
+    im.w = Math.round(w); im.h = Math.round(hh);
+    reanchor(im, left ? drag.ox + drag.ow - im.w : drag.ox, top ? drag.oy + drag.oh - im.h : drag.oy);
+    setStatus(`그림 크기 ${im.w} × ${im.h}px`);
+  }
+  schedule();
+}
+function deleteImage(id){
+  if (!id) return;
+  mutate(() => { sh.images = sh.images.filter(i => i.id !== id); });
+  selImg = null; schedule(); toast('그림을 지웠습니다 · Ctrl+Z로 되돌릴 수 있어요');
+}
+function nudgeImage(k, n){
+  const im = sh.images.find(i => i.id === selImg); if (!im) return;
+  const a = imgAbs(im), d = {ArrowUp:[0,-n], ArrowDown:[0,n], ArrowLeft:[-n,0], ArrowRight:[n,0]}[k];
+  mutate(() => reanchor(im, a.x + d[0], a.y + d[1]));
+}
+function openImageMenu(x, y){
+  const im = sh.images.find(i => i.id === selImg); if (!im) return;
+  const idx = () => sh.images.findIndex(i => i.id === im.id);
+  showMenu(x, y, [
+    {label:'그림 지우기', kbd:'Delete', run: () => deleteImage(im.id)},
+    {label:'원래 크기로', run: () => { const el = imgEl(im.id); if (el.naturalWidth) mutate(() => { im.w = el.naturalWidth; im.h = el.naturalHeight; }); }},
+    '-',
+    {label:'맨 앞으로 가져오기', run: () => mutate(() => sh.images.push(sh.images.splice(idx(), 1)[0]))},
+    {label:'맨 뒤로 보내기', run: () => mutate(() => sh.images.unshift(sh.images.splice(idx(), 1)[0]))},
+  ]);
+}
+// 그림 파일 → 너무 크면 줄여서(긴 쪽 1600px) 저장. 투명한 그림(png 등)은 png로, 사진은 jpg로
+async function fileToImage(blob){
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+    const keepPng = /png|gif|webp|svg|bmp/.test(blob.type);
+    let src = c.toDataURL(keepPng ? 'image/png' : 'image/jpeg', 0.9);
+    if (keepPng && src.length > 2.5e6) src = c.toDataURL('image/jpeg', 0.88);
+    return {src, w, h};
+  } finally { URL.revokeObjectURL(url); }
+}
+async function insertImage(blob, at){
+  if (editing) commitEdit();
+  let im;
+  try { im = await fileToImage(blob); } catch (e){ toast('그림을 읽을 수 없습니다'); return; }
+  const id = 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  wb.media = wb.media || {}; wb.media[id] = im.src;
+  const k = Math.min(1, 480 / im.w, 360 / im.h);
+  const pic = {id, r: act.r, c: act.c, dx: 0, dy: 0, w: Math.round(im.w * k), h: Math.round(im.h * k)};
+  if (at) reanchor(pic, at.x, at.y);
+  mutate(() => { sh.images = sh.images || []; sh.images.push(pic); });
+  selImg = id; schedule();
+  toast('그림을 넣었습니다 · 끌어서 옮기고, 모서리로 크기를 바꾸세요');
+}
+$('#imgIn').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) insertImage(f, null); });
+// 엑셀 파일 속 그림 가져오기
+function u8ToB64(u8){
+  let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function importImages(X, ws, s, media){
+  const colPx = c => s.colW[c] ?? DEF_W, rowPx = r => s.rowH[r] ?? DEF_H;
+  const span = (from, fromOff, to, toOff, size) => { let v = -fromOff; for (let i = from; i < to; i++) v += size(i); return v + toOff; };
+  for (const pic of ws.getImages()){
+    const m = X.getImage(Number(pic.imageId)); if (!m) continue;
+    const ext = m.extension === 'jpg' ? 'jpeg' : (m.extension || 'png');
+    let src = m.base64 || '';
+    if (!src && m.buffer) src = u8ToB64(m.buffer instanceof Uint8Array ? m.buffer : new Uint8Array(m.buffer));
+    if (!src) continue;
+    if (!src.startsWith('data:')) src = 'data:image/' + ext + ';base64,' + src;
+    const tl = pic.range.tl, c = Math.floor(tl.nativeCol ?? tl.col), r = Math.floor(tl.nativeRow ?? tl.row);
+    if (c >= COLS || r >= ROWS) continue;
+    const dx = (tl.nativeColOff || 0) / 9525, dy = (tl.nativeRowOff || 0) / 9525;
+    let w = 200, hh = 150;
+    if (pic.range.ext && pic.range.ext.width){ w = pic.range.ext.width; hh = pic.range.ext.height; }
+    else if (pic.range.br){
+      const br = pic.range.br;
+      w = span(c, dx, Math.floor(br.nativeCol ?? br.col), (br.nativeColOff || 0) / 9525, colPx);
+      hh = span(r, dy, Math.floor(br.nativeRow ?? br.row), (br.nativeRowOff || 0) / 9525, rowPx);
+    }
+    const id = 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    media[id] = src;
+    s.images.push({id, r, c, dx, dy, w: Math.max(12, Math.round(w)), h: Math.max(12, Math.round(hh))});
+  }
 }
 
 // ===== 예시 시트 =====
