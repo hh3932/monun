@@ -177,6 +177,7 @@ button{font:inherit;color:inherit}
 #installBtn[hidden]{display:none}
 #pageView{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;background:var(--bg)}
 #pageView[hidden]{display:none}
+#pvStart[hidden]{display:none}
 .pv-bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:8px 16px;padding-top:calc(8px + env(safe-area-inset-top,0px));background:var(--bar);border-bottom:1px solid var(--line)}
 .pv-bar label{display:flex;gap:6px;align-items:center;white-space:nowrap}
 .pv-bar select.ctl{height:30px}
@@ -2541,7 +2542,9 @@ function openPrint(){
 // 긴 칸도 줄 단위로 다음 쪽에 이어진다. 인쇄/PDF도 이 쪽 나눔 그대로 나온다.
 const PAPER = {A4: [210, 297], A5: [148, 210], A6: [105, 148], B4: [257, 364], B5: [182, 257], B6: [128, 182]};
 const MM = 96 / 25.4;   // 1mm = 3.78px (화면·인쇄 공통 96dpi 기준)
-function pageSetup(){ return Object.assign({size: 'A5', orient: 'p', margin: 'normal', m: null, num: true, spread: false, zoom: 1}, sh.pageSetup || {}); }
+function pageSetup(){ return Object.assign({size: 'A5', orient: 'p', margin: 'normal', m: null, num: true, spread: false, bookStart: false, zoom: 1}, sh.pageSetup || {}); }
+// 펼친 면에서 이 쪽이 왼쪽 면인가 (기본: 1쪽이 왼쪽 / 책 방식: 1쪽이 오른쪽)
+const isLeftPage = (i, ps) => ps.bookStart ? i % 2 === 1 : i % 2 === 0;
 function savePageSetup(ps){ sh.pageSetup = ps; fileDirty = true; updateDoc(); queueAutosave(); }
 function paperMM(ps){ let [w, h] = PAPER[ps.size] || PAPER.A5; if (ps.orient === 'l') [w, h] = [h, w]; return {w, h}; }
 function marginsMM(ps){
@@ -2606,7 +2609,8 @@ function cellCss(s, ha){
     s.i && 'font-style:italic', (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`, `color:${s.fc || '#111'}`, `text-align:${ha}`].filter(Boolean).join(';');
 }
 function pageHTML(P, i, ps){
-  const odd = i % 2 === 0, left = odd ? P.M.in : P.M.out;   // 책처럼: 홀수 쪽은 안쪽이 왼쪽
+  // 묶는 쪽(안쪽)은 펼친 면의 가운데: 왼쪽 면은 오른쪽이, 오른쪽 면은 왼쪽이 안쪽
+  const left = isLeftPage(i, ps) ? P.M.out : P.M.in;
   const bc = b => b ? `${b.s === 'double' ? 3 : b.w}px ${b.s} ${b.c}` : 'none';
   let inner = '';
   for (const it of P.pages[i]){
@@ -2640,6 +2644,7 @@ pv.innerHTML = `<div class="pv-bar">
   <label>여백 <select class="ctl" id="pvMargin"><option value="narrow">좁게</option><option value="normal">보통</option><option value="wide">넓게</option><option value="custom">직접…</option></select></label>
   <label class="pv-chk"><input type="checkbox" id="pvNum"> 쪽 번호</label>
   <label class="pv-chk"><input type="checkbox" id="pvSpread"> 두 쪽씩</label>
+  <select class="ctl" id="pvStart" title="펼친 면을 어떻게 시작할지"><option value="0">1쪽부터 왼쪽</option><option value="1">책처럼 1쪽은 오른쪽</option></select>
   <span class="pv-info" id="pvInfo"></span>
   <span class="pv-zoom"><button class="tb" id="pvZout" title="축소">−</button><span id="pvZv">100%</span><button class="tb" id="pvZin" title="확대">+</button></span>
   <button class="fbtn" id="pvPdf"><span>PDF로 저장</span></button>
@@ -2651,7 +2656,7 @@ document.body.appendChild(pv);
 async function renderPageView(){
   const ps = pageSetup();
   $('#pvSize').value = ps.size; $('#pvOrient').value = ps.orient; $('#pvMargin').value = ps.margin;
-  $('#pvNum').checked = ps.num; $('#pvSpread').checked = ps.spread; $('#pvZv').textContent = Math.round(ps.zoom * 100) + '%';
+  $('#pvNum').checked = ps.num; $('#pvSpread').checked = ps.spread; $('#pvStart').value = ps.bookStart ? '1' : '0'; $('#pvStart').hidden = !ps.spread; $('#pvZv').textContent = Math.round(ps.zoom * 100) + '%';
   if (document.fonts && document.fonts.ready) await document.fonts.ready;
   const P = paginate(ps); pvLast = P;
   const box = $('#pvPages');
@@ -2659,9 +2664,10 @@ async function renderPageView(){
   box.classList.toggle('spread', ps.spread);
   let html = '';
   if (ps.spread){
-    // 책 펼침: 1쪽은 오른쪽에 혼자, 그다음부터 [짝수][홀수]
-    html += `<div class="pv-pair"><div class="pv-blank" style="width:${P.w}mm;height:${P.h}mm"></div>${pageHTML(P, 0, ps)}</div>`;
-    for (let i = 1; i < P.pages.length; i += 2) html += `<div class="pv-pair">${pageHTML(P, i, ps)}${i + 1 < P.pages.length ? pageHTML(P, i + 1, ps) : ''}</div>`;
+    // 기본: [1][2] [3][4] … / 책 방식: 1쪽은 오른쪽에 혼자, 그다음부터 [2][3] [4][5] …
+    let start = 0;
+    if (ps.bookStart){ html += `<div class="pv-pair"><div class="pv-blank" style="width:${P.w}mm;height:${P.h}mm"></div>${pageHTML(P, 0, ps)}</div>`; start = 1; }
+    for (let i = start; i < P.pages.length; i += 2) html += `<div class="pv-pair">${pageHTML(P, i, ps)}${i + 1 < P.pages.length ? pageHTML(P, i + 1, ps) : ''}</div>`;
   } else html = P.pages.map((_, i) => `<div class="pv-one">${pageHTML(P, i, ps)}<div class="pv-label">${i + 1}쪽</div></div>`).join('');
   box.innerHTML = html;
   $('#pvInfo').textContent = `총 ${P.pages.length}쪽 · ${P.chars.toLocaleString('ko-KR')}자 (공백 포함)`;
@@ -2679,13 +2685,14 @@ $('#pvSize').onchange = e => pvSet({size: e.target.value});
 $('#pvOrient').onchange = e => pvSet({orient: e.target.value});
 $('#pvNum').onchange = e => pvSet({num: e.target.checked});
 $('#pvSpread').onchange = e => pvSet({spread: e.target.checked});
+$('#pvStart').onchange = e => pvSet({bookStart: e.target.value === '1'});
 $('#pvZin').onclick = () => pvSet({zoom: Math.min(2, Math.round((pageSetup().zoom + 0.1) * 10) / 10)});
 $('#pvZout').onclick = () => pvSet({zoom: Math.max(0.3, Math.round((pageSetup().zoom - 0.1) * 10) / 10)});
 $('#pvMargin').onchange = e => {
   if (e.target.value !== 'custom') return pvSet({margin: e.target.value});
   const ps = pageSetup(), m = marginsMM(ps);
   const f = (id, l, v) => `<label>${l} <input class="ctl" id="${id}" type="number" min="0" max="80" value="${v}" style="width:90px;margin:0"> mm</label>`;
-  modal('여백 직접 정하기', `<p>책처럼 묶는 쪽이 안쪽입니다. 홀수 쪽은 왼쪽, 짝수 쪽은 오른쪽이 안쪽이 됩니다.</p><div class="bkset">${f('mT', '위', m.t)}${f('mB', '아래', m.b)}${f('mI', '안쪽', m.in)}${f('mO', '바깥쪽', m.out)}</div>`, '적용', b => {
+  modal('여백 직접 정하기', `<p>책처럼 묶는 쪽이 안쪽입니다. 펼친 면의 왼쪽 쪽은 오른쪽 가장자리가, 오른쪽 쪽은 왼쪽 가장자리가 안쪽이 됩니다.</p><div class="bkset">${f('mT', '위', m.t)}${f('mB', '아래', m.b)}${f('mI', '안쪽', m.in)}${f('mO', '바깥쪽', m.out)}</div>`, '적용', b => {
     const g = id => Math.max(0, Math.min(80, parseFloat(b.querySelector(id).value) || 0));
     pvSet({margin: 'custom', m: {t: g('#mT'), b: g('#mB'), in: g('#mI'), out: g('#mO')}});
   }, null);
