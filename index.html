@@ -285,7 +285,7 @@ button{font:inherit;color:inherit}
       <button class="tb" data-cmd="vTop" id="tbVT" title="위쪽 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h14M10 7v10M6.5 10.5 10 7l3.5 3.5"/></svg></button>
       <button class="tb" data-cmd="vMid" id="tbVM" title="가운데 (세로) 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h14M10 2.5v4.5M7.5 4.5 10 7l2.5-2.5M10 17.5V13M7.5 15.5 10 13l2.5 2.5"/></svg></button>
       <button class="tb" data-cmd="vBot" id="tbVB" title="아래쪽 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5h14M10 3v10M6.5 9.5 10 13l3.5-3.5"/></svg></button>
-      <button class="tb labeled" data-cmd="wrap" id="tbWrap" title="자동 줄 바꿈: 칸 너비에 맞춰 글자를 여러 줄로 보여 줍니다. 원하는 곳에서 줄을 바꾸려면 편집 중에 Alt+Enter 또는 Ctrl+Enter"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14M3 10h11a2.5 2.5 0 0 1 0 5h-4"/><path d="M12 13l-2 2 2 2M3 15h4"/></svg><span>줄 바꿈</span></button>
+      <button class="tb labeled" data-cmd="wrap" id="tbWrap" title="자동 줄 바꿈 (기본으로 켜짐): 끄면 긴 글이 오른쪽 빈칸으로 이어져 보입니다. 원하는 곳에서 줄을 바꾸려면 편집 중에 Alt+Enter 또는 Ctrl+Enter"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14M3 10h11a2.5 2.5 0 0 1 0 5h-4"/><path d="M12 13l-2 2 2 2M3 15h4"/></svg><span>줄 바꿈</span></button>
       <button class="tb" data-cmd="merge" id="tbMerge" title="병합하고 가운데 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1"/><path d="M5.5 10h9M7.5 8l-2 2 2 2M12.5 8l2 2-2 2"/></svg></button>
       <button class="tb caret" data-cmd="mergeMenu" title="병합 옵션"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
     </div>
@@ -422,6 +422,10 @@ function clean(r,c){
   if (cell.v == null && !cell.s) delete sh.cells[k];
 }
 const EMPTY = {};
+// 기본: 줄 바꿈 켜짐(숫자는 쪼개지지 않게 한 줄), 세로 위치는 위쪽.
+// 칸에 wrap:false 나 va:'middle'/'bottom'을 따로 정하면 그것을 따른다.
+const wrapOn = (s, v) => s.wrap !== false && !(v != null && v !== '' && isNum(v));
+const vaOf = s => s.va || 'top';
 function st(r,c){
   const cell = sh.cells[r+':'+c], cs = sh.colStyle[c], rs = sh.rowStyle[r];
   if (!cs && !rs) return (cell && cell.s) || EMPTY;
@@ -501,9 +505,9 @@ function autoRows(){
     if (mergeOf(r,c)) continue;
     const s = st(r,c), px = (s.fs || DEF_FS) * 4/3;
     // 높이를 직접 정한 행은 줄 바꿈 글자가 들어갈 때만 늘린다
-    if (sh.rowManual[r] && !s.wrap) continue;
+    if (sh.rowManual[r] && !wrapOn(s, cell.v)) continue;
     let lines;
-    if (s.wrap){ mctx.font = fontStr(s,1); lines = wrapLines(cell.v, cw(c) - 8, mctx).length; }
+    if (wrapOn(s, cell.v)){ mctx.font = fontStr(s,1); lines = wrapLines(shown(r, c), cw(c) - 8, mctx).length; }
     else lines = String(cell.v).split('\n').length;
     const h = Math.ceil(lines * px * 1.28 + 4);
     if (h > DEF_H && h > (need[r] || 0)) need[r] = h;
@@ -642,10 +646,11 @@ function drawText(r, c, rect, isMerge){
   ensureFont(s.ff, s.b);
   ctx.font = fontStr(s, z);
   const px = (s.fs || DEF_FS) * 4/3 * z, pad = 3*z + 1;
-  const ha = s.ha || (errCell ? 'center' : isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left'), va = s.va || 'middle';
-  const lines = s.wrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
+  const ha = s.ha || (errCell ? 'center' : isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left'), va = vaOf(s);
+  const doWrap = wrapOn(s, raw);
+  const lines = doWrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
   let clip = rect, tw = 0, spill = false;
-  if (!isMerge && !s.wrap){
+  if (!isMerge && !doWrap){
     for (const l of lines) tw = Math.max(tw, ctx.measureText(l).width);
     const need = tw + pad*2;
     if (need > rect.w){
@@ -928,7 +933,7 @@ function positionEditor(){
 function sizeEditor(){
   if (!editing){ ed.style.width = edMinW+'px'; ed.style.height = edMinH+'px'; return; }
   const s = st(act.r, act.c); let w = edMinW;
-  if (!s.wrap){
+  if (!wrapOn(s, ed.value)){
     mctx.font = fontStr(s, sh.zoom);
     let tw = 0; for (const l of ed.value.split('\n')) tw = Math.max(tw, mctx.measureText(l).width);
     const room = wrap.clientWidth - (parseFloat(ed.style.left) - wrap.scrollLeft) - 6;
@@ -948,7 +953,7 @@ function startEdit(mode, text){
   ed.style.background = s.bg || '#fff';
   ed.style.textAlign = s.ha || 'left';
   ed.style.textDecoration = [s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ') || 'none';
-  ed.style.whiteSpace = s.wrap ? 'pre-wrap' : 'pre';
+  ed.style.whiteSpace = wrapOn(s, getV(act.r, act.c)) ? 'pre-wrap' : 'pre';
   ed.classList.add('on');
   positionEditor();
   if (mode === 'edit'){ const n = ed.value.length; ed.setSelectionRange(n, n); }
@@ -1142,9 +1147,10 @@ function mergeToggle(){
 // ===== 크기 =====
 function textWidthOf(r, c){
   const v = fmtValue(shown(r,c), st(r,c)); if (v === '' || mergeOf(r,c)) return 0;
-  const s = st(r,c); if (s.wrap) return 0;
+  const s = st(r,c);
   mctx.font = fontStr(s, 1);
   let w = 0; for (const l of String(v).split('\n')) w = Math.max(w, mctx.measureText(l).width);
+  if (wrapOn(s, v)) w = Math.min(w, 420);   // 긴 글은 이 정도 폭에서 줄 바꿈
   return w + 10;
 }
 function autofitCols(cols){
@@ -2486,7 +2492,7 @@ function buildPrintHTML(o){
       const span = m ? ` rowspan="${Math.min(m.r2, A.r2) - Math.max(m.r1, A.r1) + 1}" colspan="${Math.min(m.c2, A.c2) - Math.max(m.c1, A.c1) + 1}"` : '';
       const css = [`font-family:'${s.ff || DEF_FONT}','Malgun Gothic',sans-serif`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
         (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`, `color:${s.fc || '#111'}`, s.bg && `background:${s.bg}`,
-        `text-align:${ha}`, `vertical-align:${s.va === 'top' ? 'top' : s.va === 'bottom' ? 'bottom' : 'middle'}`, s.wrap ? 'white-space:pre-wrap;word-break:keep-all' : 'white-space:pre',
+        `text-align:${ha}`, `vertical-align:${vaOf(s)}`, wrapOn(s, raw) ? 'white-space:pre-wrap;word-break:keep-all' : 'white-space:pre',
         `border-top:${bc(s.bt) || grid}`, `border-bottom:${bc(s.bb) || grid}`, `border-left:${bc(s.bl) || grid}`, `border-right:${bc(s.br) || grid}`].filter(Boolean).join(';');
       const bar = s._bar ? `<div style="position:absolute;left:2px;top:3px;bottom:3px;width:calc(${Math.round(s._bar.t * 100)}% - 4px);background:${s._bar.color};opacity:.55"></div>` : '';
       h += `<td${span} style="${css}">${bar}<div class="v">${esc(v)}</div></td>`;
@@ -2591,7 +2597,7 @@ function paginate(ps){
         const x = (colX[c] - colX[area.c1]) * k, cwid = (colX[Math.min(c2, area.c2) + 1] - colX[c]) * k;
         mctx.font = fontStr(s, 1);
         const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28;
-        const lines = s.wrap ? wrapLines(text, cwid - 8, mctx) : text.split('\n');
+        const lines = wrapOn(s, text) ? wrapLines(text, cwid - 8, mctx) : text.split('\n');
         return {x, w: cwid, s, lines, lh, c, num: isNum(shown(r, c))};
       });
       const hh = Math.max(rh(r), ...cells.map(x => x.lines.length * x.lh + 4));
@@ -2625,7 +2631,7 @@ function pageHTML(P, i, ps){
     } else if (it.k === 'row'){
       for (const x of it.cells){
         const s = x.s, ha = s.ha || (x.num ? 'right' : 'left');
-        inner += `<div class="tc" data-r="${it.r}" data-c="${x.c}" style="left:${x.x.toFixed(2)}px;top:${it.y.toFixed(2)}px;width:${x.w.toFixed(2)}px;height:${it.h.toFixed(2)}px;${s.bg ? 'background:' + s.bg + ';' : ''}border-top:${bc(s.bt)};border-bottom:${bc(s.bb)};border-left:${bc(s.bl)};border-right:${bc(s.br)};${cellCss(s, ha)};line-height:${x.lh.toFixed(2)}px;justify-content:${s.va === 'top' ? 'flex-start' : s.va === 'bottom' ? 'flex-end' : 'center'}">${x.lines.map(l => `<div>${esc(l) || '&nbsp;'}</div>`).join('')}</div>`;
+        inner += `<div class="tc" data-r="${it.r}" data-c="${x.c}" style="left:${x.x.toFixed(2)}px;top:${it.y.toFixed(2)}px;width:${x.w.toFixed(2)}px;height:${it.h.toFixed(2)}px;${s.bg ? 'background:' + s.bg + ';' : ''}border-top:${bc(s.bt)};border-bottom:${bc(s.bb)};border-left:${bc(s.bl)};border-right:${bc(s.br)};${cellCss(s, ha)};line-height:${x.lh.toFixed(2)}px;justify-content:${vaOf(s) === 'middle' ? 'center' : vaOf(s) === 'bottom' ? 'flex-end' : 'flex-start'}">${x.lines.map(l => `<div>${esc(l) || '&nbsp;'}</div>`).join('')}</div>`;
       }
     } else if (it.k === 'img'){
       inner += `<img src="${it.src}" style="position:absolute;left:0;top:${it.y.toFixed(2)}px;width:${it.w.toFixed(2)}px;height:${it.h.toFixed(2)}px">`;
@@ -2794,8 +2800,8 @@ function toHTML(R){
       const s = st(r,c), v = fmtValue(shown(r,c), s);
       const css = [`font-family:'${XL_NAME[s.ff || DEF_FONT] || s.ff || DEF_FONT}'`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
         (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`,
-        s.fc && `color:${s.fc}`, s.bg && `background:${s.bg}`, s.ha && `text-align:${s.ha}`, `vertical-align:${s.va || 'middle'}`,
-        s.wrap ? 'white-space:normal' : 'white-space:nowrap', r === R.r1 && `width:${Math.round(cw(c)*0.75)}pt`,
+        s.fc && `color:${s.fc}`, s.bg && `background:${s.bg}`, s.ha && `text-align:${s.ha}`, `vertical-align:${vaOf(s)}`,
+        wrapOn(s, v) ? 'white-space:normal' : 'white-space:nowrap', r === R.r1 && `width:${Math.round(cw(c)*0.75)}pt`,
         s.bt && `border-top:${bcss(s.bt)}`, s.bb && `border-bottom:${bcss(s.bb)}`, s.bl && `border-left:${bcss(s.bl)}`, s.br && `border-right:${bcss(s.br)}`].filter(Boolean).join(';');
       const span = m && contains(R, m) ? ` rowspan="${m.r2-m.r1+1}" colspan="${m.c2-m.c1+1}"` : '';
       h += `<td${span} style="${css}">${esc(v).replace(/\n/g, '<br>')}</td>`;
@@ -3263,8 +3269,8 @@ function refreshUI(){
   const s = st(act.r, act.c);
   setOn('tbBold', s.b); setOn('tbItalic', s.i); setOn('tbUnder', s.u); setOn('tbStrike', s.st);
   setOn('tbAL', s.ha === 'left'); setOn('tbAC', s.ha === 'center'); setOn('tbAR', s.ha === 'right');
-  setOn('tbVT', s.va === 'top'); setOn('tbVM', !s.va || s.va === 'middle'); setOn('tbVB', s.va === 'bottom');
-  setOn('tbWrap', s.wrap); setOn('tbMerge', mergeOf(act.r, act.c)); setOn('tbGrid', sh.grid);
+  setOn('tbVT', vaOf(s) === 'top'); setOn('tbVM', vaOf(s) === 'middle'); setOn('tbVB', vaOf(s) === 'bottom');
+  setOn('tbWrap', wrapOn(s, getV(act.r, act.c))); setOn('tbMerge', mergeOf(act.r, act.c)); setOn('tbGrid', sh.grid);
   setOn('tbFilter', !!sh.filter); setOn('tbFreeze', !!(sh.freeze && (sh.freeze.r || sh.freeze.c)));
   const nfs = $('#nfSel'); if (nfs && document.activeElement !== nfs) nfs.value = s.nf || '';
   const ff = s.ff || DEF_FONT, fs = $('#fontSel');
@@ -3589,8 +3595,8 @@ function run(cmd, el){
     alignL: () => applyStyle({ha: s().ha === 'left' ? null : 'left'}),
     alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
-    vTop: () => applyStyle({va:'top'}), vMid: () => applyStyle({va:null}), vBot: () => applyStyle({va:'bottom'}),
-    wrap: () => toggle('wrap'), merge: mergeToggle, mergeMenu: () => mergePop(el),
+    vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
+    wrap: () => applyStyle({wrap: wrapOn(st(act.r, act.c)) ? false : null}), merge: mergeToggle, mergeMenu: () => mergePop(el),
     border: () => applyBorder(lastBorder), borderMenu: () => borderPop(el),
     clear: clearFormats,
     decUp: () => stepDecimals(1), decDown: () => stepDecimals(-1),
@@ -3769,8 +3775,8 @@ function toXStyle(s){
   if (s.b) o.font.bold = true; if (s.i) o.font.italic = true; if (s.u) o.font.underline = true; if (s.st) o.font.strike = true;
   if (s.fc) o.font.color = {argb: argb(s.fc)};
   if (s.bg) o.fill = {type:'pattern', pattern:'solid', fgColor:{argb: argb(s.bg)}};
-  o.alignment = {vertical: s.va === 'top' ? 'top' : s.va === 'bottom' ? 'bottom' : 'middle'};
-  if (s.ha) o.alignment.horizontal = s.ha; if (s.wrap) o.alignment.wrapText = true;
+  o.alignment = {vertical: vaOf(s)};
+  if (s.ha) o.alignment.horizontal = s.ha; if (wrapOn(s)) o.alignment.wrapText = true;
   const bd = {}; if (s.bt) bd.top = toXB(s.bt); if (s.bb) bd.bottom = toXB(s.bb); if (s.bl) bd.left = toXB(s.bl); if (s.br) bd.right = toXB(s.br);
   if (Object.keys(bd).length) o.border = bd;
   const nf = numFmtOf(s); if (nf) o.numFmt = nf;
@@ -3786,8 +3792,8 @@ function fromXStyle(x){
   if (x.fill && x.fill.type === 'pattern' && x.fill.pattern === 'solid'){ const bg = fromArgb(x.fill.fgColor && x.fill.fgColor.argb); if (bg) s.bg = bg; }
   const a = x.alignment || {};
   if (['left','center','right'].includes(a.horizontal)) s.ha = a.horizontal; else if (a.horizontal === 'centerContinuous') s.ha = 'center';
-  if (a.vertical === 'top') s.va = 'top'; else if (a.vertical === 'bottom') s.va = 'bottom';
-  if (a.wrapText) s.wrap = true;
+  if (a.vertical === 'middle' || a.vertical === 'center') s.va = 'middle'; else if (a.vertical === 'bottom') s.va = 'bottom';
+  s.wrap = !!a.wrapText;   // 엑셀에서 줄 바꿈이 없던 칸은 그대로 한 줄로
   const b = x.border || {};
   const bt = fromXB(b.top), bb = fromXB(b.bottom), bl = fromXB(b.left), br = fromXB(b.right);
   if (bt) s.bt = bt; if (bb) s.bb = bb; if (bl) s.bl = bl; if (br) s.br = br;
@@ -3900,7 +3906,7 @@ async function importXlsx(buf){
         let fm = null; if (!slave){ try { fm = cell.formula || null; } catch (e) {} }
         if (fm){ o.v = '=' + fm; if (v !== '') o.xr = v; }
         else if (v !== '') o.v = v;
-        if (sty) o.s = sty;
+        if (sty) o.s = sty; else if (o.v != null) o.s = {wrap: false};
         if (o.v != null || o.s) s.cells[(rn-1)+':'+(cn-1)] = o;
       });
     });
@@ -4231,15 +4237,15 @@ function sample(){
   s.colW = {0:44, 1:92, 2:250, 3:78, 4:78, 5:96, 7:120};
   const put = (r, c, v, sty) => { const o = {}; if (v !== '' && v != null) o.v = String(v); if (sty) o.s = sty; s.cells[r+':'+c] = o; };
   const ink = '#1F3B7A', thin = {w:1, s:'solid', c:'#A9B4C8'}, thick = {w:2, s:'solid', c:ink};
-  put(0, 0, '마케팅팀 10월 둘째 주 업무표', {b:true, fs:18, ha:'center', fc:ink, ff:'Noto Sans KR'});
+  put(0, 0, '마케팅팀 10월 둘째 주 업무표', {b:true, fs:18, ha:'center', va:'middle', fc:ink, ff:'Noto Sans KR'});
   s.merges.push({r1:0, c1:0, r2:0, c2:5}); s.rowH[0] = s.rowManual[0] = 44;
-  put(1, 0, '2026-10-05 ~ 2026-10-09 · 예시로 넣어 둔 시트입니다. 위쪽 [새로 만들기]를 누르면 빈 시트로 시작합니다.', {fc:'#6B7385', fs:9});
-  ['No','담당','업무','시작','마감','상태'].forEach((h, c) => put(3, c, h, {b:true, bg:ink, fc:'#FFFFFF', ha:'center', bt:thick, bb:thin, bl:c === 0 ? thick : thin, br:c === 5 ? thick : thin}));
+  put(1, 0, '2026-10-05 ~ 2026-10-09 · 예시로 넣어 둔 시트입니다. 위쪽 [새로 만들기]를 누르면 빈 시트로 시작합니다.', {fc:'#6B7385', fs:9, wrap:false});
+  ['No','담당','업무','시작','마감','상태'].forEach((h, c) => put(3, c, h, {b:true, bg:ink, fc:'#FFFFFF', ha:'center', va:'middle', bt:thick, bb:thin, bl:c === 0 ? thick : thin, br:c === 5 ? thick : thin}));
   s.rowH[3] = s.rowManual[3] = 28;
   const rows = [['1','김하늘','가을 캠페인 배너 시안 3종','10-05','10-06','완료'],['2','이도윤','인스타그램 릴스 촬영 일정 조율과 장소 섭외, 소품 목록 정리','10-05','10-08','진행 중'],['3','박서연','뉴스레터 10월호 원고','10-06','10-07','완료'],['4','최민준','고객 설문 결과 정리','10-07','10-09','대기'],['5','정유나','11월 프로모션 기획안 초안','10-08','10-09','진행 중']];
   const tone = {'완료':['#E2F0D9','#2E6B1F'], '진행 중':['#FFF2CC','#8A6100'], '대기':['#EDEFF3','#59606E']};
   rows.forEach((row, i) => { const r = 4 + i; row.forEach((v, c) => {
-    const sty = {bt:thin, bb: i === rows.length-1 ? thick : thin, bl: c === 0 ? thick : thin, br: c === 5 ? thick : thin};
+    const sty = {va:'middle', bt:thin, bb: i === rows.length-1 ? thick : thin, bl: c === 0 ? thick : thin, br: c === 5 ? thick : thin};
     if (c === 0 || c >= 3) sty.ha = 'center';
     if (c === 2) sty.wrap = true;
     if (i % 2 === 1) sty.bg = '#F4F6FA';
@@ -4247,10 +4253,10 @@ function sample(){
     put(r, c, v, sty);
   }); });
   put(10, 1, '메모', {b:true, fc:ink});
-  put(11, 1, '긴 글은 이렇게 오른쪽 빈칸으로 이어져 보입니다. 옆 칸에 내용을 넣으면 그 앞에서 잘립니다.', {fc:'#3B4252'});
+  put(11, 1, '줄 바꿈을 끈 칸의 긴 글은 이렇게 오른쪽 빈칸으로 이어져 보입니다. 옆 칸에 내용을 넣으면 그 앞에서 잘립니다.', {fc:'#3B4252', wrap:false});
   put(13, 1, '채우기 연습', {b:true, fc:ink});
-  put(14, 1, '아래 칸을 선택하고 오른쪽 아래 작은 점을 끌어 보세요', {fc:'#6B7385', fs:9});
-  const fs = {ha:'center', bg:'#DCE5FA', bt:thin, bb:thin, bl:thin, br:thin};
+  put(14, 1, '아래 칸을 선택하고 오른쪽 아래 작은 점을 끌어 보세요', {fc:'#6B7385', fs:9, wrap:false});
+  const fs = {ha:'center', va:'middle', bg:'#DCE5FA', bt:thin, bb:thin, bl:thin, br:thin};
   put(15, 1, '항목1', fs); put(15, 2, '월요일', fs); put(15, 3, '1월', fs); put(15, 4, '2026-10-05', fs); put(15, 5, '1분기', fs);
   return {sheets:[s], active:0};
 }
