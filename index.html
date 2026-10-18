@@ -175,6 +175,9 @@ button{font:inherit;color:inherit}
   .mi{padding:10px 12px}
 }
 #installBtn[hidden]{display:none}
+.cc{align-self:center;font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;padding:3px 8px;border-radius:5px;cursor:pointer;user-select:none}
+.cc:hover{background:var(--hover);color:var(--ink)}
+@media (max-width:760px){.cc{font-size:11px;padding:3px 4px}}
 #pageView{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;background:var(--bg)}
 #pageView[hidden]{display:none}
 #pvStart[hidden]{display:none}
@@ -337,6 +340,7 @@ button{font:inherit;color:inherit}
     <div class="tabs" id="tabs"></div>
     <button class="tb" id="addSheet" title="시트 추가"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg></button>
     <div class="status" id="status"></div>
+    <span class="cc" id="charCount" role="button" tabindex="0"></span>
     <div class="zoom">
       <button class="tb" id="zoomOut" title="축소">−</button>
       <input type="range" id="zoomR" min="50" max="200" step="10" value="100" aria-label="확대/축소">
@@ -424,6 +428,7 @@ function st(r,c){
   return Object.assign({}, cs, rs, cell && cell.s);
 }
 function buildMerges(){
+  sheetChars = null;
   computeHidden();
   mergeIdx = new Map();
   for (const m of sh.merges) for (let r = m.r1; r <= m.r2; r++) for (let c = m.c1; c <= m.c2; c++) mergeIdx.set(r*COLS+c, m);
@@ -3212,7 +3217,7 @@ ed.addEventListener('keydown', e => {
     }
   }
 });
-ed.addEventListener('input', () => { pointRef = null; if (!editing) startEdit('enter', null); sizeEditor(); fx.value = ed.value; });
+ed.addEventListener('input', () => { pointRef = null; if (!editing) startEdit('enter', null); sizeEditor(); fx.value = ed.value; updateCharCount(); });
 ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter', null); });
 ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
@@ -3286,7 +3291,41 @@ function setStatus(msg){
     const f = x => Number(x.toPrecision(12)).toLocaleString('en-US', {maximumFractionDigits: 4});
     el.textContent = cnt ? `합계 ${f(sum)} · 평균 ${f(sum / cnt)} · 개수 ${n}` : `${R}행 × ${C}열 선택 · 개수 ${n}`;
   } else el.textContent = touchMode ? '두 번 탭: 편집 · 길게 누르기: 메뉴 · 두 손가락: 확대/축소' : '더블클릭으로 편집 · 오른쪽 아래 점을 끌면 이어 채우기';
+  updateCharCount();
 }
+// --- 글자 수 (줄 바꿈은 세지 않음) ---
+let sheetChars = null, ccNoSpace = false;
+try { ccNoSpace = localStorage.getItem('monun.ccNoSpace') === '1'; } catch (e) {}
+const countText = t => { const s = String(t ?? '').replace(/\n/g, ''); return [[...s].length, [...s.replace(/\s/g, '')].length]; };
+const cellText = (r, c) => fmtValue(shown(r, c), st(r, c));
+function sheetCharCount(){
+  if (sheetChars) return sheetChars;
+  let a = 0, b = 0;
+  for (const k in sh.cells){ const v = sh.cells[k].v; if (v == null || v === '') continue; const i = k.indexOf(':'); const [x, y] = countText(cellText(+k.slice(0, i), +k.slice(i + 1))); a += x; b += y; }
+  return (sheetChars = [a, b]);
+}
+function updateCharCount(){
+  const el = document.getElementById('charCount'); if (!el || !sh) return;
+  const m = mergeOf(act.r, act.c), single = editing || (sel.r1 === sel.r2 && sel.c1 === sel.c2) || (m && contains(m, sel));
+  let cur;
+  if (editing) cur = countText(ed.value);
+  else if (single) cur = countText(cellText(act.r, act.c));
+  else {
+    let a = 0, b = 0;
+    for (const k in sh.cells){
+      const i = k.indexOf(':'), r = +k.slice(0, i), c = +k.slice(i + 1);
+      if (r < sel.r1 || r > sel.r2 || c < sel.c1 || c > sel.c2 || sh.cells[k].v == null) continue;
+      const [x, y] = countText(cellText(r, c)); a += x; b += y;
+    }
+    cur = [a, b];
+  }
+  const tot = sheetCharCount(), i = ccNoSpace ? 1 : 0, fm = n => n.toLocaleString('ko-KR');
+  el.textContent = `${single ? '칸' : '선택'} ${fm(cur[i])}자 · 시트 ${fm(tot[i])}자${ccNoSpace ? ' (공백 제외)' : ''}`;
+  el.title = `공백 포함: ${single ? '칸' : '선택'} ${fm(cur[0])}자 · 시트 ${fm(tot[0])}자\n공백 제외: ${single ? '칸' : '선택'} ${fm(cur[1])}자 · 시트 ${fm(tot[1])}자\n누르면 공백 포함/제외를 바꿉니다`;
+}
+function toggleCharMode(){ ccNoSpace = !ccNoSpace; try { localStorage.setItem('monun.ccNoSpace', ccNoSpace ? '1' : '0'); } catch (e) {} updateCharCount(); toast(ccNoSpace ? '글자 수: 공백 빼고 셉니다' : '글자 수: 공백까지 셉니다'); }
+document.getElementById('charCount').addEventListener('click', () => { toggleCharMode(); if (!editing) focusGrid(); });
+document.getElementById('charCount').addEventListener('mousedown', e => e.preventDefault());
 function updateDoc(){
   $('#docName').textContent = fileName;
   const s = $('#saveState');
