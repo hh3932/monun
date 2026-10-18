@@ -175,6 +175,24 @@ button{font:inherit;color:inherit}
   .mi{padding:10px 12px}
 }
 #installBtn[hidden]{display:none}
+#pageView{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;background:var(--bg)}
+#pageView[hidden]{display:none}
+.pv-bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:8px 16px;padding-top:calc(8px + env(safe-area-inset-top,0px));background:var(--bar);border-bottom:1px solid var(--line)}
+.pv-bar label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.pv-bar select.ctl{height:30px}
+.pv-chk input{accent-color:var(--accent)}
+.pv-info{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
+.pv-zoom{display:flex;align-items:center;gap:2px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pv-zoom .tb{min-width:26px;height:26px}
+.pv-scroll{flex:1;overflow:auto;background:#5E6572}
+.pv-pages{display:flex;flex-direction:column;align-items:center;gap:28px;padding:28px 16px 64px;width:max-content;min-width:100%;box-sizing:border-box}
+.pv-one,.pv-pair{display:flex;flex-direction:column;align-items:center}
+.pv-pair{flex-direction:row;gap:2px}
+.pv-pages .pg{box-shadow:0 3px 14px rgba(0,0,0,.35)}
+.pv-pages .ln,.pv-pages .tc{cursor:text}
+.pv-blank{visibility:hidden}
+.pv-label{color:#E7EAEF;font-size:12px;margin-top:6px}
+@media (max-width:760px){.pv-bar .fbtn span{display:none}.pv-info{margin-left:0;width:100%}}
 .cf-sw{flex:none;width:30px;height:24px;border:1px solid var(--line);border-radius:4px;display:grid;place-items:center;font-size:12px}
 .modal code{font-family:"IBM Plex Mono",Consolas,monospace;background:var(--hover);padding:1px 4px;border-radius:3px}
 #fnHint{position:fixed;z-index:25;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:4px;max-width:360px;font-size:12.5px;color:var(--ink)}
@@ -219,6 +237,7 @@ button{font:inherit;color:inherit}
     <div class="doc"><span id="docName">제목 없음</span><span id="saveState"></span><span id="bkState"></span></div>
     <div class="filebtns">
       <button class="fbtn" data-cmd="install" id="installBtn" title="이 기기에 앱으로 설치" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="2.5" width="9" height="15" rx="2"/><path d="M10 6v6M7.5 9.5 10 12l2.5-2.5M8.5 15h3"/></svg><span>앱으로 설치</span></button>
+      <button class="fbtn" data-cmd="pageView" title="쪽 미리보기: A4·A5·B5 같은 종이에 글이 몇 쪽으로 들어가는지 보기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 5.5C8.5 4.3 6 3.8 3 4v11.5c3-.2 5.5.3 7 1.5 1.5-1.2 4-1.7 7-1.5V4c-3-.2-5.5.3-7 1.5z"/><path d="M10 5.5V17"/></svg><span>쪽 미리보기</span></button>
       <button class="fbtn" data-cmd="print" title="인쇄 / PDF로 저장 (Ctrl+P)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 7V3h8v4"/><rect x="3" y="7" width="14" height="7" rx="1.5"/><path d="M6 12h8v5H6z"/></svg><span>인쇄</span></button>
       <button class="fbtn" data-cmd="backups" title="자동 백업 설정과 복원"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6"/><path d="M3 3.5v3.2h3.2"/><path d="M10 6.5V10l2.5 1.6"/></svg><span>백업·복원</span></button>
       <button class="fbtn" data-cmd="new" title="새로 만들기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15"/></svg><span>새로 만들기</span></button>
@@ -2491,7 +2510,9 @@ function openPrint(){
     <label>크기 <select class="ctl" id="prF"><option value="width">한 페이지 너비에 맞추기</option><option value="page">한 페이지에 모두 넣기</option><option value="none">실제 크기</option></select></label>
     <label class="chk"><input type="checkbox" id="prG"> 눈금선도 인쇄</label></div>
     <p style="margin:6px 0 14px">틀 고정한 제목 줄은 페이지마다 다시 나옵니다.</p>
-    <div class="prow" style="margin:0 0 14px"><button class="pbtn" id="prPdf">PDF로 저장</button><button class="pbtn on" id="prGo">인쇄</button></div>`, '닫기', () => {}, back => {
+    <div class="prow" style="margin:0 0 14px"><button class="pbtn" id="prPV">쪽 미리보기로</button><button class="pbtn" id="prPdf">PDF로 저장</button><button class="pbtn on" id="prGo">인쇄</button></div>
+    <p style="margin:-6px 0 12px;font-size:12px">원고처럼 긴 글은 [쪽 미리보기]에서 A5·B5 같은 종이를 골라 쪽 나눔대로 인쇄하세요.</p>`, '닫기', () => {}, back => {
+    back.querySelector('#prPV').onclick = () => { back.remove(); openPageView(); };
     const go = async pdf => {
       const area = printArea(back.querySelector('#prA').value === 'sel');
       if (!area) return toast('인쇄할 내용이 없습니다');
@@ -2514,6 +2535,195 @@ function openPrint(){
     back.querySelector('#prPdf').onclick = () => go(true);
   }, {noCancel: true});
 }
+
+// ===== 쪽 미리보기 =====
+// 시트 내용을 고른 종이 크기의 쪽으로 나눠 보여 준다. 글은 종이 폭에 맞춰 다시 줄 바꿈하고,
+// 긴 칸도 줄 단위로 다음 쪽에 이어진다. 인쇄/PDF도 이 쪽 나눔 그대로 나온다.
+const PAPER = {A4: [210, 297], A5: [148, 210], A6: [105, 148], B4: [257, 364], B5: [182, 257], B6: [128, 182]};
+const MM = 96 / 25.4;   // 1mm = 3.78px (화면·인쇄 공통 96dpi 기준)
+function pageSetup(){ return Object.assign({size: 'A5', orient: 'p', margin: 'normal', m: null, num: true, spread: false, zoom: 1}, sh.pageSetup || {}); }
+function savePageSetup(ps){ sh.pageSetup = ps; fileDirty = true; updateDoc(); queueAutosave(); }
+function paperMM(ps){ let [w, h] = PAPER[ps.size] || PAPER.A5; if (ps.orient === 'l') [w, h] = [h, w]; return {w, h}; }
+function marginsMM(ps){
+  if (ps.margin === 'custom' && ps.m) return ps.m;
+  const {w, h} = paperMM(ps), k = {narrow: 0.07, normal: 0.12, wide: 0.16}[ps.margin] || 0.12, v = Math.round(Math.min(w, h) * k);
+  return {t: v, b: v, in: v, out: v};
+}
+function paginate(ps){
+  const {w, h} = paperMM(ps), M = marginsMM(ps);
+  const NUMH = ps.num ? 7 * MM : 0;
+  const W = (w - M.in - M.out) * MM, H = (h - M.t - M.b) * MM - NUMH;
+  const pages = [[]]; let y = 0, chars = 0;
+  const cur = () => pages[pages.length - 1];
+  const newPage = () => { pages.push([]); y = 0; };
+  const area = printArea(false);
+  if (!area || W < 30 || H < 30) return {pages, W, H, w, h, M, NUMH, chars};
+  const cols = range(area.c1, area.c2), tw = cols.reduce((s, c) => s + cw(c), 0), k = W / Math.max(1, tw);
+  for (let r = area.r1; r <= area.r2; r++){
+    if (hiddenRows.has(r)) continue;
+    const filled = cols.filter(c => { const m = mergeOf(r, c); return !(m && (m.r1 !== r || m.c1 !== c)) && getV(r, c) !== ''; });
+    if (!filled.length){
+      const gap = rh(r);
+      if (y > 0){ if (y + gap > H) newPage(); else y += gap; }
+    } else if (filled.length === 1){
+      // 한 칸짜리 줄: 문단으로 보고 종이 폭에 맞춰 다시 줄 바꿈
+      const c = filled[0], s = stShow(r, c), text = String(fmtValue(shown(r, c), s));
+      chars += [...text.replace(/\n/g, '')].length;
+      mctx.font = fontStr(s, 1);
+      const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28;
+      for (const ln of wrapLines(text, W, mctx)){
+        if (y + lh > H + 0.5 && y > 0) newPage();
+        cur().push({k: 'line', y, h: lh, text: ln, s, r, c}); y += lh;
+      }
+    } else {
+      // 여러 칸짜리 줄: 표로 보고 칸 너비를 종이 폭에 맞춰 줄임
+      const cells = filled.map(c => {
+        const m = mergeOf(r, c), c2 = m ? m.c2 : c, s = stShow(r, c), text = String(fmtValue(shown(r, c), s));
+        chars += [...text.replace(/\n/g, '')].length;
+        const x = (colX[c] - colX[area.c1]) * k, cwid = (colX[Math.min(c2, area.c2) + 1] - colX[c]) * k;
+        mctx.font = fontStr(s, 1);
+        const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28;
+        const lines = s.wrap ? wrapLines(text, cwid - 8, mctx) : text.split('\n');
+        return {x, w: cwid, s, lines, lh, c, num: isNum(shown(r, c))};
+      });
+      const hh = Math.max(rh(r), ...cells.map(x => x.lines.length * x.lh + 4));
+      if (y + hh > H && y > 0) newPage();
+      cur().push({k: 'row', y, h: hh, cells, r}); y += hh;
+    }
+    // 이 행에 붙은 그림·차트
+    for (const im of (sh.images || []).filter(i => i.r === r)){
+      const iw = Math.min(W, im.w), ih = im.h * iw / im.w;
+      if (y + ih > H && y > 0) newPage();
+      const src = im.kind === 'chart' ? chartToDataURL(im, 2) : (wb.media || {})[im.id];
+      if (src){ cur().push({k: 'img', y, w: iw, h: Math.min(ih, H), src}); y += ih + 6; }
+    }
+  }
+  if (pages.length > 1 && !cur().length) pages.pop();
+  return {pages, W, H, w, h, M, NUMH, chars};
+}
+function cellCss(s, ha){
+  return [`font-family:'${s.ff || DEF_FONT}','Malgun Gothic','Apple SD Gothic Neo',sans-serif`, `font-size:${((s.fs || DEF_FS) * 4 / 3).toFixed(2)}px`, s.b ? 'font-weight:700' : 'font-weight:400',
+    s.i && 'font-style:italic', (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`, `color:${s.fc || '#111'}`, `text-align:${ha}`].filter(Boolean).join(';');
+}
+function pageHTML(P, i, ps){
+  const odd = i % 2 === 0, left = odd ? P.M.in : P.M.out;   // 책처럼: 홀수 쪽은 안쪽이 왼쪽
+  const bc = b => b ? `${b.s === 'double' ? 3 : b.w}px ${b.s} ${b.c}` : 'none';
+  let inner = '';
+  for (const it of P.pages[i]){
+    if (it.k === 'line'){
+      const ha = it.s.ha || 'left';
+      inner += `<div class="ln" data-r="${it.r}" data-c="${it.c}" style="top:${it.y.toFixed(2)}px;height:${it.h.toFixed(2)}px;line-height:${it.h.toFixed(2)}px;${cellCss(it.s, ha)}">${esc(it.text) || '&nbsp;'}</div>`;
+    } else if (it.k === 'row'){
+      for (const x of it.cells){
+        const s = x.s, ha = s.ha || (x.num ? 'right' : 'left');
+        inner += `<div class="tc" data-r="${it.r}" data-c="${x.c}" style="left:${x.x.toFixed(2)}px;top:${it.y.toFixed(2)}px;width:${x.w.toFixed(2)}px;height:${it.h.toFixed(2)}px;${s.bg ? 'background:' + s.bg + ';' : ''}border-top:${bc(s.bt)};border-bottom:${bc(s.bb)};border-left:${bc(s.bl)};border-right:${bc(s.br)};${cellCss(s, ha)};line-height:${x.lh.toFixed(2)}px;justify-content:${s.va === 'top' ? 'flex-start' : s.va === 'bottom' ? 'flex-end' : 'center'}">${x.lines.map(l => `<div>${esc(l) || '&nbsp;'}</div>`).join('')}</div>`;
+      }
+    } else if (it.k === 'img'){
+      inner += `<img src="${it.src}" style="position:absolute;left:0;top:${it.y.toFixed(2)}px;width:${it.w.toFixed(2)}px;height:${it.h.toFixed(2)}px">`;
+    }
+  }
+  const num = ps.num ? `<div class="pn" style="left:${left}mm;width:${P.W.toFixed(2)}px;top:calc(${P.M.t}mm + ${(P.H + P.NUMH * 0.35).toFixed(2)}px)">- ${i + 1} -</div>` : '';
+  return `<div class="pg" style="width:${P.w}mm;height:${P.h}mm"><div class="pa" style="left:${left}mm;top:${P.M.t}mm;width:${P.W.toFixed(2)}px;height:${P.H.toFixed(2)}px">${inner}</div>${num}</div>`;
+}
+const PAGE_CSS = `.pg{position:relative;background:#fff;overflow:hidden;flex:none}
+.pa{position:absolute}
+.ln{position:absolute;left:0;right:0;white-space:pre;overflow:visible}
+.tc{position:absolute;box-sizing:border-box;padding:0 4px;overflow:hidden;display:flex;flex-direction:column;white-space:pre}
+.pn{position:absolute;text-align:center;font:11px 'Malgun Gothic',sans-serif;color:#555}`;
+
+let pvOpen = false, pvLast = null;
+const pv = document.createElement('div'); pv.id = 'pageView'; pv.hidden = true;
+pv.innerHTML = `<div class="pv-bar">
+  <button class="fbtn" id="pvBack" title="편집 화면으로 (Esc)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg><span>편집으로</span></button>
+  <label>종이 <select class="ctl" id="pvSize">${Object.entries(PAPER).map(([k, [a, b]]) => `<option value="${k}">${k} (${a}×${b})</option>`).join('')}</select></label>
+  <select class="ctl" id="pvOrient" title="방향"><option value="p">세로</option><option value="l">가로</option></select>
+  <label>여백 <select class="ctl" id="pvMargin"><option value="narrow">좁게</option><option value="normal">보통</option><option value="wide">넓게</option><option value="custom">직접…</option></select></label>
+  <label class="pv-chk"><input type="checkbox" id="pvNum"> 쪽 번호</label>
+  <label class="pv-chk"><input type="checkbox" id="pvSpread"> 두 쪽씩</label>
+  <span class="pv-info" id="pvInfo"></span>
+  <span class="pv-zoom"><button class="tb" id="pvZout" title="축소">−</button><span id="pvZv">100%</span><button class="tb" id="pvZin" title="확대">+</button></span>
+  <button class="fbtn" id="pvPdf"><span>PDF로 저장</span></button>
+  <button class="fbtn primary" id="pvPrint"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 7V3h8v4"/><rect x="3" y="7" width="14" height="7" rx="1.5"/><path d="M6 12h8v5H6z"/></svg><span>인쇄</span></button>
+</div>
+<div class="pv-scroll" id="pvScroll"><div class="pv-pages" id="pvPages"></div></div>
+<style>${PAGE_CSS}</style>`;
+document.body.appendChild(pv);
+async function renderPageView(){
+  const ps = pageSetup();
+  $('#pvSize').value = ps.size; $('#pvOrient').value = ps.orient; $('#pvMargin').value = ps.margin;
+  $('#pvNum').checked = ps.num; $('#pvSpread').checked = ps.spread; $('#pvZv').textContent = Math.round(ps.zoom * 100) + '%';
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  const P = paginate(ps); pvLast = P;
+  const box = $('#pvPages');
+  box.style.zoom = ps.zoom;
+  box.classList.toggle('spread', ps.spread);
+  let html = '';
+  if (ps.spread){
+    // 책 펼침: 1쪽은 오른쪽에 혼자, 그다음부터 [짝수][홀수]
+    html += `<div class="pv-pair"><div class="pv-blank" style="width:${P.w}mm;height:${P.h}mm"></div>${pageHTML(P, 0, ps)}</div>`;
+    for (let i = 1; i < P.pages.length; i += 2) html += `<div class="pv-pair">${pageHTML(P, i, ps)}${i + 1 < P.pages.length ? pageHTML(P, i + 1, ps) : ''}</div>`;
+  } else html = P.pages.map((_, i) => `<div class="pv-one">${pageHTML(P, i, ps)}<div class="pv-label">${i + 1}쪽</div></div>`).join('');
+  box.innerHTML = html;
+  $('#pvInfo').textContent = `총 ${P.pages.length}쪽 · ${P.chars.toLocaleString('ko-KR')}자 (공백 포함)`;
+}
+function openPageView(){
+  if (editing) commitEdit();
+  ed.blur();
+  hideMenus(); pvOpen = true; pv.hidden = false;
+  renderPageView();
+}
+function closePageView(){ pvOpen = false; pv.hidden = true; focusGrid(); schedule(); }
+function pvSet(patch){ const ps = Object.assign(pageSetup(), patch); savePageSetup(ps); renderPageView(); }
+$('#pvBack').onclick = closePageView;
+$('#pvSize').onchange = e => pvSet({size: e.target.value});
+$('#pvOrient').onchange = e => pvSet({orient: e.target.value});
+$('#pvNum').onchange = e => pvSet({num: e.target.checked});
+$('#pvSpread').onchange = e => pvSet({spread: e.target.checked});
+$('#pvZin').onclick = () => pvSet({zoom: Math.min(2, Math.round((pageSetup().zoom + 0.1) * 10) / 10)});
+$('#pvZout').onclick = () => pvSet({zoom: Math.max(0.3, Math.round((pageSetup().zoom - 0.1) * 10) / 10)});
+$('#pvMargin').onchange = e => {
+  if (e.target.value !== 'custom') return pvSet({margin: e.target.value});
+  const ps = pageSetup(), m = marginsMM(ps);
+  const f = (id, l, v) => `<label>${l} <input class="ctl" id="${id}" type="number" min="0" max="80" value="${v}" style="width:90px;margin:0"> mm</label>`;
+  modal('여백 직접 정하기', `<p>책처럼 묶는 쪽이 안쪽입니다. 홀수 쪽은 왼쪽, 짝수 쪽은 오른쪽이 안쪽이 됩니다.</p><div class="bkset">${f('mT', '위', m.t)}${f('mB', '아래', m.b)}${f('mI', '안쪽', m.in)}${f('mO', '바깥쪽', m.out)}</div>`, '적용', b => {
+    const g = id => Math.max(0, Math.min(80, parseFloat(b.querySelector(id).value) || 0));
+    pvSet({margin: 'custom', m: {t: g('#mT'), b: g('#mB'), in: g('#mI'), out: g('#mO')}});
+  }, null);
+  setTimeout(() => { if (pageSetup().margin !== 'custom') $('#pvMargin').value = pageSetup().margin; }, 0);
+};
+// 줄을 더블클릭하면 그 칸으로 돌아가기
+$('#pvPages').addEventListener('dblclick', e => {
+  const el = e.target.closest('[data-r]'); if (!el) return;
+  const r = +el.dataset.r, c = +el.dataset.c;
+  closePageView(); setSel(r, c); ensureVisible(r, c);
+  toast(`${ref(r, c)} 칸입니다`);
+});
+function pagesPrintHTML(){
+  const ps = pageSetup(), P = pvLast || paginate(ps);
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(baseName())}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=Gowun+Dodum&family=Do+Hyeon&family=Black+Han+Sans&family=Nanum+Pen+Script&display=swap">
+<style>@page{size:${P.w}mm ${P.h}mm;margin:0}html,body{margin:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}${PAGE_CSS}
+.pg{break-after:page;page-break-after:always}.pg:last-child{break-after:auto;page-break-after:auto}</style></head>
+<body>${P.pages.map((_, i) => pageHTML(P, i, ps)).join('')}</body></html>`;
+}
+async function printPages(pdf){
+  await renderPageView();
+  const html = pagesPrintHTML(), ps = pageSetup();
+  if (NATIVE && NATIVE.printHTML){
+    const r = await NATIVE.printHTML(html, {pdf, landscape: ps.orient === 'l', name: baseName()});
+    if (pdf && r) toast('PDF로 저장했습니다: ' + r);
+    return;
+  }
+  const w = window.open('', '_blank');
+  if (!w) return toast('새 창이 막혀 있어요. 브라우저에서 팝업을 허용해 주세요');
+  w.document.open(); w.document.write(html); w.document.close();
+  const fire = () => { w.focus(); w.print(); };
+  if (w.document.readyState === 'complete') setTimeout(fire, 500); else w.addEventListener('load', () => setTimeout(fire, 300));
+  if (pdf) toast('인쇄 창에서 대상(프린터)을 "PDF로 저장"으로 고르세요');
+}
+$('#pvPrint').onclick = () => printPages(false);
+$('#pvPdf').onclick = () => printPages(true);
+document.addEventListener('keydown', e => { if (pvOpen && e.key === 'Escape' && !document.querySelector('.modal-back')){ e.preventDefault(); closePageView(); } });
 
 // ===== 끌어서 옮기기 =====
 function applyMove(B, T, copy){
@@ -2935,6 +3145,7 @@ new ResizeObserver(() => schedule()).observe(wrap);
 
 // ===== 키보드 =====
 ed.addEventListener('keydown', e => {
+  if (pvOpen){ if (e.key !== 'Escape') e.preventDefault(); return; }
   const k = e.key, ctrl = e.ctrlKey || e.metaKey;
   if (e.isComposing || k === 'Process') return;
   if (editing && fnList && !fnHint.hidden){
@@ -3319,7 +3530,7 @@ document.addEventListener('click', e => {
   run(b.dataset.cmd, b);
 });
 function run(cmd, el){
-  const fileCmds = {new: newFile, open: openFile, save: () => saveFile(false), saveAs: () => saveFile(true), export: exportXlsx, backups: openBackups, install: installApp, print: openPrint};
+  const fileCmds = {new: newFile, open: openFile, save: () => saveFile(false), saveAs: () => saveFile(true), export: exportXlsx, backups: openBackups, install: installApp, print: openPrint, pageView: openPageView};
   if (fileCmds[cmd]){ if (editing) commitEdit(); fileCmds[cmd](); return; }
   const s = () => st(act.r, act.c);
   const C = {
