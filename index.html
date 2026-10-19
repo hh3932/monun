@@ -175,8 +175,10 @@ button{font:inherit;color:inherit}
   .mi{padding:10px 12px}
 }
 #installBtn[hidden]{display:none}
-.cc{align-self:center;font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;padding:3px 8px;border-radius:5px;cursor:pointer;user-select:none}
-.cc:hover{background:var(--hover);color:var(--ink)}
+.cc{align-self:center;font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;padding:3px 8px;border-radius:5px;cursor:default;user-select:none}
+.cc b{font-weight:600;color:var(--ink)}
+.cc .ns{opacity:.85}
+
 @media (max-width:760px){.cc{font-size:11px;padding:3px 4px}}
 #pageView{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;background:var(--bg)}
 #pageView[hidden]{display:none}
@@ -2763,13 +2765,25 @@ async function renderPageView(){
   box.innerHTML = html;
   pvHits = []; pvHitI = -1;
   if (findBar && !findBar.hidden && findQ.value) setTimeout(() => runFindPV(), 0);
-  $('#pvInfo').textContent = `총 ${P.pages.length}쪽 · ${P.chars.toLocaleString('ko-KR')}자 (공백 포함)`;
+  // 이 미리보기에 들어간 칸들의 공백 뺀 글자 수
+  let ns = 0;
+  const pvCells = P.segs.length ? P.segs.map(g => [g.r, g.c]) : (() => {
+    const A = pvScope === 'sel' && pvSel ? pvSel : printArea(false), list = [];
+    if (A) for (let r = A.r1; r <= A.r2; r++) for (let c = A.c1; c <= A.c2; c++){
+      if (hiddenRows.has(r)) continue; const m = mergeOf(r, c); if (m && (m.r1 !== r || m.c1 !== c)) continue;
+      if (getV(r, c) !== '') list.push([r, c]);
+    }
+    return list;
+  })();
+  for (const [r, c] of pvCells) ns += countText(cellText(r, c))[1];
+  $('#pvInfo').textContent = `총 ${P.pages.length}쪽 · ${P.chars.toLocaleString('ko-KR')}자 · 공백 빼고 ${ns.toLocaleString('ko-KR')}자`;
   // 칸별 쪽수: 누르면 그 칸이 시작하는 쪽으로
   const segBox = $('#pvSegs');
   segBox.hidden = !P.segs.length;
   segBox.innerHTML = P.segs.length ? '<span class="pv-segs-t">칸별 쪽수</span>' + P.segs.map(g => {
     const n = g.to - g.from + 1, txt = String(shown(g.r, g.c)).trim().replace(/\s+/g, ' ').slice(0, 14);
-    return `<button class="pv-seg" data-p="${g.from}" title="${esc(txt)}… · ${g.chars.toLocaleString('ko-KR')}자"><b>${ref(g.r, g.c)}</b> ${n}쪽 <span>(${g.from + 1}${n > 1 ? '~' + (g.to + 1) : ''}쪽)</span></button>`;
+    const gns = countText(cellText(g.r, g.c))[1];
+    return `<button class="pv-seg" data-p="${g.from}" title="${esc(txt)}… · 공백 포함 ${g.chars.toLocaleString('ko-KR')}자 · 공백 빼고 ${gns.toLocaleString('ko-KR')}자"><b>${ref(g.r, g.c)}</b> ${n}쪽 <span>(${g.from + 1}${n > 1 ? '~' + (g.to + 1) : ''}쪽 · ${g.chars.toLocaleString('ko-KR')}자, 공백 빼고 ${gns.toLocaleString('ko-KR')}자)</span></button>`;
   }).join('') : '';
 }
 let pvSel = null;   // 쪽 미리보기를 열 때 고른 칸들 (선택한 칸만 보기용)
@@ -3439,11 +3453,11 @@ function updateCharCount(){
     cur = [a, b];
   }
   const tot = sheetCharCount(), i = ccNoSpace ? 1 : 0, fm = n => n.toLocaleString('ko-KR');
-  el.textContent = `${single ? '칸' : '선택'} ${fm(cur[i])}자 · 시트 ${fm(tot[i])}자${ccNoSpace ? ' (공백 제외)' : ''}`;
-  el.title = `공백 포함: ${single ? '칸' : '선택'} ${fm(cur[0])}자 · 시트 ${fm(tot[0])}자\n공백 제외: ${single ? '칸' : '선택'} ${fm(cur[1])}자 · 시트 ${fm(tot[1])}자\n누르면 공백 포함/제외를 바꿉니다`;
+  const lab = single ? '칸' : '선택';
+  el.innerHTML = `${lab} <b>${fm(cur[0])}</b>자 <span class="ns">(공백 빼고 ${fm(cur[1])})</span> · 시트 <b>${fm(tot[0])}</b>자 <span class="ns">(공백 빼고 ${fm(tot[1])})</span>`;
+  el.title = `공백 포함: ${lab} ${fm(cur[0])}자 · 시트 ${fm(tot[0])}자\n공백 제외: ${lab} ${fm(cur[1])}자 · 시트 ${fm(tot[1])}자`;
 }
 function toggleCharMode(){ ccNoSpace = !ccNoSpace; try { localStorage.setItem('monun.ccNoSpace', ccNoSpace ? '1' : '0'); } catch (e) {} updateCharCount(); toast(ccNoSpace ? '글자 수: 공백 빼고 셉니다' : '글자 수: 공백까지 셉니다'); }
-document.getElementById('charCount').addEventListener('click', () => { toggleCharMode(); if (!editing) focusGrid(); });
 document.getElementById('charCount').addEventListener('mousedown', e => e.preventDefault());
 function updateDoc(){
   $('#docName').textContent = fileName;
