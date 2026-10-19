@@ -70,6 +70,15 @@ button{font:inherit;color:inherit}
 .glyph{font-size:15px;line-height:1;font-family:Georgia,"Times New Roman",serif}
 .ctl{height:30px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit;padding:0 6px}
 #fontSel{width:150px}
+.szbox{position:relative;display:inline-flex}
+.szbox #sizeIn{width:64px;padding-right:20px}
+.szbtn{position:absolute;right:2px;top:3px;bottom:3px;width:18px;border:0;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center;border-radius:4px}
+.szbtn:hover{background:var(--hover);color:var(--ink)}
+.szbtn svg{width:11px;height:11px}
+.szlist{display:flex;flex-direction:column;max-height:300px;overflow:auto;min-width:72px;margin:-4px}
+.szi{border:0;background:none;text-align:left;padding:6px 14px;font:inherit;color:var(--ink);cursor:pointer;border-radius:5px;font-variant-numeric:tabular-nums}
+.szi:hover{background:var(--hover)}
+.szi.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 #nfSel{width:132px}
 #sizeIn{width:60px;font-variant-numeric:tabular-nums}
 .tb:focus-visible,.fbtn:focus-visible,.ctl:focus-visible,.tab:focus-visible,.mi:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -272,8 +281,7 @@ button{font:inherit;color:inherit}
     <div class="sep"></div>
     <div class="grp">
       <select class="ctl" id="fontSel" title="글꼴"></select>
-      <input class="ctl" id="sizeIn" list="sizeList" title="글자 크기" inputmode="decimal">
-      <datalist id="sizeList"></datalist>
+      <span class="szbox"><input class="ctl" id="sizeIn" title="글자 크기: 눌러서 고르거나 숫자를 치고 Enter" inputmode="decimal" autocomplete="off"><button class="szbtn" id="sizeBtn" tabindex="-1" title="글자 크기 목록"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button></span>
       <button class="tb" data-cmd="grow" title="글자 크게"><span class="glyph" style="font-family:inherit;font-size:14px">A<sup style="font-size:9px">+</sup></span></button>
       <button class="tb" data-cmd="shrink" title="글자 작게"><span class="glyph" style="font-family:inherit;font-size:12px">A<sup style="font-size:9px">−</sup></span></button>
     </div>
@@ -326,6 +334,7 @@ button{font:inherit;color:inherit}
     </div>
     <div class="sep"></div>
     <div class="grp">
+      <button class="tb labeled" data-cmd="sizeMenu" title="칸 크기: 열 너비·행 높이 같게, A4·A5 같은 종이 크기에 맞추기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="1" stroke-width="1.3"/><path d="M6 10h8M7.5 8.5 6 10l1.5 1.5M12.5 8.5 14 10l-1.5 1.5"/></svg><span>칸 크기</span></button>
       <button class="tb labeled" data-cmd="cfMenu" title="조건부 서식: 값에 따라 자동으로 색칠"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="14" height="14" rx="1"/><path d="M3 8h14M3 13h14M8 3v14"/><rect x="8.6" y="8.6" width="8" height="3.8" fill="currentColor" stroke="none" opacity=".55"/></svg><span>조건부 서식</span></button>
       <button class="tb" data-cmd="chartMenu" title="차트 넣기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 17h14"/><rect x="4.5" y="9" width="2.8" height="8" fill="currentColor" stroke="none"/><rect x="8.6" y="5" width="2.8" height="12" fill="currentColor" stroke="none" opacity=".7"/><rect x="12.7" y="11" width="2.8" height="6" fill="currentColor" stroke="none" opacity=".45"/></svg></button>
       <button class="tb labeled" data-cmd="freezeMenu" id="tbFreeze" title="틀 고정: 제목 줄·열을 스크롤해도 보이게"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="3" y="3" width="14" height="14" rx="1" stroke-width="1.3"/><path d="M3 7.5h14M7.5 3v14" stroke-width="2.4"/></svg><span>틀 고정</span></button>
@@ -3586,6 +3595,68 @@ function modal(title, body, okLabel, onOk, onOpen, opts = {}){
   const inp = back.querySelector('input'); (inp || back.querySelector('[data-a=ok]')).focus(); if (inp) inp.select();
   if (onOpen) onOpen(back);
 }
+// --- 칸 크기 ---
+const pxmm = px => Math.round(px / MM);
+const selColsList = () => { const c2 = fullRows(sel) ? Math.max(sel.c1, Math.min(sel.c2, usedMax().mc)) : sel.c2; return range(sel.c1, Math.min(c2, sel.c1 + 199)); };
+const selRowsList = () => { const r2 = fullCols(sel) ? Math.max(sel.r1, Math.min(sel.r2, usedMax().mr)) : sel.r2; return range(sel.r1, Math.min(r2, sel.r1 + 999)); };
+function equalCols(){
+  if (editing) commitEdit();
+  const cols = selColsList();
+  askNumber('열 너비 같게', `${colName(cols[0])}${cols.length > 1 ? '~' + colName(cols[cols.length - 1]) : ''} 열을 모두 이 너비로 맞춥니다. 단위는 픽셀 (1mm ≈ 3.8px, 지금 ${cw(act.c)}px ≈ ${pxmm(cw(act.c))}mm)`, cw(act.c), 6, 3000, n => { setColWidth(cols, n); toast(`${cols.length}개 열을 ${n}px(약 ${pxmm(n)}mm)로 맞췄습니다`); });
+}
+function equalRows(){
+  if (editing) commitEdit();
+  const rows = selRowsList();
+  askNumber('행 높이 같게', `${rows[0] + 1}${rows.length > 1 ? '~' + (rows[rows.length - 1] + 1) : ''} 행을 모두 이 높이로 맞춥니다. 단위는 픽셀 (지금 ${rh(act.r)}px ≈ ${pxmm(rh(act.r))}mm). 줄 바꿈 글이 더 길면 그만큼은 늘어납니다.`, rh(act.r), 6, 4000, n => { setRowHeight(rows, n); toast(`${rows.length}개 행을 ${n}px(약 ${pxmm(n)}mm)로 맞췄습니다`); });
+}
+function sizeMenu(el){
+  const b = el.getBoundingClientRect();
+  showMenu(b.left - 10, b.bottom + 4, [
+    {label: '열 너비 같게…', run: equalCols},
+    {label: '행 높이 같게…', run: equalRows},
+    '-',
+    {label: '종이 크기에 맞추기 (A4·A5·B5…)…', run: fitPaperDialog},
+    '-',
+    {label: '열 너비 자동 맞춤', run: () => autofitCols(selColsList())},
+    {label: '행 높이 자동 맞춤', run: () => autofitRows(selRowsList())},
+  ]);
+}
+// 고른 칸을 종이의 글 들어가는 부분(여백 안쪽)과 같은 크기로: 칸 안 줄 바꿈이 쪽 미리보기·인쇄와 같아짐
+function fitPaperDialog(){
+  if (editing) commitEdit();
+  const ps = pageSetup(), cols = selColsList(), rows = selRowsList();
+  const where = `${colName(cols[0])}${cols.length > 1 ? '~' + colName(cols[cols.length - 1]) : ''}열`;
+  const sizes = Object.entries(PAPER).map(([k, [a, b2]]) => `<option value="${k}"${k === ps.size ? ' selected' : ''}>${k} (${a}×${b2}mm)</option>`).join('');
+  modal('종이 크기에 맞추기', `<p>${where}의 칸을 종이에서 <b>글이 들어가는 부분(여백 안쪽)</b>과 같은 크기로 맞춥니다. 칸 안 줄 바꿈이 쪽 미리보기·인쇄와 똑같아져요.</p>
+    <div class="bkset">
+      <label>종이 <select class="ctl" id="fpS">${sizes}</select></label>
+      <label>방향 <select class="ctl" id="fpO"><option value="p"${ps.orient === 'p' ? ' selected' : ''}>세로</option><option value="l"${ps.orient === 'l' ? ' selected' : ''}>가로</option></select></label>
+      <label>여백 <select class="ctl" id="fpM"><option value="narrow">좁게</option><option value="normal">보통</option><option value="wide">넓게</option>${ps.margin === 'custom' ? '<option value="custom">직접 정한 여백</option>' : ''}</select></label>
+      <label class="chk"><input type="checkbox" id="fpW" checked> 가로 너비 맞추기</label>
+      <label class="chk"><input type="checkbox" id="fpH"> 세로 높이도 맞추기 (한 칸 = 한 쪽 높이, ${rows[0] + 1}${rows.length > 1 ? '~' + (rows[rows.length - 1] + 1) : ''}행)</label>
+    </div>
+    <p id="fpInfo" style="margin:8px 0 14px;color:var(--ink)"></p>`, '맞추기', b => {
+    const nps = calc(b);
+    if (!b.querySelector('#fpW').checked && !b.querySelector('#fpH').checked){ toast('가로나 세로 중 하나는 골라 주세요'); return false; }
+    mutate(() => {
+      if (b.querySelector('#fpW').checked) for (const c of cols) sh.colW[c] = nps.cwPx;
+      if (b.querySelector('#fpH').checked) for (const r of rows){ sh.rowH[r] = nps.rhPx; sh.rowManual[r] = nps.rhPx; }
+    });
+    savePageSetup(nps.ps);   // 쪽 미리보기도 같은 종이로
+    toast(`${nps.ps.size} ${nps.ps.orient === 'l' ? '가로' : '세로'} 크기로 맞췄습니다 (너비 ${nps.wmm}mm${b.querySelector('#fpH').checked ? ', 높이 ' + nps.hmm + 'mm' : ''})`);
+  }, back => {
+    back.querySelector('#fpM').value = ps.margin;
+    const upd = () => { const n = calc(back); back.querySelector('#fpInfo').textContent = `글 들어가는 부분: 너비 ${n.wmm}mm × 높이 ${n.hmm}mm → 칸 너비 ${n.cwPx}px, 높이 ${n.rhPx}px`; };
+    back.querySelectorAll('select').forEach(s => s.onchange = upd); upd();
+  });
+  function calc(b){
+    const nps = Object.assign({}, ps, {size: b.querySelector('#fpS').value, orient: b.querySelector('#fpO').value, margin: b.querySelector('#fpM').value});
+    const {w, h: hh} = paperMM(nps), M = marginsMM(nps), NUMH = nps.num ? 7 * MM : 0;
+    const W = (w - M.in - M.out) * MM, H = (hh - M.t - M.b) * MM - NUMH;
+    // 칸은 안쪽에 좌우 4px씩 여백이 있어서 그만큼 더해야 줄 바꿈이 같아짐
+    return {ps: nps, cwPx: Math.round(W + 8), rhPx: Math.round(H), wmm: Math.round(w - M.in - M.out), hmm: Math.round(H / MM)};
+  }
+}
 function askNumber(title, label, val, min, max, cb){
   modal(title, `<p>${label}</p><input class="ctl" id="mdlNum" type="number" min="${min}" max="${max}" value="${val}">`, '적용', b => {
     const n = Math.round(parseFloat(b.querySelector('#mdlNum').value));
@@ -3622,6 +3693,9 @@ function openCellMenu(x, y){
     {label:'행 높이…', run: () => { const rows = range(sel.r1, sel.r2); askNumber('행 높이', `${sel.r1+1}${rows.length > 1 ? '~' + (sel.r2+1) : ''} 행의 높이 (픽셀)`, rh(sel.r1), 6, 800, n => setRowHeight(rows, n)); }},
     {label:'열 너비 자동 맞춤', run: () => autofitCols(range(sel.c1, sel.c2))},
     {label:'행 높이 자동 맞춤', run: () => autofitRows(range(sel.r1, Math.min(sel.r2, fc ? usedMax().mr : sel.r2)))},
+    {label:'열 너비 같게…', run: equalCols},
+    {label:'행 높이 같게…', run: equalRows},
+    {label:'종이 크기에 맞추기…', run: fitPaperDialog},
     '-',
     {label: mergeOf(act.r, act.c) ? '병합 해제' : '병합하고 가운데 맞춤', run: mergeToggle},
   ];
@@ -3736,7 +3810,7 @@ function run(cmd, el){
     clear: clearFormats,
     decUp: () => stepDecimals(1), decDown: () => stepDecimals(-1),
     sortAsc: () => quickSort(false), sortDesc: () => quickSort(true), filter: toggleFilter, sortMenu: () => sortMenu(el),
-    freezeMenu: () => freezeMenu(el), find: () => openFind(false), cfMenu: () => cfMenu(el), chartMenu: () => chartMenu(el), autoSum: () => autoSum('SUM'), sumMenu: () => sumMenu(el),
+    freezeMenu: () => freezeMenu(el), find: () => openFind(false), cfMenu: () => cfMenu(el), chartMenu: () => chartMenu(el), sizeMenu: () => sizeMenu(el), autoSum: () => autoSum('SUM'), sumMenu: () => sumMenu(el),
     image: () => $('#imgIn').click(),
     grid: () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); },
   };
@@ -3746,8 +3820,22 @@ $('#painterBtn').addEventListener('dblclick', () => { startPainter(true); });
 const fontSel = $('#fontSel');
 FONTS.forEach(([v, l]) => { const o = new Option(l, v); o.style.fontFamily = famStack(v); fontSel.add(o); });
 fontSel.addEventListener('change', () => { ensureFont(fontSel.value); applyStyle({ff: fontSel.value === DEF_FONT ? null : fontSel.value}); focusGrid(); });
-$('#sizeList').innerHTML = SIZES.map(n => `<option value="${n}">`).join('');
 const sizeIn = $('#sizeIn');
+function openSizeList(){
+  if (editing) commitEdit();
+  const cur = st(act.r, act.c).fs || DEF_FS;
+  hideMenus();
+  pop.innerHTML = '<div class="szlist">' + SIZES.map(n => `<button class="szi${n === cur ? ' on' : ''}" data-sz="${n}">${n}</button>`).join('') + '</div>';
+  pop.onclick = e => { const b = e.target.closest('[data-sz]'); if (!b) return; hideMenus(); setFontSize(+b.dataset.sz); focusGrid(); };
+  const r = sizeIn.getBoundingClientRect();
+  place(pop, r.left, r.bottom + 4);
+  menuOpenedAt = Date.now();
+  const on = pop.querySelector('.szi.on'); if (on) on.scrollIntoView({block: 'center'});
+}
+sizeIn.addEventListener('click', openSizeList);
+$('#sizeBtn').addEventListener('mousedown', e => e.preventDefault());
+$('#sizeBtn').addEventListener('click', () => { if (!pop.hidden && pop.querySelector('.szlist')) hideMenus(); else openSizeList(); });
+sizeIn.addEventListener('input', () => { if (pop.querySelector('.szlist')) hideMenus(); });
 sizeIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); setFontSize(sizeIn.value); focusGrid(); } if (e.key === 'Escape'){ refreshUI(); focusGrid(); } });
 sizeIn.addEventListener('change', () => { const n = parseFloat(sizeIn.value); if (n !== (st(act.r, act.c).fs || DEF_FS)) setFontSize(n); });
 $('#addSheet').onclick = addSheet;
