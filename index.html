@@ -998,7 +998,7 @@ function snap(){ undoStack.push(snapJSON()); if (undoStack.length > 100) undoSta
 function afterChange(){ clearCalc(); changedSinceBackup = true; buildMerges(); autoRows(); layout(); fileDirty = true; updateDoc(); queueAutosave(); refreshUI(); schedule(); }
 function mutate(fn){ snap(); fn(); afterChange(); }
 function restore(json){
-  clearCalc(); const media = wb.media; wb = JSON.parse(json); wb.media = media || {}; wb.sheets = wb.sheets.map(normSheet); sh = wb.sheets[wb.active]; changedSinceBackup = true; selImg = null;
+  clearCalc(); const media = wb.media, keep = {savedAt: wb.savedAt, savedOn: wb.savedOn, saveLog: wb.saveLog}; wb = JSON.parse(json); wb.media = media || {}; Object.assign(wb, keep); wb.sheets = wb.sheets.map(normSheet); sh = wb.sheets[wb.active]; changedSinceBackup = true; selImg = null;
   buildMerges(); layout(); clampSel(); renderTabs();
   fileDirty = true; updateDoc(); queueAutosave(); afterSel();
 }
@@ -3462,7 +3462,9 @@ document.getElementById('charCount').addEventListener('mousedown', e => e.preven
 function updateDoc(){
   $('#docName').textContent = fileName;
   const s = $('#saveState');
-  s.textContent = fileDirty ? (NATIVE ? '저장 안 됨' : '저장 안 됨 · 이 브라우저에 자동 보관 중') : (fileHandle || filePath ? '저장됨' : '');
+  const w = wb && wb.savedAt ? whenText(wb.savedAt) : '';
+  s.textContent = fileDirty ? (w ? `저장 안 됨 · 마지막 저장 ${w}` : NATIVE ? '저장 안 됨' : '저장 안 됨 · 이 브라우저에 자동 보관 중') : (w ? `저장됨 · ${w}${wb.savedOn ? ' (' + wb.savedOn + ')' : ''}` : fileHandle || filePath ? '저장됨' : '');
+  s.title = wb && wb.savedAt ? `마지막 저장: ${fullWhen(wb.savedAt)}${wb.savedOn ? ' · ' + wb.savedOn + '에서' : ''}` : '';
   s.classList.toggle('dirty', fileDirty);
   $('.doc').classList.toggle('dirty', fileDirty);
   document.title = `${fileDirty ? '• ' : ''}${fileName} - 모눈`;
@@ -3779,6 +3781,26 @@ async function shareOrDownload(blob, name){
 async function fileData(name){ return isX(name) ? await buildXlsx() : monunJSON(); }
 let autoSaving = false;
 function markSaved(name){ fileName = name; fileDirty = false; updateDoc(); queueAutosave(); toast((autoSaving ? '자동 저장했습니다: ' : '저장했습니다: ') + name); }
+// --- 저장 기록: 언제, 어디서(PC/폰/웹) 저장했는지 파일 안에 남김 ---
+const deviceLabel = () => NATIVE ? 'PC' : touchDevice() ? '폰' : '웹';
+function stampSave(name){
+  const prev = {savedAt: wb.savedAt, savedOn: wb.savedOn, saveLog: wb.saveLog};
+  const t = new Date().toISOString();
+  wb.savedAt = t; wb.savedOn = deviceLabel();
+  wb.saveLog = [{t, on: wb.savedOn, name: String(name || fileName).split(/[\\/]/).pop()}, ...(wb.saveLog || [])].slice(0, 20);
+  return () => Object.assign(wb, prev);   // 취소하면 이 함수로 되돌림
+}
+function whenText(iso){
+  if (!iso) return '';
+  const d = new Date(iso); if (isNaN(d)) return '';
+  const now = new Date(), hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 864e5);
+  if (diff === 0) return '오늘 ' + hm;
+  if (diff === 1) return '어제 ' + hm;
+  return (d.getFullYear() === now.getFullYear() ? '' : d.getFullYear() + '년 ') + `${d.getMonth() + 1}월 ${d.getDate()}일 ${hm}`;
+}
+const fullWhen = iso => { const d = new Date(iso); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
 async function saveFile(as){
   if (editing) commitEdit();
   const ext = isX(fileName) ? '.xlsx' : '.monun';
@@ -3788,21 +3810,24 @@ async function saveFile(as){
         const p = await NATIVE.saveDialog({suggested: baseName() + ext, kind: isX(fileName) ? 'xlsx' : 'monun'});
         if (!p) return false; filePath = p;
       }
-      const data = await fileData(filePath); if (data == null) return false;
-      markSaved(await NATIVE.writeFile(filePath, data)); return true;
+      const undoStamp = stampSave(filePath);
+      const data = await fileData(filePath); if (data == null){ undoStamp(); return false; }
+      try { markSaved(await NATIVE.writeFile(filePath, data)); } catch (e){ undoStamp(); throw e; }
+      return true;
     }
     if (window.showSaveFilePicker){
       try {
         if (!fileHandle || as) fileHandle = await showSaveFilePicker({suggestedName: baseName() + ext, types: isX(fileName) ? [...XLSX_TYPES, ...MONUN_TYPES] : [...MONUN_TYPES, ...XLSX_TYPES]});
-        const data = await fileData(fileHandle.name); if (data == null) return false;
-        const w = await fileHandle.createWritable(); await w.write(data); await w.close();
+        const undoStamp = stampSave(fileHandle.name);
+        const data = await fileData(fileHandle.name); if (data == null){ undoStamp(); return false; }
+        try { const w = await fileHandle.createWritable(); await w.write(data); await w.close(); } catch (e){ undoStamp(); throw e; }
         markSaved(fileHandle.name); return true;
       } catch (e){ if (e.name === 'AbortError') return false; fileHandle = null; }
     }
     // 폰: 공유 창으로 보내서 OneDrive·구글 드라이브 등 원하는 곳에 저장 / 그 밖: 다운로드
-    const name = baseName() + ext, data = await fileData(name); if (data == null) return false;
+    const name = baseName() + ext, undoStamp = stampSave(name), data = await fileData(name); if (data == null){ undoStamp(); return false; }
     const how = await shareOrDownload(new Blob([data], {type: isX(name) ? XLSX_MIME : 'application/json'}), name);
-    if (how === 'cancel') return false;
+    if (how === 'cancel'){ undoStamp(); return false; }
     fileName = name; fileDirty = false; updateDoc(); queueAutosave();
     toast(how === 'shared' ? '공유 창에서 고른 곳에 저장했습니다' : '다운로드 폴더에 저장했습니다');
     return true;
@@ -3846,6 +3871,7 @@ async function openData(name, bytes, src){
   } catch (err){ toast('파일을 열 수 없습니다. 모눈(.monun) 또는 엑셀(.xlsx) 파일인지 확인하세요'); return; }
   confirmDiscard(() => {
     loadWorkbook(obj); fileHandle = src.handle || null; filePath = src.path || null; fileName = name; fileDirty = false;
+    if (obj.savedAt) setTimeout(() => toast(`${whenText(obj.savedAt)}에 ${obj.savedOn ? obj.savedOn + '에서 ' : ''}저장된 파일입니다`), 1600);
     updateDoc(); queueAutosave(); toast('열었습니다: ' + name);
   });
 }
@@ -3854,7 +3880,7 @@ function newFile(){
   confirmDiscard(() => { loadWorkbook({sheets:[newSheet('Sheet1')], active:0}); fileHandle = null; filePath = null; fileName = '제목 없음'; fileDirty = false; updateDoc(); queueAutosave(); });
 }
 function loadWorkbook(obj){
-  wb = {sheets: obj.sheets.map(normSheet), active: Math.min(obj.active || 0, obj.sheets.length - 1), media: obj.media || {}};
+  wb = {sheets: obj.sheets.map(normSheet), active: Math.min(obj.active || 0, obj.sheets.length - 1), media: obj.media || {}, savedAt: obj.savedAt, savedOn: obj.savedOn, saveLog: obj.saveLog || []};
   IMG.clear(); selImg = null; clearCalc();
   if (!wb.sheets.length) wb.sheets = [newSheet('Sheet1')];
   sh = wb.sheets[wb.active];
@@ -3932,7 +3958,7 @@ async function buildXlsx(){
   if (!(await loadExcelJS())) return null;
   const cur = sh;
   try {
-    const X = new ExcelJS.Workbook(); X.creator = '모눈';
+    const X = new ExcelJS.Workbook(); X.creator = '모눈'; X.lastModifiedBy = '모눈'; X.modified = new Date();
     for (const s of wb.sheets){
       sh = s; buildMerges();
       const fzx = s.freeze && (s.freeze.r || s.freeze.c) ? {state: 'frozen', xSplit: s.freeze.c || 0, ySplit: s.freeze.r || 0} : {};
@@ -4015,6 +4041,7 @@ async function exportXlsx(){
 async function importXlsx(buf){
   const X = new ExcelJS.Workbook(); await X.xlsx.load(buf);
   const out = {sheets:[], active:0, media:{}};
+  if (X.modified instanceof Date && !isNaN(X.modified)) out.savedAt = X.modified.toISOString();
   X.eachSheet(ws => {
     const s = newSheet(ws.name);
     if (ws.views && ws.views[0] && ws.views[0].showGridLines === false) s.grid = false;
@@ -4128,6 +4155,7 @@ async function openBackups(){
       <label>자동 백업 <select class="ctl" id="bkInt">${opts}</select></label>
       <label class="chk"><input type="checkbox" id="bkFile"${settings.fileAuto ? ' checked' : ''}> 한 번 저장한 파일은 같은 간격으로 원본 파일에도 자동 저장</label>
     </div>
+    ${(wb.saveLog || []).length ? `<div class="plabel">이 파일의 저장 기록 (최근 ${wb.saveLog.length}번)</div><div class="bklist" style="max-height:150px">${wb.saveLog.map((g, i) => `<div class="bkrow"><div><b>${whenText(g.t)}${i === 0 ? ' · 가장 최근' : ''}</b><span>${fullWhen(g.t)} · ${esc(g.on || '')}에서 · ${esc(g.name || '')}</span></div></div>`).join('')}</div>` : ''}
     <div class="plabel">최근 백업 (최대 ${MAX_BK}개)</div>
     <div class="bklist">${rows}</div>
     <div class="prow" style="margin:0 0 14px"><button class="pbtn" id="bkNow">지금 백업</button>${NATIVE ? '<button class="pbtn" id="bkDir">백업 폴더 열기</button>' : ''}</div>`;
