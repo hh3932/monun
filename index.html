@@ -95,6 +95,10 @@ button{font:inherit;color:inherit}
 #ed{position:absolute;z-index:3;margin:0;border:0;outline:2px solid var(--sel);outline-offset:0;resize:none;overflow:hidden;padding:2px 4px;opacity:0;pointer-events:none;line-height:1.28;background:#fff;color:#111;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text;cursor:text}
 #docBack{position:fixed;left:0;right:0;bottom:0;top:var(--docTop,0px);z-index:40;background:#E4E7EC;display:flex;flex-direction:column}
 #docBack[hidden]{display:none}
+html.darksheet #ed{filter:invert(.9) hue-rotate(180deg);outline-color:#C19017}
+html.darksheet #docBack{background:#0B0D10}
+html.darksheet #ed.docmode{box-shadow:0 2px 16px rgba(255,255,255,.06)}
+html.darksheet .wrap{background:#1A1B1D}
 .docbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bar);border-bottom:1px solid var(--line);font-size:13px;color:var(--ink);-webkit-user-select:none;user-select:none}
 .docbar .sp{flex:1}
 .docbar .pbtn{flex:none;padding:0 12px}
@@ -270,6 +274,7 @@ button{font:inherit;color:inherit}
     <div class="doc"><span id="docName">제목 없음</span><span id="saveState"></span><span id="bkState"></span></div>
     <div class="filebtns">
       <button class="fbtn" data-cmd="install" id="installBtn" title="이 기기에 앱으로 설치" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="2.5" width="9" height="15" rx="2"/><path d="M10 6v6M7.5 9.5 10 12l2.5-2.5M8.5 15h3"/></svg><span>앱으로 설치</span></button>
+      <button class="fbtn" data-cmd="themeMenu" id="themeBtn" title="화면 밝기: 자동(컴퓨터 설정 따라) · 밝게 · 어둡게"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7z"/></svg><span>화면</span></button>
       <button class="fbtn" data-cmd="pageView" title="쪽 미리보기: A4·A5·B5 같은 종이에 글이 몇 쪽으로 들어가는지 보기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 5.5C8.5 4.3 6 3.8 3 4v11.5c3-.2 5.5.3 7 1.5 1.5-1.2 4-1.7 7-1.5V4c-3-.2-5.5.3-7 1.5z"/><path d="M10 5.5V17"/></svg><span>쪽 미리보기</span></button>
       <button class="fbtn" data-cmd="print" title="인쇄 / PDF로 저장 (Ctrl+P)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 7V3h8v4"/><rect x="3" y="7" width="14" height="7" rx="1.5"/><path d="M6 12h8v5H6z"/></svg><span>인쇄</span></button>
       <button class="fbtn" data-cmd="backups" title="자동 백업 설정과 복원"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6"/><path d="M3 3.5v3.2h3.2"/><path d="M10 6.5V10l2.5 1.6"/></svg><span>백업·복원</span></button>
@@ -414,7 +419,26 @@ button{font:inherit;color:inherit}
 'use strict';
 // ===== 기본 값 =====
 const ROWS = 1000, COLS = 52, DEF_W = 90, DEF_H = 24, HW = 46, HH = 24;
-const DEF_FONT = 'Malgun Gothic', DEF_FS = 11, GRIDC = '#E1E5EB', LS = 'monun.autosave.v1';
+const DEF_FONT = 'Malgun Gothic', DEF_FS = 11, LS = 'monun.autosave.v1';
+// 어두운 시트: 칸 색을 화면에서만 밝기를 뒤집어 그린다 (색감은 유지). 편집 칸의 CSS filter와 같은 계산
+let darkSheet = false;
+const DKC = new Map();
+function dkColor(c){
+  let v = DKC.get(c); if (v) return v;
+  let r, g, b, m;
+  if ((m = /^#([0-9a-f]{3})$/i.exec(c))){ [r, g, b] = [...m[1]].map(x => parseInt(x + x, 16) / 255); }
+  else if ((m = /^#([0-9a-f]{6})/i.exec(c))){ r = parseInt(m[1].slice(0, 2), 16) / 255; g = parseInt(m[1].slice(2, 4), 16) / 255; b = parseInt(m[1].slice(4, 6), 16) / 255; }
+  else if ((m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c))){ r = m[1] / 255; g = m[2] / 255; b = m[3] / 255; }
+  else return c;
+  // invert(0.9) → hue-rotate(180deg)
+  [r, g, b] = [r, g, b].map(x => 0.9 - 0.8 * x);
+  const cl = x => Math.max(0, Math.min(1, x));
+  const R = cl(-0.574 * r + 1.43 * g + 0.144 * b), G = cl(0.426 * r + 0.43 * g + 0.144 * b), B = cl(0.426 * r + 1.43 * g - 0.856 * b);
+  v = '#' + [R, G, B].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+  DKC.set(c, v); return v;
+}
+const DC = c => darkSheet ? dkColor(c) : c;
+const PAPER_BG = () => darkSheet ? '#1A1B1D' : '#fff';
 const FONTS = [['Malgun Gothic','맑은 고딕'],['Nanum Gothic','나눔고딕'],['Nanum Myeongjo','나눔명조'],['Noto Sans KR','본고딕'],['Noto Serif KR','본명조'],['Gowun Dodum','고운돋움'],['Do Hyeon','도현'],['Black Han Sans','검은고딕'],['Nanum Pen Script','나눔손글씨 펜'],['Gulim','굴림'],['Dotum','돋움'],['Batang','바탕'],['Gungsuh','궁서'],['Arial','Arial'],['Times New Roman','Times New Roman'],['Georgia','Georgia'],['Consolas','Consolas']];
 const XL_NAME = {'Malgun Gothic':'맑은 고딕','Gulim':'굴림','Dotum':'돋움','Batang':'바탕','Gungsuh':'궁서','Nanum Gothic':'나눔고딕','Nanum Myeongjo':'나눔명조'};
 const XL_BACK = Object.fromEntries(Object.entries(XL_NAME).map(([a,b]) => [b,a]));
@@ -707,7 +731,7 @@ function render(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   const z = sh.zoom, sl = wrap.scrollLeft, stp = wrap.scrollTop;
   const f = frz(), fx = HW + colX[f.c]*z, fy = HH + rowY[f.r]*z;
-  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = PAPER_BG(); ctx.fillRect(0,0,W,H);
   // 틀 고정: 화면을 최대 네 부분(스크롤 영역, 위쪽 고정 행, 왼쪽 고정 열, 고정 모서리)으로 나눠 각자 그린다
   const panes = [
     {x0: fx, y0: fy, x1: W, y1: H, sx: sl, sy: stp, fc: false, fr: false},
@@ -744,12 +768,12 @@ function drawCells(){
   const {X, Y, c0, c1, r0, r1, W, H} = V;
   // 눈금선
   if (sh.grid){
-    ctx.fillStyle = GRIDC;
+    ctx.fillStyle = darkSheet ? '#34373C' : '#E1E5EB';
     for (let c = c0; c <= c1+1 && c <= COLS; c++) ctx.fillRect(Math.round(X(c))-1, HH, 1, H-HH);
     for (let r = r0; r <= r1+1 && r <= ROWS; r++) ctx.fillRect(HW, Math.round(Y(r))-1, W-HW, 1);
   }
   const endX = X(COLS), endY = Y(ROWS);
-  ctx.fillStyle = '#EEF0F3';
+  ctx.fillStyle = darkSheet ? '#111214' : '#EEF0F3';
   if (endX < W) ctx.fillRect(endX, HH, W-endX, H-HH);
   if (endY < H) ctx.fillRect(HW, endY, W-HW, H-endY);
 
@@ -758,15 +782,15 @@ function drawCells(){
     if (mergeOf(r,c) || hiddenRows.has(r)) continue;
     const s = stShow(r,c); if (!s.bg && !s._bar) continue;
     const x = Math.round(X(c)), y = Math.round(Y(r)), w = Math.round(X(c+1))-x, hh = Math.round(Y(r+1))-y;
-    if (s.bg){ ctx.fillStyle = s.bg; ctx.fillRect(x-1, y-1, w+1, hh+1); }
-    if (s._bar){ ctx.fillStyle = s._bar.color; ctx.globalAlpha = .55; ctx.fillRect(x + 2, y + 3, Math.max(0, (w - 5) * Math.min(1, s._bar.t)), Math.max(0, hh - 7)); ctx.globalAlpha = 1; }
+    if (s.bg){ ctx.fillStyle = DC(s.bg); ctx.fillRect(x-1, y-1, w+1, hh+1); }
+    if (s._bar){ ctx.fillStyle = DC(s._bar.color); ctx.globalAlpha = .55; ctx.fillRect(x + 2, y + 3, Math.max(0, (w - 5) * Math.min(1, s._bar.t)), Math.max(0, hh - 7)); ctx.globalAlpha = 1; }
   }
   const vm = sh.merges.filter(m => m.r2 >= r0 && m.r1 <= r1 && m.c2 >= c0 && m.c1 <= c1);
   for (const m of vm){
     const s = stShow(m.r1,m.c1);
     const x = Math.round(X(m.c1)), y = Math.round(Y(m.r1)), w = Math.round(X(m.c2+1))-x, h = Math.round(Y(m.r2+1))-y;
-    if (s.bg){ ctx.fillStyle = s.bg; ctx.fillRect(x-1, y-1, w+1, h+1); }
-    else { ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w-1, h-1); }
+    if (s.bg){ ctx.fillStyle = DC(s.bg); ctx.fillRect(x-1, y-1, w+1, h+1); }
+    else { ctx.fillStyle = PAPER_BG(); ctx.fillRect(x, y, w-1, h-1); }
   }
 
   // 글자
@@ -843,13 +867,13 @@ function drawText(r, c, rect, isMerge){
       clip = {x:X(L), y:rect.y, w:X(R+1)-X(L), h:rect.h};
       if (clip.x > W || clip.x + clip.w < HW) return;
       // 넘친 글자가 지나가는 빈칸 사이 눈금선 지우기
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = PAPER_BG();
       for (let b = L+1; b <= R; b++) if (!st(r,b-1).bg && !st(r,b).bg) ctx.fillRect(Math.round(X(b))-1, Math.round(rect.y), 1, Math.round(rect.h)-1);
     } else if (rect.x > W || rect.x + rect.w < HW) return;
   }
   ctx.save();
   ctx.beginPath(); ctx.rect(clip.x, clip.y, clip.w, clip.h); ctx.clip();
-  ctx.fillStyle = s.fc || '#111111';
+  ctx.fillStyle = DC(s.fc || '#111111');
   ctx.textBaseline = 'middle';
   ctx.textAlign = ha;
   const lh = px * lhOf(s), total = RL ? RL.lines.reduce((a, L) => a + L.h, 0) : lh * lines.length;
@@ -890,8 +914,8 @@ function drawRichLine(RL, L, x, y, ha){
     const gy = y + (L.px - px) * 0.36, th = Math.max(1, px/15);
     ctx.font = g.font;
     const w = ctx.measureText(t).width;
-    if (e.hl){ ctx.fillStyle = e.hl; ctx.fillRect(cx, gy - px*0.64, w, px*1.28); }
-    ctx.fillStyle = e.fc || '#111111';
+    if (e.hl){ ctx.fillStyle = DC(e.hl); ctx.fillRect(cx, gy - px*0.64, w, px*1.28); }
+    ctx.fillStyle = DC(e.fc || '#111111');
     ctx.fillText(t, cx, gy + glyphShift(g.font));
     if (e.u) ctx.fillRect(cx, gy + px*0.52, w, th);
     if (e.st) ctx.fillRect(cx, gy, w, th);
@@ -915,7 +939,7 @@ function glyphShift(font){
 const dashOf = b => b.s === 'dashed' ? [4 + b.w*2, 2 + b.w] : b.s === 'dotted' ? [b.w, b.w + 1] : [];
 function hline(x1, x2, y, b){
   const w = b.w || 1, ext = Math.ceil(w/2), xa = Math.round(x1) - ext, xb = Math.round(x2) + ext - 1, Y0 = Math.round(y);
-  ctx.strokeStyle = b.c || '#000';
+  ctx.strokeStyle = DC(b.c || '#000000');
   ctx.beginPath();
   if (b.s === 'double'){
     ctx.lineWidth = 1; ctx.setLineDash([]);
@@ -928,7 +952,7 @@ function hline(x1, x2, y, b){
 }
 function vline(y1, y2, x, b){
   const w = b.w || 1, ext = Math.ceil(w/2), ya = Math.round(y1) - ext, yb = Math.round(y2) + ext - 1, X0 = Math.round(x);
-  ctx.strokeStyle = b.c || '#000';
+  ctx.strokeStyle = DC(b.c || '#000000');
   ctx.beginPath();
   if (b.s === 'double'){
     ctx.lineWidth = 1; ctx.setLineDash([]);
@@ -4252,6 +4276,7 @@ function run(cmd, el){
     alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
+    themeMenu: () => themeMenu(el),
     wrap: () => applyStyle({wrap: wrapOn(st(act.r, act.c)) ? false : null}), paraMenu: () => paraMenu(el), docMode: () => docMode ? closeDoc() : openDoc(), merge: mergeToggle, mergeMenu: () => mergePop(el),
     border: () => applyBorder(lastBorder), borderMenu: () => borderPop(el),
     clear: clearFormats,
@@ -4984,7 +5009,24 @@ function sample(){
 
 // ===== 시작 =====
 readTheme();
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTheme(); schedule(); });
+// --- 화면 밝기: auto(컴퓨터 설정) / light / dark. 어두우면 시트 칸도 어둡게 그림 (인쇄·쪽 미리보기는 흰 종이 그대로) ---
+let themeMode = 'auto';
+try { themeMode = localStorage.getItem('monun.theme') || 'auto'; } catch (e) {}
+const osDark = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(){
+  const root = document.documentElement;
+  if (themeMode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', themeMode);
+  darkSheet = themeMode === 'dark' || (themeMode === 'auto' && osDark.matches);
+  root.classList.toggle('darksheet', darkSheet);
+  readTheme(); schedule();
+}
+function themeMenu(el){
+  const b = el.getBoundingClientRect();
+  const it = (m, label) => ({label, icon: themeMode === m ? CHECK : null, run: () => { themeMode = m; try { localStorage.setItem('monun.theme', m); } catch (e) {} applyTheme(); }});
+  showMenu(b.left - 10, b.bottom + 4, [it('auto', '자동 (컴퓨터 설정 따라)'), it('light', '밝게'), it('dark', '어둡게 (칸도 어둡게)')]);
+}
+applyTheme();
+osDark.addEventListener('change', applyTheme);
 new MutationObserver(() => { readTheme(); schedule(); }).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
 $('#gf').addEventListener('load', () => { fontReq.clear(); SHIFT.clear(); schedule(); });
 if (document.fonts) document.fonts.addEventListener('loadingdone', () => { SHIFT.clear(); if (sh){ autoRows(); layout(); schedule(); } });
