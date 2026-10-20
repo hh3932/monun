@@ -93,7 +93,7 @@ button{font:inherit;color:inherit}
 #cv{position:sticky;left:0;top:0;display:block}
 #spacer{position:absolute;left:0;top:0;pointer-events:none}
 #ed{position:absolute;z-index:3;margin:0;border:0;outline:2px solid var(--sel);outline-offset:0;resize:none;overflow:hidden;padding:2px 4px;opacity:0;pointer-events:none;line-height:1.28;background:#fff;color:#111;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text;cursor:text}
-#docBack{position:fixed;left:0;right:0;bottom:0;top:var(--docTop,0px);z-index:40;background:#E4E7EC;display:flex;flex-direction:column}
+#docBack{position:fixed;left:0;right:0;bottom:0;top:var(--docTop,0px);z-index:10;background:#E4E7EC;display:flex;flex-direction:column}
 #docBack[hidden]{display:none}
 html.darksheet #ed{filter:invert(.9) hue-rotate(180deg);outline-color:#C19017}
 html.darksheet #docBack{background:#0B0D10}
@@ -101,10 +101,19 @@ html.darksheet #ed.docmode{box-shadow:0 2px 16px rgba(255,255,255,.06)}
 html.darksheet .wrap{background:#1A1B1D}
 .docbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bar);border-bottom:1px solid var(--line);font-size:13px;color:var(--ink);-webkit-user-select:none;user-select:none}
 .docbar .sp{flex:1}
+.docbar{position:relative;flex-wrap:wrap;row-gap:6px}
+#docPages{color:var(--muted)}
+.docprog{position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--line)}
+.docprog i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.docprog.done i{background:#2F9E44}
+#docType.on,#docGoal.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+#ed.docmode.typer{padding-bottom:50vh!important}
+.symgrid{display:grid;grid-template-columns:repeat(5,44px);gap:4px;margin-top:6px}
+.symgrid .pbtn{height:34px;font-size:16px}
 .docbar .pbtn{flex:none;padding:0 12px}
 #docCount{color:var(--muted);font-variant-numeric:tabular-nums}
 #docZoomV{min-width:44px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
-#ed.docmode{position:fixed!important;z-index:41;left:50%!important;transform:translateX(-50%);top:calc(var(--docTop,0px) + 62px)!important;bottom:18px;width:min(var(--docW,760px),calc(100vw - 24px))!important;height:auto!important;overflow-y:auto!important;padding:44px 48px!important;box-sizing:border-box;outline:0;box-shadow:0 2px 16px rgba(0,0,0,.14);border-radius:2px}
+#ed.docmode{position:fixed!important;z-index:11;left:50%!important;transform:translateX(-50%);top:calc(var(--docTop,0px) + var(--docBarH,44px) + 18px)!important;bottom:18px;width:min(var(--docW,760px),calc(100vw - 24px))!important;height:auto!important;overflow-y:auto!important;padding:44px 48px!important;box-sizing:border-box;outline:0;box-shadow:0 2px 16px rgba(0,0,0,.14);border-radius:2px}
 @media (max-width:600px){#ed.docmode{padding:24px 18px!important}}
 #ed.on{opacity:1;pointer-events:auto;box-shadow:0 3px 12px rgba(0,0,0,.18)}
 
@@ -374,9 +383,14 @@ html.darksheet .wrap{background:#1A1B1D}
 
   <div id="docBack" hidden>
     <div class="docbar">
-      <b id="docTitle"></b><span id="docCount"></span><span class="sp"></span>
+      <b id="docTitle"></b><span id="docCount"></span><span id="docPages"></span><span class="sp"></span>
+      <button class="pbtn" id="docPrev" title="위 칸으로 (Alt+↑)">▲ 위 칸</button><button class="pbtn" id="docNext" title="아래 칸으로 (Alt+↓)">아래 칸 ▼</button>
+      <button class="pbtn" id="docGoal" title="이 칸의 목표 글자 수 정하기">목표</button>
+      <button class="pbtn" id="docSym" title="기호 넣기: 말줄임표, 낫표, 줄표…">기호</button>
+      <button class="pbtn" id="docType" title="타자기 모드: 쓰고 있는 줄을 늘 화면 가운데에">타자기</button>
       <button class="pbtn" id="docZoomOut" title="글자 작게">−</button><span id="docZoomV"></span><button class="pbtn" id="docZoomIn" title="글자 크게">+</button>
       <button class="pbtn on" id="docClose" title="원고 쓰기 닫기 (Esc)">닫기</button>
+      <div class="docprog" id="docProg" hidden><i></i></div>
     </div>
   </div>
 
@@ -488,7 +502,7 @@ function clean(r,c){
   const k = r+':'+c, cell = sh.cells[k]; if (!cell) return;
   if (cell.s && !Object.keys(cell.s).length) delete cell.s;
   if (cell.v == null) delete cell.rt;
-  if (cell.v == null && !cell.s) delete sh.cells[k];
+  if (cell.v == null && !cell.s && !cell.goal) delete sh.cells[k];
 }
 const EMPTY = {};
 // 기본: 줄 바꿈 켜짐(숫자는 쪼개지지 않게 한 줄), 세로 위치는 위쪽.
@@ -1214,7 +1228,7 @@ function insertAtCaret(t){
   const a = ed.selectionStart, b = ed.selectionEnd, v = ed.value;
   ed.value = v.slice(0,a) + t + v.slice(b);   // 앞뒤 글자의 부분 서식은 그대로 둠
   ed.setSelectionRange(a + t.length, a + t.length);
-  sizeEditor(); fx.value = ed.value;
+  sizeEditor(); syncFx();
 }
 
 // ===== 원고 쓰기: 칸 하나만 크게 띄워 문서처럼 =====
@@ -1228,27 +1242,123 @@ function layoutDoc(){
   const m = unitOf(act.r, act.c), cwid = (colX[m.c2 + 1] - colX[m.c1] - 8) * docZoom;
   document.documentElement.style.setProperty('--docW', (Math.max(320, Math.min(window.innerWidth - 120, cwid)) + 96) + 'px');
   $('#docZoomV').textContent = Math.round(docZoom * 100) + '%';
+  // 폰처럼 좁으면 위쪽 줄이 두세 줄로 접히므로 실제 높이만큼 종이를 내림
+  const bar = $('.docbar'); if (bar.offsetHeight) document.documentElement.style.setProperty('--docBarH', bar.offsetHeight + 'px');
 }
+let docGoalHit = null, dpT = 0;
 function updDocInfo(){
   if (!docMode) return;
-  const [a, b] = countText(ed.value);
+  const t = ed.value, [a, b] = countText(t), fm = n => n.toLocaleString('ko-KR');
   $('#docTitle').textContent = '원고 쓰기 · ' + ref(act.r, act.c);
-  $('#docCount').textContent = `${a.toLocaleString('ko-KR')}자 · 공백 빼고 ${b.toLocaleString('ko-KR')}자`;
+  $('#docCount').textContent = `${fm(a)}자 · 공백 빼고 ${fm(b)}자 · 원고지 ${fmMae(wonGo(t))}매`;
+  // 목표 글자 수 (공백 포함)
+  const g = (sh.cells[act.r + ':' + act.c] || {}).goal, pb = $('#docProg'), gb = $('#docGoal');
+  pb.hidden = !g; gb.classList.toggle('on', !!g);
+  if (g){
+    const pct = Math.min(100, Math.floor(a / g * 100));
+    pb.firstChild.style.width = pct + '%'; pb.classList.toggle('done', a >= g);
+    gb.textContent = `목표 ${pct}%`; gb.title = `목표 ${fm(g)}자 중 ${fm(a)}자 (${pct}%) · 눌러서 바꾸기`;
+    if (docGoalHit === false && a >= g) toast('목표 글자 수를 채웠어요!');
+    docGoalHit = a >= g;
+  } else { gb.textContent = '목표'; gb.title = '이 칸의 목표 글자 수 정하기'; docGoalHit = null; }
+  clearTimeout(dpT); dpT = setTimeout(docPagesCalc, 500);
+  typeCenter();
+}
+// 지금 쪽 미리보기 종이 기준으로 이 칸이 몇 쪽인지 (쓰는 중인 글로 계산)
+function docPagesCalc(){
+  if (!docMode || !editing) return;
+  const t = ed.value, el = $('#docPages');
+  if (!t){ el.textContent = ''; return; }
+  const ps = pageSetup(), {w, h} = paperMM(ps), M = marginsMM(ps), NUMH = ps.num ? 7 * MM : 0;
+  const W = (w - M.in - M.out) * MM, H = (h - M.t - M.b) * MM - NUMH;
+  if (W < 30 || H < 30) return;
+  const s = st(act.r, act.c), rt = isFormula(t) ? null : absToRt(readAbs(), s);
+  let y = 0, n = 1;
+  for (const ln of pvLines(t, s, rt, W, true)){ if (y + ln.h > H + 0.5 && y > 0){ n++; y = 0; } y += ln.h; }
+  el.textContent = `· ${ps.size} ${n}쪽`;
+  el.title = `쪽 미리보기 설정(${ps.size}, ${ps.orient === 'l' ? '가로' : '세로'}) 기준으로 이 칸이 차지하는 쪽 수`;
+}
+function setDocGoal(){
+  const r = act.r, c = act.c, cur = (sh.cells[r + ':' + c] || {}).goal;
+  askNumber('목표 글자 수', '이 칸에 쓸 목표 글자 수 (공백 포함). 0을 넣으면 목표를 지웁니다.', cur || 5000, 0, 10000000, n => {
+    if (editing) commitEdit();
+    mutate(() => { const cl = ensureCell(r, c); if (n > 0) cl.goal = n; else delete cl.goal; clean(r, c); });
+    docGoalHit = null;
+    setTimeout(() => { docGoalHit = null; updDocInfo(); if (docMode) docGoalHit = docGoalHit ?? false; }, 0);
+  });
+}
+// 원고 쓰기를 닫지 않고 위·아래 칸으로
+function navDoc(d){
+  if (!docMode) return;
+  const m = unitOf(act.r, act.c);
+  let r = d > 0 ? m.r2 + 1 : m.r1 - 1;
+  while (r >= 0 && r < ROWS && hiddenRows.has(r)) r += d;
+  if (r < 0 || r >= ROWS) return toast(d > 0 ? '마지막 행입니다' : '첫 행입니다');
+  docMode = false; if (editing) commitEdit(); docMode = true;
+  const mm = mergeOf(r, m.c1); setSel(mm ? mm.r1 : r, mm ? mm.c1 : m.c1);
+  ensureVisible(act.r, act.c); layoutDoc();
+  startEdit('edit', getV(act.r, act.c));
+  ed.focus({preventScroll: true});
+  const n = ed.value.length;
+  if (d > 0){ ed.setSelectionRange(0, 0); ed.scrollTop = 0; } else { ed.setSelectionRange(n, n); ed.scrollTop = ed.scrollHeight; }
+  docGoalHit = null; updDocInfo();
+  const g = (sh.cells[act.r + ':' + act.c] || {}).goal; docGoalHit = g ? countText(ed.value)[0] >= g : null;
+}
+// 타자기 모드: 커서가 있는 줄을 화면 가운데쯤에
+let docType = false;
+try { docType = localStorage.getItem('monun.docType') === '1'; } catch (e) {}
+function typeCenter(){
+  if (!docMode || !docType || !editing) return;
+  const s = getSelection(); if (!s.rangeCount || !ed.contains(s.focusNode)) return;
+  const rg = document.createRange(); rg.setStart(s.focusNode, s.focusOffset);
+  const rc = rg.getClientRects()[0] || (s.focusNode !== ed && s.focusNode.nodeType === 1 ? s.focusNode.getBoundingClientRect() : null);
+  if (!rc || !rc.height) return;
+  const er = ed.getBoundingClientRect();
+  ed.scrollTop += rc.top - (er.top + ed.clientHeight * 0.42);
+}
+function setDocType(on){
+  docType = on; try { localStorage.setItem('monun.docType', on ? '1' : '0'); } catch (e) {}
+  ed.classList.toggle('typer', docMode && on); $('#docType').classList.toggle('on', on);
+  if (on) typeCenter();
+}
+// 기호 넣기 (짝 기호는 고른 글자를 감쌈)
+const SYMS = [['…', '말줄임표'], ['……', '말줄임표 두 개'], ['―', '줄표'], ['–', '짧은 줄표'], ['·', '가운뎃점'],
+  ['「」', '홑낫표'], ['『』', '겹낫표'], ['“”', '큰따옴표'], ['‘’', '작은따옴표'], ['〈〉', '홑화살괄호'],
+  ['《》', '겹화살괄호'], ['※', '참고'], ['○', '동그라미'], ['●', '검은 동그라미'], ['◇', '마름모'],
+  ['◆', '검은 마름모'], ['☆', '별'], ['★', '검은 별'], ['→', '화살표'], ['♡', '하트']];
+function symPop(anchor){
+  showPop(anchor, `<div class="plabel">눌러서 넣기 · 짝 기호(「」 등)는 고른 글자를 감쌉니다</div><div class="symgrid">${SYMS.map(([s, t]) => `<button class="pbtn" data-sym="${s}" title="${t}">${s}</button>`).join('')}</div>`, p => {
+    p.onclick = e => { const b = e.target.closest('[data-sym]'); if (b){ hideMenus(); insertSym(b.dataset.sym); } };
+  });
+  menuOpenedAt = Date.now();
+}
+function insertSym(sy){
+  if (!editing) return;
+  const pair = [...sy].length === 2 && '「『“‘〈《'.includes(sy[0]);
+  if (pair){
+    const a = ed.selectionStart, b = ed.selectionEnd;
+    let v = ed.value; ed.value = v.slice(0, b) + sy[1] + v.slice(b);   // 닫는 기호 먼저 (부분 서식이 그대로 남게 하나씩 끼움)
+    v = ed.value; ed.value = v.slice(0, a) + sy[0] + v.slice(a);
+    ed.setSelectionRange(a + 1, b + 1); sizeEditor();
+  } else insertAtCaret(sy);
+  ed.focus({preventScroll: true}); edInputDone();
 }
 function openDoc(){
   if (pvOpen) return;
+  docGoalHit = null;
   const keep = editing ? [ed.selectionStart, ed.selectionEnd, 0] : null;
   if (editing) commitEdit();
   const m = mergeOf(act.r, act.c); if (m) setSel(m.r1, m.c1);
   if (isFormula(getV(act.r, act.c))) return toast('수식이 든 칸은 원고 쓰기로 열 수 없어요');
   docMode = true;
   layoutDoc();
-  $('#docBack').hidden = false; ed.classList.add('docmode'); setOn('tbDoc', true);
+  $('#docBack').hidden = false; layoutDoc(); ed.classList.add('docmode'); ed.classList.toggle('typer', docType); setOn('tbDoc', true); $('#docType').classList.toggle('on', docType);
   startEdit('edit', getV(act.r, act.c));
   ed.focus({preventScroll: true});
   if (keep) ed.setSelectionRange(keep[0], keep[1]);
   else { ed.setSelectionRange(ed.value.length, ed.value.length); ed.scrollTop = ed.scrollHeight; }
   updDocInfo();
+  const g0 = (sh.cells[act.r + ':' + act.c] || {}).goal; docGoalHit = g0 ? countText(ed.value)[0] >= g0 : null;
 }
 function reopenDoc(dc){
   if (!docMode || editing) return;
@@ -1262,7 +1372,7 @@ function closeDoc(){
   if (!docMode) return;
   docMode = false;
   if (editing) commitEdit();
-  ed.classList.remove('docmode'); $('#docBack').hidden = true; setOn('tbDoc', false);
+  ed.classList.remove('docmode', 'typer'); $('#docBack').hidden = true; setOn('tbDoc', false);
   positionEditor(); ensureVisible(act.r, act.c); focusGrid(); schedule();
 }
 function setDocZoom(z){
@@ -1273,6 +1383,11 @@ function setDocZoom(z){
 }
 $('#docBack').addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });
 $('#docClose').addEventListener('click', closeDoc);
+$('#docPrev').addEventListener('click', () => navDoc(-1));
+$('#docNext').addEventListener('click', () => navDoc(1));
+$('#docGoal').addEventListener('click', setDocGoal);
+$('#docSym').addEventListener('click', e => symPop(e.currentTarget));
+$('#docType').addEventListener('click', () => setDocType(!docType));
 $('#docZoomIn').addEventListener('click', () => setDocZoom(docZoom + 0.1));
 $('#docZoomOut').addEventListener('click', () => setDocZoom(docZoom - 0.1));
 window.addEventListener('resize', () => { if (docMode) layoutDoc(); });
@@ -1411,7 +1526,7 @@ function richButtons(){
   setOn('tbBold', x.b); setOn('tbItalic', x.i); setOn('tbUnder', x.u); setOn('tbStrike', x.st);
   if (document.activeElement !== sizeIn) sizeIn.value = x.fs;
 }
-document.addEventListener('selectionchange', () => { if (editing && document.activeElement === ed) richButtons(); });
+document.addEventListener('selectionchange', () => { if (editing && document.activeElement === ed){ richButtons(); if (docType && docMode) setTimeout(typeCenter, 0); } });
 
 // ===== 변경과 실행 취소 =====
 const snapJSON = () => JSON.stringify(wb, (k, v) => k === 'media' ? undefined : v);
@@ -2049,13 +2164,24 @@ function findGo(d){
 }
 const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function replaceIn(v){ return String(v).replace(new RegExp(reEsc(findQ.value), 'gi'), () => replQ.value); }
+// 칸 하나 바꾸기: 맞는 곳을 하나씩 바꿔서, 그 사이 글자의 부분 서식이 그대로 남게
+function replaceCell(r, c){
+  const q = findQ.value.toLowerCase(), to = replQ.value;
+  if (!q) return;
+  let v = String(getV(r, c)), from = 0, i;
+  if (!runsOf(r, c)){ setV(r, c, replaceIn(v)); return; }
+  while ((i = v.toLowerCase().indexOf(q, from)) >= 0){
+    v = v.slice(0, i) + to + v.slice(i + q.length);
+    setV(r, c, v); from = i + to.length;
+  }
+}
 function replaceOne(){
   if (!findQ.value) return;
   if (pvOpen) return toast('쪽 미리보기에서는 [모두 바꾸기]만 됩니다');
   runFind();
   const onHit = findHits.some(([r, c]) => r === act.r && c === act.c) && String(getV(act.r, act.c)).toLowerCase().includes(findQ.value.toLowerCase());
   if (!onHit) return findGo(1);
-  mutate(() => setV(act.r, act.c, replaceIn(getV(act.r, act.c))));
+  mutate(() => replaceCell(act.r, act.c));
   findGo(1);
 }
 function replaceAll(){
@@ -2063,7 +2189,7 @@ function replaceAll(){
   const wasPV = pvOpen; pvOpen = false; runFind(); pvOpen = wasPV;
   const targets = findHits.filter(([r, c]) => String(getV(r, c)).toLowerCase().includes(findQ.value.toLowerCase()));
   if (!targets.length) return toast('바꿀 내용이 없습니다');
-  mutate(() => { for (const [r, c] of targets) setV(r, c, replaceIn(getV(r, c))); });
+  mutate(() => { for (const [r, c] of targets) replaceCell(r, c); });
   if (pvOpen){ renderPageView().then(() => runFindPV()); } else runFind();
   toast(`${targets.length}칸에서 바꿨습니다 · Ctrl+Z로 되돌릴 수 있어요`);
 }
@@ -3733,6 +3859,7 @@ ed.addEventListener('keydown', e => {
   if (docMode){
     if (k === 'Escape' || (ctrl && k === 'Enter')){ e.preventDefault(); closeDoc(); return; }
     if (k === 'Tab' || k === 'F2'){ e.preventDefault(); return; }
+    if (e.altKey && (k === 'ArrowUp' || k === 'ArrowDown')){ e.preventDefault(); navDoc(k === 'ArrowUp' ? -1 : 1); return; }
     if (k === 'Enter'){ e.preventDefault(); if (!editing) return; insertAtCaret('\n'); edInputDone(); return; }
     if (!editing && !ctrl){ e.preventDefault(); return; }
   }
@@ -3803,7 +3930,15 @@ ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter',
 ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 // 편집기에 서식 있는 글이 섞여 들어오지 않게: 붙여넣기·끌어 놓기는 글자만, 브라우저 자체 서식 명령은 막음
-function edInputDone(){ pointRef = null; sizeEditor(); fx.value = ed.value; updateCharCount(); updDocInfo(); }
+function edInputDone(){ pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); }
+// 수식 입력줄 맞추기: 긴 글을 글자마다 넣으면 입력줄 다시 그리는 데 오래 걸려서, 원고 쓰기 중엔 건너뛰고(닫을 때 맞춤) 긴 글은 잠깐 쉴 때 맞춤
+let fxT = 0;
+function syncFx(){
+  clearTimeout(fxT);
+  if (docMode) return;
+  if (ed.value.length < 3000) fx.value = ed.value;
+  else fxT = setTimeout(() => { if (editing) fx.value = ed.value; }, 400);
+}
 ed.addEventListener('beforeinput', e => {
   const t = e.inputType || '';
   if (t.startsWith('format') || t === 'insertFromDrop'){ e.preventDefault(); return; }
@@ -3898,25 +4033,34 @@ function sheetCharCount(){
   for (const k in sh.cells){ const v = sh.cells[k].v; if (v == null || v === '') continue; const i = k.indexOf(':'); const [x, y] = countText(cellText(+k.slice(0, i), +k.slice(i + 1))); a += x; b += y; }
   return (sheetChars = [a, b]);
 }
+// 200자 원고지 매수: 문단마다 첫 칸을 비우고, 한 줄 20칸, 한 장 10줄
+function wonGo(text){
+  const t = String(text ?? ''); if (!t) return 0;
+  let lines = 0;
+  for (const p of t.split('\n')) lines += Math.max(1, Math.ceil(([...p].length + 1) / 20));
+  return lines / 10;
+}
+const fmMae = n => (Math.round(n * 10) / 10).toLocaleString('ko-KR');
 function updateCharCount(){
   const el = document.getElementById('charCount'); if (!el || !sh) return;
   const m = mergeOf(act.r, act.c), single = editing || (sel.r1 === sel.r2 && sel.c1 === sel.c2) || (m && contains(m, sel));
   let cur;
-  if (editing) cur = countText(ed.value);
-  else if (single) cur = countText(cellText(act.r, act.c));
+  let wg = 0;
+  if (editing){ cur = countText(ed.value); wg = wonGo(ed.value); }
+  else if (single){ cur = countText(cellText(act.r, act.c)); wg = wonGo(cellText(act.r, act.c)); }
   else {
     let a = 0, b = 0;
     for (const k in sh.cells){
       const i = k.indexOf(':'), r = +k.slice(0, i), c = +k.slice(i + 1);
       if (r < sel.r1 || r > sel.r2 || c < sel.c1 || c > sel.c2 || sh.cells[k].v == null) continue;
-      const [x, y] = countText(cellText(r, c)); a += x; b += y;
+      const t = cellText(r, c), [x, y] = countText(t); a += x; b += y; wg += wonGo(t);
     }
     cur = [a, b];
   }
   const tot = sheetCharCount(), i = ccNoSpace ? 1 : 0, fm = n => n.toLocaleString('ko-KR');
   const lab = single ? '칸' : '선택';
-  el.innerHTML = `${lab} <b>${fm(cur[0])}</b>자 <span class="ns">(공백 빼고 ${fm(cur[1])})</span> · 시트 <b>${fm(tot[0])}</b>자 <span class="ns">(공백 빼고 ${fm(tot[1])})</span>`;
-  el.title = `공백 포함: ${lab} ${fm(cur[0])}자 · 시트 ${fm(tot[0])}자\n공백 제외: ${lab} ${fm(cur[1])}자 · 시트 ${fm(tot[1])}자`;
+  el.innerHTML = `${lab} <b>${fm(cur[0])}</b>자 <span class="ns">(공백 빼고 ${fm(cur[1])})</span>${wg ? ` · 원고지 ${fmMae(wg)}매` : ''} · 시트 <b>${fm(tot[0])}</b>자 <span class="ns">(공백 빼고 ${fm(tot[1])})</span>`;
+  el.title = `공백 포함: ${lab} ${fm(cur[0])}자 · 시트 ${fm(tot[0])}자\n공백 제외: ${lab} ${fm(cur[1])}자 · 시트 ${fm(tot[1])}자\n원고지(200자, 문단 첫 칸 비움) ${fmMae(wg)}매`;
 }
 function toggleCharMode(){ ccNoSpace = !ccNoSpace; try { localStorage.setItem('monun.ccNoSpace', ccNoSpace ? '1' : '0'); } catch (e) {} updateCharCount(); toast(ccNoSpace ? '글자 수: 공백 빼고 셉니다' : '글자 수: 공백까지 셉니다'); }
 document.getElementById('charCount').addEventListener('mousedown', e => e.preventDefault());
