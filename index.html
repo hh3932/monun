@@ -92,7 +92,7 @@ button{font:inherit;color:inherit}
 .wrap.painting{cursor:copy}
 #cv{position:sticky;left:0;top:0;display:block}
 #spacer{position:absolute;left:0;top:0;pointer-events:none}
-#ed{position:absolute;z-index:3;margin:0;border:0;outline:2px solid var(--sel);outline-offset:0;resize:none;overflow:hidden;padding:2px 4px;opacity:0;pointer-events:none;line-height:1.28;background:#fff;color:#111}
+#ed{position:absolute;z-index:3;margin:0;border:0;outline:2px solid var(--sel);outline-offset:0;resize:none;overflow:hidden;padding:2px 4px;opacity:0;pointer-events:none;line-height:1.28;background:#fff;color:#111;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text;cursor:text}
 #ed.on{opacity:1;pointer-events:auto;box-shadow:0 3px 12px rgba(0,0,0,.18)}
 
 .bottombar{display:flex;align-items:stretch;gap:6px;min-height:36px;padding:0 16px;background:var(--bar);border-top:1px solid var(--line)}
@@ -291,9 +291,9 @@ button{font:inherit;color:inherit}
       <button class="tb" data-cmd="italic" id="tbItalic" title="기울임 (Ctrl+I)"><span class="glyph" style="font-style:italic">I</span></button>
       <button class="tb" data-cmd="underline" id="tbUnder" title="밑줄 (Ctrl+U)"><span class="glyph" style="text-decoration:underline">U</span></button>
       <button class="tb" data-cmd="strike" id="tbStrike" title="취소선 (Ctrl+5)"><span class="glyph" style="text-decoration:line-through">S</span></button>
-      <button class="tb" data-cmd="fc" title="글자 색"><span class="glyph" style="font-family:inherit;font-weight:600;margin-top:-4px">가</span><span class="bar" id="fcBar"></span></button>
+      <button class="tb" data-cmd="fc" title="글자 색 (칸 편집 중 글자를 골라 두면 그 글자에만)"><span class="glyph" style="font-family:inherit;font-weight:600;margin-top:-4px">가</span><span class="bar" id="fcBar"></span></button>
       <button class="tb caret" data-cmd="fcMenu" title="글자 색 고르기"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
-      <button class="tb" data-cmd="bg" title="채우기 색"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" style="margin-top:-4px"><path d="M3.5 9 9 3.5l6 6L9.5 15z"/><path d="M3.5 9h11.5"/><path d="M16.5 11.5s1.5 1.9 1.5 2.9a1.5 1.5 0 0 1-3 0c0-1 1.5-2.9 1.5-2.9z" fill="currentColor"/></svg><span class="bar" id="bgBar"></span></button>
+      <button class="tb" data-cmd="bg" title="채우기 색 (칸 편집 중 글자를 골라 두면 그 글자에 형광펜)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" style="margin-top:-4px"><path d="M3.5 9 9 3.5l6 6L9.5 15z"/><path d="M3.5 9h11.5"/><path d="M16.5 11.5s1.5 1.9 1.5 2.9a1.5 1.5 0 0 1-3 0c0-1 1.5-2.9 1.5-2.9z" fill="currentColor"/></svg><span class="bar" id="bgBar"></span></button>
       <button class="tb caret" data-cmd="bgMenu" title="채우기 색 고르기"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
     </div>
     <div class="sep"></div>
@@ -353,7 +353,7 @@ button{font:inherit;color:inherit}
   <div class="wrap" id="wrap">
     <canvas id="cv"></canvas>
     <div id="spacer"></div>
-    <textarea id="ed" spellcheck="false" autocomplete="off" aria-label="칸 편집"></textarea>
+    <div id="ed" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true" aria-label="칸 편집"></div>
   </div>
 
   <footer class="bottombar">
@@ -434,11 +434,17 @@ function setV(r,c,v){
   if (v === '' || v == null){ if (cell){ delete cell.v; clean(r,c); } return; }
   if (!cell) cell = sh.cells[k] = {};
   cell.v = String(v);
+  // 글이 바뀌면 부분 서식은 바뀐 곳만 갈아 끼우고 나머지는 그대로 (수식이 되면 버림)
+  if (cell.rt){
+    const nr = cell.v[0] === '=' ? [] : spliceRuns(cell.rt, cell.v);
+    if (nr.some(x => Object.keys(x).length > 1)) cell.rt = nr; else delete cell.rt;
+  }
 }
 function ensureCell(r,c){ const k = r+':'+c; return sh.cells[k] || (sh.cells[k] = {}); }
 function clean(r,c){
   const k = r+':'+c, cell = sh.cells[k]; if (!cell) return;
   if (cell.s && !Object.keys(cell.s).length) delete cell.s;
+  if (cell.v == null) delete cell.rt;
   if (cell.v == null && !cell.s) delete sh.cells[k];
 }
 const EMPTY = {};
@@ -517,6 +523,111 @@ function wrapLines(text, maxW, c){
   }
   return out;
 }
+// ===== 칸 안 일부 서식 (굵게·기울임·밑줄·가운데 줄·글자 색·형광펜) =====
+// cell.rt = [{t:'글', b?, i?, u?, st?, fc?, hl?}, ...]: 칸 서식과 다른 부분만 적는다.
+// 이어 붙인 글이 cell.v와 같을 때만 쓰고, 다르면 없는 것으로 본다.
+const RT_KEYS = ['b', 'i', 'u', 'st', 'fc', 'hl'];
+function runsOfCell(cell){
+  if (!cell || !Array.isArray(cell.rt) || cell.v == null) return null;
+  let t = ''; for (const x of cell.rt) t += x.t;
+  return t === cell.v ? cell.rt : null;
+}
+const runsOf = (r, c) => runsOfCell(sh.cells[r+':'+c]);
+// 보이는 글(text)이 칸에 적힌 글 그대로일 때만 (수식 결과·숫자 서식이 붙으면 부분 서식 없이)
+const richFor = (r, c, text) => { const cell = sh.cells[r+':'+c]; return cell && String(text) === cell.v ? runsOfCell(cell) : null; };
+const sameRS = (a, b) => RT_KEYS.every(k => (a[k] ?? null) === (b[k] ?? null));
+function mergeRuns(runs){
+  const out = [];
+  for (const x of runs){ if (!x.t) continue; const L = out[out.length - 1]; if (L && sameRS(L, x)) L.t += x.t; else out.push({...x}); }
+  return out;
+}
+function sliceRuns(runs, a, b){
+  const out = []; let p = 0;
+  for (const x of runs){
+    const s0 = p, e0 = p + x.t.length; p = e0;
+    const s1 = Math.max(a, s0), e1 = Math.min(b, e0);
+    if (s1 < e1) out.push({...x, t: x.t.slice(s1 - s0, e1 - s0)});
+  }
+  return out;
+}
+// 글이 바뀌었을 때: 앞뒤 같은 부분의 서식은 두고, 새로 들어온 글은 바로 앞 글자의 서식을 이어받음
+function spliceRuns(runs, nt){
+  const ot = runs.map(x => x.t).join('');
+  if (ot === nt) return runs;
+  const n = Math.min(ot.length, nt.length);
+  let p = 0; while (p < n && ot[p] === nt[p]) p++;
+  let q = 0; while (q < n - p && ot[ot.length - 1 - q] === nt[nt.length - 1 - q]) q++;
+  const mid = nt.slice(p, nt.length - q);
+  const near = sliceRuns(runs, p ? p - 1 : 0, p ? p : 1)[0] || {t: ''};
+  return mergeRuns([...sliceRuns(runs, 0, p), ...(mid ? [{...near, t: mid}] : []), ...sliceRuns(runs, ot.length - q, ot.length)]);
+}
+// 칸 서식 + 이 부분의 서식
+const effS = (s, x) => { const o = Object.assign({}, s); for (const k of RT_KEYS) if (x[k] != null) o[k] = x[k]; return o; };
+// 편집기 안에서는 글자마다 실제 모양(abs)으로 다루고, 저장할 때 칸 서식과 다른 것만 남긴다
+const baseAbs = s => ({b: !!s.b, i: !!s.i, u: !!s.u, st: !!s.st, fc: (s.fc || '#111111').toUpperCase(), hl: null});
+const rtToAbs = (rt, s) => { const B = baseAbs(s); return rt.map(x => ({t: x.t, b: x.b ?? B.b, i: x.i ?? B.i, u: x.u ?? B.u, st: x.st ?? B.st, fc: x.fc ? x.fc.toUpperCase() : B.fc, hl: x.hl || null})); };
+function absToRt(abs, s){
+  const B = baseAbs(s);
+  const rt = mergeRuns(abs.map(x => {
+    const o = {t: x.t};
+    for (const k of ['b', 'i', 'u', 'st']) if (!!x[k] !== B[k]) o[k] = !!x[k];
+    if (x.fc && x.fc.toUpperCase() !== B.fc) o.fc = x.fc.toUpperCase();
+    if (x.hl) o.hl = x.hl.toUpperCase();
+    return o;
+  }));
+  return rt.some(x => Object.keys(x).length > 1) ? rt : null;
+}
+// 부분 서식 글을 잴 때: 서식이 바뀌는 곳마다 글꼴을 바꿔 가며 잰다
+function richMeasurer(rt, s, c, z){
+  const segs = []; let p = 0, text = '';
+  for (const x of rt){ const e = effS(s, x); if (e.b || e.i) ensureFont(e.ff, e.b); segs.push({a: p, b: p + x.t.length, font: fontStr(e, z), e}); p += x.t.length; text += x.t; }
+  const meas = (a, b) => {
+    let w = 0;
+    for (const g of segs){ if (g.b <= a || g.a >= b) continue; c.font = g.font; w += c.measureText(text.slice(Math.max(a, g.a), Math.min(b, g.b))).width; }
+    return w;
+  };
+  return {segs, text, meas};
+}
+// wrapLines와 같은 규칙으로 줄을 나누되, 글자 위치(a~b)로 돌려준다
+function wrapIdx(text, maxW, meas){
+  const out = []; let p = 0;
+  for (const para of text.split('\n')){
+    const toks = para.match(TOK) || [''];
+    let a = p, b = p, q = p;
+    for (const t of toks){
+      const ta = q, tb = q + t.length; q = tb;
+      if (meas(a, tb) <= maxW){ b = tb; continue; }
+      if (/^\s+$/.test(t)){ out.push({a, b}); a = b = tb; continue; }
+      if (b > a){ let e = b; while (e > a && /\s/.test(text[e - 1])) e--; out.push({a, b: e}); a = b = ta; }
+      if (meas(ta, tb) > maxW){
+        for (const ch of t){ if (b > a && meas(a, b + ch.length) > maxW){ out.push({a, b}); a = b; } b += ch.length; }
+      } else b = tb;
+    }
+    out.push({a, b}); p = q + 1;
+  }
+  return out;
+}
+function richLines(rt, s, maxW, c, z, doWrap){
+  const M = richMeasurer(rt, s, c, z);
+  let lines;
+  if (doWrap) lines = wrapIdx(M.text, maxW, M.meas);
+  else { lines = []; let p = 0; for (const ln of M.text.split('\n')){ lines.push({a: p, b: p + ln.length}); p += ln.length + 1; } }
+  for (const L of lines) L.w = M.meas(L.a, L.b);
+  return {M, lines};
+}
+// 쪽 미리보기·인쇄용 HTML: 부분마다 실제 모양을 모두 적는다 (밑줄은 바깥에서 지울 수 없어서)
+function richHTML(rt, s, a, b){
+  let h = '', p = 0;
+  for (const x of rt){
+    const s0 = p, e0 = p + x.t.length; p = e0;
+    const s1 = Math.max(a, s0), e1 = Math.min(b, e0); if (s1 >= e1) continue;
+    const e = effS(s, x), d = [e.u && 'underline', e.st && 'line-through'].filter(Boolean).join(' ') || 'none';
+    h += `<span style="font-weight:${e.b ? 700 : 400};font-style:${e.i ? 'italic' : 'normal'};text-decoration:${d};color:${e.fc || '#111'}${e.hl ? ';background:' + e.hl : ''}">${esc(x.t.slice(s1 - s0, e1 - s0))}</span>`;
+  }
+  return h;
+}
+const noDeco = s => Object.assign({}, s, {u: false, st: false});
+
 function autoRows(){
   const need = {};
   for (const k in sh.cells){
@@ -527,7 +638,11 @@ function autoRows(){
     // 높이를 직접 정한 행은 줄 바꿈 글자가 들어갈 때만 늘린다
     if (sh.rowManual[r] && !wrapOn(s, cell.v)) continue;
     let lines;
-    if (wrapOn(s, cell.v)){ mctx.font = fontStr(s,1); lines = wrapLines(shown(r, c), cw(c) - 8, mctx).length; }
+    if (wrapOn(s, cell.v)){
+      const t = shown(r, c), rt = String(t) === cell.v ? runsOfCell(cell) : null;
+      if (rt) lines = richLines(rt, s, cw(c) - 8, mctx, 1, true).lines.length;
+      else { mctx.font = fontStr(s,1); lines = wrapLines(t, cw(c) - 8, mctx).length; }
+    }
     else lines = String(cell.v).split('\n').length;
     const h = Math.ceil(lines * px * 1.28 + 4);
     if (h > DEF_H && h > (need[r] || 0)) need[r] = h;
@@ -668,10 +783,13 @@ function drawText(r, c, rect, isMerge){
   const px = (s.fs || DEF_FS) * 4/3 * z, pad = 3*z + 1;
   const ha = s.ha || (errCell ? 'center' : isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left'), va = vaOf(s);
   const doWrap = wrapOn(s, raw);
-  const lines = doWrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
+  const rt = richFor(r, c, v), RL = rt ? richLines(rt, s, rect.w - pad*2, ctx, z, doWrap) : null;
+  if (RL) ctx.font = fontStr(s, z);
+  const lines = RL ? RL.lines.map(L => RL.M.text.slice(L.a, L.b)) : doWrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
   let clip = rect, tw = 0, spill = false;
   if (!isMerge && !doWrap){
-    for (const l of lines) tw = Math.max(tw, ctx.measureText(l).width);
+    if (RL) for (const L of RL.lines) tw = Math.max(tw, L.w);
+    else for (const l of lines) tw = Math.max(tw, ctx.measureText(l).width);
     const need = tw + pad*2;
     if (need > rect.w){
       spill = true;
@@ -715,6 +833,7 @@ function drawText(r, c, rect, isMerge){
   const th = Math.max(1, px/15), shift = glyphShift(ctx.font);
   lines.forEach((ln, i) => {
     const y = y0 + lh*(i+0.5);   // 이 줄의 가운데
+    if (RL){ drawRichLine(RL, RL.lines[i], x, y, ha, px, lh, th); return; }
     ctx.fillText(ln, x, y + shift);
     if (s.u || s.st){
       const w = ctx.measureText(ln).width, lx = ha === 'left' ? x : ha === 'right' ? x-w : x-w/2;
@@ -723,6 +842,23 @@ function drawText(r, c, rect, isMerge){
     }
   });
   ctx.restore();
+}
+// 부분 서식이 있는 한 줄: 서식이 바뀌는 곳마다 나눠서 형광펜 → 글자 → 밑줄·가운데 줄 순으로
+function drawRichLine(RL, L, x, y, ha, px, lh, th){
+  let cx = ha === 'left' ? x : ha === 'right' ? x - L.w : x - L.w/2;
+  ctx.textAlign = 'left';
+  for (const g of RL.M.segs){
+    if (g.b <= L.a || g.a >= L.b) continue;
+    const t = RL.M.text.slice(Math.max(L.a, g.a), Math.min(L.b, g.b)), e = g.e;
+    ctx.font = g.font;
+    const w = ctx.measureText(t).width;
+    if (e.hl){ ctx.fillStyle = e.hl; ctx.fillRect(cx, y - lh/2, w, lh); }
+    ctx.fillStyle = e.fc || '#111111';
+    ctx.fillText(t, cx, y + glyphShift(g.font));
+    if (e.u) ctx.fillRect(cx, y + px*0.52, w, th);
+    if (e.st) ctx.fillRect(cx, y, w, th);
+    cx += w;
+  }
 }
 
 // 글꼴마다 글자가 글꼴 상자 안에서 위아래로 치우친 정도가 달라서(맑은 고딕은 위로 약 1.6px),
@@ -966,14 +1102,18 @@ function startEdit(mode, text){
   if (editing) return;
   if (selImg){ selImg = null; schedule(); }
   editing = true; editMode = mode;
-  if (text != null) ed.value = text;
   const s = st(act.r, act.c);
+  edBase = baseAbs(s);
   ed.style.font = fontStr(s, sh.zoom);
   ed.style.color = s.fc || '#111';
   ed.style.background = s.bg || '#fff';
   ed.style.textAlign = s.ha || 'left';
-  ed.style.textDecoration = [s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ') || 'none';
   ed.style.whiteSpace = wrapOn(s, getV(act.r, act.c)) ? 'pre-wrap' : 'pre';
+  if (text != null){
+    const rt = text === getV(act.r, act.c) ? runsOf(act.r, act.c) : null;
+    if (rt) setAbs(rtToAbs(rt, s)); else edPlain(text);
+  }
+  edDeco();
   ed.classList.add('on');
   positionEditor();
   if (mode === 'edit'){ const n = ed.value.length; ed.setSelectionRange(n, n); }
@@ -983,23 +1123,163 @@ function startEdit(mode, text){
 function commitEdit(){
   if (!editing) return;
   const v = finalizeInput(ed.value);
-  pointRef = null; hideFnHint();
+  const rt = v !== '' && !isFormula(v) ? absToRt(readAbs(), st(act.r, act.c)) : null;
+  pointRef = null; hideFnHint(); savedSel = null;
   editing = false; ed.classList.remove('on'); ed.value = '';
-  if (v !== getV(act.r, act.c)) mutate(() => setV(act.r, act.c, v));
+  const oldRt = runsOf(act.r, act.c);
+  if (v !== getV(act.r, act.c) || JSON.stringify(rt) !== JSON.stringify(oldRt)) mutate(() => {
+    setV(act.r, act.c, v);
+    const cell = sh.cells[act.r+':'+act.c];
+    if (cell){ if (rt) cell.rt = rt; else delete cell.rt; }
+  });
   positionEditor(); refreshUI(); schedule();
 }
 function cancelEdit(){
-  pointRef = null; hideFnHint();
+  pointRef = null; hideFnHint(); savedSel = null;
   if (!editing) return;
   editing = false; ed.classList.remove('on'); ed.value = '';
   positionEditor(); refreshUI(); schedule();
 }
 function insertAtCaret(t){
-  const a = ed.selectionStart, b = ed.selectionEnd;
-  ed.value = ed.value.slice(0,a) + t + ed.value.slice(b);
+  const a = ed.selectionStart, b = ed.selectionEnd, v = ed.value;
+  ed.value = v.slice(0,a) + t + v.slice(b);   // 앞뒤 글자의 부분 서식은 그대로 둠
   ed.setSelectionRange(a + t.length, a + t.length);
   sizeEditor(); fx.value = ed.value;
 }
+
+// ===== 입력 칸: 글자 일부에 서식을 넣을 수 있게 contenteditable =====
+// 예전 textarea처럼 value·selectionStart·selectionEnd·setSelectionRange·select를 쓸 수 있게 맞춰 둔다.
+// 글 속 줄 바꿈은 '\n' 글자 또는 <br>. 맨 끝의 <br>은 빈 줄을 보이게 하는 자리표시라 글자로 치지 않는다.
+let edBase = baseAbs({}), savedSel = null;
+function edItems(){
+  const items = []; let pos = 0;
+  const walk = n => {
+    for (let ch = n.firstChild; ch; ch = ch.nextSibling){
+      if (ch.nodeType === 3){ items.push({n: ch, t: 'x', a: pos}); pos += ch.data.length; }
+      else if (ch.nodeName === 'BR'){
+        // 문단(div) 맨 끝의 <br>도 자리표시
+        const ph = !ch.nextSibling && ch.parentNode !== ed && /^(DIV|P)$/.test(ch.parentNode.nodeName);
+        if (!ph){ items.push({n: ch, t: 'br', a: pos}); pos += 1; }
+      } else if (ch.nodeType === 1){
+        if (/^(DIV|P)$/.test(ch.nodeName) && items.length){ items.push({n: ch, t: 'blk', a: pos}); pos += 1; }
+        walk(ch);
+      }
+    }
+  };
+  walk(ed);
+  const last = items[items.length - 1];
+  if (last && last.t === 'br'){ last.t = 'end'; pos -= 1; }
+  return {items, len: pos};
+}
+function edGet(){
+  let s = '';
+  for (const it of edItems().items) s += it.t === 'x' ? it.n.data : it.t === 'end' ? '' : '\n';
+  return s;
+}
+function edPlain(t){
+  ed.textContent = t;
+  if (t.endsWith('\n')) ed.appendChild(document.createElement('br'));
+}
+function edSet(v){
+  v = v == null ? '' : String(v);
+  if (!ed.firstChild){ if (v) edPlain(v); edDeco(); return; }
+  if (v === edGet()) return;
+  if (v === '' || !ed.querySelector('*:not(br)')){ edPlain(v); edDeco(); return; }
+  setAbs(spliceRuns(readAbs(), v));
+}
+// 글 위치 → 화면 위치, 화면 위치 → 글 위치
+function edPos(node, off){
+  const {items, len} = edItems();
+  if (node.nodeType === 3){ const it = items.find(x => x.n === node); if (it) return Math.min(it.a + off, len); }
+  const r = document.createRange(); r.setStart(node, off);
+  for (const it of items){ if (it.t === 'end') return len; if (r.comparePoint(it.n, 0) >= 0) return it.a; }
+  return len;
+}
+function edPoint(n){
+  for (const it of edItems().items){
+    if (it.t === 'x'){ if (n <= it.a + it.n.data.length) return [it.n, Math.max(0, n - it.a)]; }
+    else if (n <= it.a) return [it.n.parentNode, [...it.n.parentNode.childNodes].indexOf(it.n)];
+  }
+  return [ed, ed.childNodes.length];
+}
+function edSel(){
+  const s = getSelection(); if (!s.rangeCount) return null;
+  const r = s.getRangeAt(0); if (!ed.contains(r.startContainer) || !ed.contains(r.endContainer)) return null;
+  return [edPos(r.startContainer, r.startOffset), edPos(r.endContainer, r.endOffset)];
+}
+Object.defineProperties(ed, {
+  value: {get: edGet, set: edSet, configurable: true},
+  selectionStart: {get(){ const s = edSel(); return s ? s[0] : edGet().length; }, configurable: true},
+  selectionEnd: {get(){ const s = edSel(); return s ? s[1] : edGet().length; }, configurable: true},
+});
+ed.setSelectionRange = (a, b) => { const p = edPoint(a), q = edPoint(b); getSelection().setBaseAndExtent(p[0], p[1], q[0], q[1]); };
+ed.select = () => { const r = document.createRange(); r.selectNodeContents(ed); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+// 편집기 안 글자의 실제 모양 읽기 (굵기·기울임·색은 계산된 스타일, 밑줄은 감싼 요소들에서 모음)
+const toHex = c => { const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(c || ''); if (!m || m[4] === '0') return null; return '#' + [m[1], m[2], m[3]].map(x => (+x).toString(16).padStart(2, '0')).join('').toUpperCase(); };
+function readAbs(){
+  const out = [], cache = new Map();
+  const cs = el => { let v = cache.get(el); if (!v){ v = getComputedStyle(el); cache.set(el, v); } return v; };
+  const look = tn => {
+    const p = tn.parentElement, c = cs(p);
+    let u = false, s = false, hl = null;
+    for (let el = p; el; el = el === ed ? null : el.parentElement){
+      const k = cs(el), d = k.textDecorationLine || '';
+      if (d.includes('underline')) u = true;
+      if (d.includes('line-through')) s = true;
+      if (!hl && el !== ed) hl = toHex(k.backgroundColor);
+    }
+    return {b: parseInt(c.fontWeight, 10) >= 600, i: c.fontStyle !== 'normal', u, st: s, fc: toHex(c.color) || edBase.fc, hl};
+  };
+  let prev = edBase;
+  for (const it of edItems().items){
+    if (it.t === 'end') continue;
+    if (it.t === 'x'){ if (it.n.data){ prev = look(it.n); out.push({t: it.n.data, ...prev}); } }
+    else out.push({t: '\n', ...prev});
+  }
+  return mergeRuns(out);
+}
+const absCss = x => `font-weight:${x.b ? 700 : 400};font-style:${x.i ? 'italic' : 'normal'};text-decoration:${[x.u && 'underline', x.st && 'line-through'].filter(Boolean).join(' ') || 'none'};color:${x.fc}${x.hl ? ';background-color:' + x.hl : ''}`;
+function setAbs(runs){
+  runs = mergeRuns(runs);
+  const t = runs.map(x => x.t).join('');
+  if (runs.every(x => sameRS(x, edBase))){ edPlain(t); edDeco(); return; }
+  ed.innerHTML = runs.map(x => `<span style="${absCss(x)}">${esc(x.t)}</span>`).join('');
+  if (t.endsWith('\n')) ed.appendChild(document.createElement('br'));
+  edDeco();
+}
+// 칸 전체 밑줄은 서식 없는 글일 때만 편집기에 걸고, 부분 서식이 있으면 부분마다 직접 그린다
+function edDeco(){
+  ed.style.textDecoration = ed.querySelector('span') ? 'none' : [edBase.u && 'underline', edBase.st && 'line-through'].filter(Boolean).join(' ') || 'none';
+}
+// 편집 중 고른 글자에 서식 넣기. 고른 글자가 없으면 false (그때는 칸 전체에)
+function richRange(){
+  if (!editing || isFormula(ed.value)) return null;
+  const s = edSel();
+  if (s && s[0] !== s[1]) return [Math.min(s[0], s[1]), Math.max(s[0], s[1])];
+  if (savedSel && document.activeElement !== ed && savedSel[1] <= ed.value.length) return savedSel;   // 색 고르기 창(다른 색)으로 포커스가 옮겨 갔을 때
+  return null;
+}
+function richApply(k, fn){
+  const R = richRange(); savedSel = null;
+  if (!R) return false;
+  const [a, b] = R, abs = readAbs(), mid = sliceRuns(abs, a, b);
+  const val = fn(mid.every(x => x[k]));
+  setAbs([...sliceRuns(abs, 0, a), ...mid.map(x => ({...x, [k]: val})), ...sliceRuns(abs, b, Infinity)]);
+  ed.focus({preventScroll: true}); ed.setSelectionRange(a, b);
+  sizeEditor(); richButtons();
+  return true;
+}
+const richToggle = k => richApply(k, on => !on);
+const richColor = (k, c) => richApply(k, () => c ? c.toUpperCase() : k === 'fc' ? edBase.fc : null);
+// 편집 중에는 커서가 있는 글자의 모양을 단추에 보여 줌
+function richButtons(){
+  if (!editing) return;
+  const s = edSel(); if (!s) return;
+  const i = s[0] < s[1] ? s[0] : Math.max(0, s[0] - 1);
+  const x = sliceRuns(readAbs(), i, i + 1)[0] || edBase;
+  setOn('tbBold', x.b); setOn('tbItalic', x.i); setOn('tbUnder', x.u); setOn('tbStrike', x.st);
+}
+document.addEventListener('selectionchange', () => { if (editing && document.activeElement === ed) richButtons(); });
 
 // ===== 변경과 실행 취소 =====
 const snapJSON = () => JSON.stringify(wb, (k, v) => k === 'media' ? undefined : v);
@@ -1030,18 +1310,25 @@ function clearSession(){ try { localStorage.removeItem(LS); if (window.native) w
 function applyStyle(patch){
   if (editing) commitEdit();
   const s = sel;
-  const put = o => { for (const k in patch){ if (patch[k] == null) delete o[k]; else o[k] = patch[k]; } };
+  // 칸 전체에 굵게·밑줄·글자 색 등을 정하면, 그 칸 안 부분 서식의 같은 항목은 지움 (한글·워드처럼 전체에 적용)
+  const rk = ['b', 'i', 'u', 'st', 'fc'].filter(k => k in patch);
+  const strip = cell => {
+    if (!cell.rt || !rk.length) return;
+    cell.rt = mergeRuns(cell.rt.map(x => { const o = {...x}; for (const k of rk) delete o[k]; return o; }));
+    if (!cell.rt.some(x => Object.keys(x).length > 1)) delete cell.rt;
+  };
+  const put = (o, cell) => { for (const k in patch){ if (patch[k] == null) delete o[k]; else o[k] = patch[k]; } if (cell) strip(cell); };
   const each = (test, fn) => { for (const k in sh.cells){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (test(r,c)) fn(sh.cells[k], r, c); } };
   mutate(() => {
     if (fullCols(s)){
       for (let c = s.c1; c <= s.c2; c++){ const o = sh.colStyle[c] || {}; put(o); if (Object.keys(o).length) sh.colStyle[c] = o; else delete sh.colStyle[c]; }
       for (const r in sh.rowStyle) for (let c = s.c1; c <= s.c2; c++) ensureCell(+r, c);
-      each((r,c) => c >= s.c1 && c <= s.c2, (cell, r, c) => { cell.s = cell.s || {}; put(cell.s); clean(r,c); });
+      each((r,c) => c >= s.c1 && c <= s.c2, (cell, r, c) => { cell.s = cell.s || {}; put(cell.s, cell); clean(r,c); });
     } else if (fullRows(s)){
       for (let r = s.r1; r <= s.r2; r++){ const o = sh.rowStyle[r] || {}; put(o); if (Object.keys(o).length) sh.rowStyle[r] = o; else delete sh.rowStyle[r]; }
-      each((r) => r >= s.r1 && r <= s.r2, (cell, r, c) => { cell.s = cell.s || {}; put(cell.s); clean(r,c); });
+      each((r) => r >= s.r1 && r <= s.r2, (cell, r, c) => { cell.s = cell.s || {}; put(cell.s, cell); clean(r,c); });
     } else {
-      for (let r = s.r1; r <= s.r2; r++) for (let c = s.c1; c <= s.c2; c++){ const cell = ensureCell(r,c); cell.s = cell.s || {}; put(cell.s); clean(r,c); }
+      for (let r = s.r1; r <= s.r2; r++) for (let c = s.c1; c <= s.c2; c++){ const cell = ensureCell(r,c); cell.s = cell.s || {}; put(cell.s, cell); clean(r,c); }
     }
   });
 }
@@ -1063,7 +1350,7 @@ function clearFormats(){
   mutate(() => {
     if (fullCols(s)) for (let c = s.c1; c <= s.c2; c++) delete sh.colStyle[c];
     if (fullRows(s)) for (let r = s.r1; r <= s.r2; r++) delete sh.rowStyle[r];
-    for (const k in sh.cells){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2){ delete sh.cells[k].s; clean(r,c); } }
+    for (const k in sh.cells){ const i = k.indexOf(':'), r = +k.slice(0,i), c = +k.slice(i+1); if (r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2){ delete sh.cells[k].s; delete sh.cells[k].rt; clean(r,c); } }
   });
 }
 function clearContents(){
@@ -1303,7 +1590,7 @@ function applyFill(base, t, copyOnly){
     for (const lane of lanes){
       let src = vertical ? range(base.r1, base.r2).map(r => [r, lane]) : range(base.c1, base.c2).map(c => [lane, c]);
       if (!fwd) src.reverse();
-      const cells = src.map(([r,c]) => ({v:getV(r,c), s:(sh.cells[r+':'+c] || {}).s}));
+      const cells = src.map(([r,c]) => ({v:getV(r,c), s:(sh.cells[r+':'+c] || {}).s, rt: runsOf(r, c)}));
       const vals = series(cells.map(x => x.v), n, copyOnly), hasF = cells.some(x => isFormula(x.v));
       for (let i = 0; i < n; i++){
         const off = fwd ? (vertical ? base.r2 : base.c2) + 1 + i : (vertical ? base.r1 : base.c1) - 1 - i;
@@ -1313,6 +1600,7 @@ function applyFill(base, t, copyOnly){
         let val = vals[i];
         if (hasF){ const si = i % cells.length, [sr, scc] = src[si]; val = isFormula(cells[si].v) ? shiftFormula(cells[si].v, r - sr, c - scc) : cells[si].v; }
         const o = {}; if (val !== '') o.v = String(val); if (s) o.s = s;
+        const sc = cells[i % cells.length]; if (sc.rt && o.v === sc.v) o.rt = cloneS(sc.rt);   // 같은 글을 이어 채울 때는 부분 서식도
         if (o.v != null || o.s) sh.cells[k] = o; else delete sh.cells[k];
       }
     }
@@ -1565,7 +1853,7 @@ function closeFind(){ findBar.hidden = true; pvUnmark(); if (!pvOpen) focusGrid(
 // 쪽 미리보기에서 찾기: 맞는 줄을 노랗게, 지금 보는 것은 진하게
 let pvHits = [], pvHitI = -1;
 function pvUnmark(){
-  document.querySelectorAll('#pvPages .fhit').forEach(el => { el.classList.remove('fhit', 'fcur'); if (el.dataset.t != null){ el.textContent = el.dataset.t; delete el.dataset.t; } });
+  document.querySelectorAll('#pvPages .fhit').forEach(el => { el.classList.remove('fhit', 'fcur'); if (el.dataset.h != null){ el.innerHTML = el.dataset.h; delete el.dataset.h; } });
   pvHits = []; pvHitI = -1;
 }
 function runFindPV(keep){
@@ -1576,7 +1864,7 @@ function runFindPV(keep){
   const lines = [...document.querySelectorAll('#pvPages .ln, #pvPages .tc > div')];
   for (const el of lines){
     const t = el.textContent; if (!t.toLowerCase().includes(ql)) continue;
-    el.dataset.t = t;
+    el.dataset.h = el.innerHTML;   // 부분 서식까지 그대로 되돌릴 수 있게
     // 맞는 부분에 형광펜
     let out = '', i = 0, lt = t.toLowerCase();
     for (let j = lt.indexOf(ql); j >= 0; j = lt.indexOf(ql, i)){ out += esc(t.slice(i, j)) + '<mark>' + esc(t.slice(j, j + q.length)) + '</mark>'; i = j + q.length; }
@@ -2544,15 +2832,15 @@ function buildPrintHTML(o){
     for (const c of cols){
       const m = mergeOf(r, c);
       if (m && (m.r1 !== r || m.c1 !== c)){ if (!(r === A.r1 && m.r1 < A.r1) && !(c === A.c1 && m.c1 < A.c1)) continue; }
-      const s = stShow(r, c), raw = shown(r, c), v = fmtValue(raw, s);
+      const s = stShow(r, c), raw = shown(r, c), v = fmtValue(raw, s), rt = richFor(r, c, v);
       const ha = s.ha || (isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left');
       const span = m ? ` rowspan="${Math.min(m.r2, A.r2) - Math.max(m.r1, A.r1) + 1}" colspan="${Math.min(m.c2, A.c2) - Math.max(m.c1, A.c1) + 1}"` : '';
       const css = [`font-family:'${s.ff || DEF_FONT}','Malgun Gothic',sans-serif`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
-        (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`, `color:${s.fc || '#111'}`, s.bg && `background:${s.bg}`,
+        !rt && (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`, `color:${s.fc || '#111'}`, s.bg && `background:${s.bg}`,
         `text-align:${ha}`, `vertical-align:${vaOf(s)}`, wrapOn(s, raw) ? 'white-space:pre-wrap;word-break:keep-all' : 'white-space:pre',
         `border-top:${bc(s.bt) || grid}`, `border-bottom:${bc(s.bb) || grid}`, `border-left:${bc(s.bl) || grid}`, `border-right:${bc(s.br) || grid}`].filter(Boolean).join(';');
       const bar = s._bar ? `<div style="position:absolute;left:2px;top:3px;bottom:3px;width:calc(${Math.round(s._bar.t * 100)}% - 4px);background:${s._bar.color};opacity:.55"></div>` : '';
-      h += `<td${span} style="${css}">${bar}<div class="v">${esc(v)}</div></td>`;
+      h += `<td${span} style="${css}">${bar}<div class="v">${rt ? richHTML(rt, s, 0, v.length) : esc(v)}</div></td>`;
     }
     return h + '</tr>';
   };
@@ -2643,11 +2931,10 @@ function paginate(ps){
       const s = stShow(r, c), text = String(fmtValue(shown(r, c), s)), n = [...text.replace(/\n/g, '')].length;
       chars += n;
       const from = pages.length - 1;
-      mctx.font = fontStr(s, 1);
-      const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28;
-      for (const ln of wrapLines(text, W, mctx)){
+      const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28, rt = richFor(r, c, text);
+      for (const ln of pvLines(text, s, rt, W, true)){
         if (y + lh > H + 0.5 && y > 0) newPage();
-        cur().push({k: 'line', y, h: lh, text: ln, s, r, c}); y += lh;
+        cur().push({k: 'line', y, h: lh, text: ln.text, a: ln.a, b: ln.b, rt, s, r, c}); y += lh;
       }
       segs.push({r, c, from, to: pages.length - 1, chars: n});
     }
@@ -2665,11 +2952,10 @@ function paginate(ps){
       // 한 칸짜리 줄: 문단으로 보고 종이 폭에 맞춰 다시 줄 바꿈
       const c = filled[0], s = stShow(r, c), text = String(fmtValue(shown(r, c), s));
       chars += [...text.replace(/\n/g, '')].length;
-      mctx.font = fontStr(s, 1);
-      const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28;
-      for (const ln of wrapLines(text, W, mctx)){
+      const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28, rt = richFor(r, c, text);
+      for (const ln of pvLines(text, s, rt, W, true)){
         if (y + lh > H + 0.5 && y > 0) newPage();
-        cur().push({k: 'line', y, h: lh, text: ln, s, r, c}); y += lh;
+        cur().push({k: 'line', y, h: lh, text: ln.text, a: ln.a, b: ln.b, rt, s, r, c}); y += lh;
       }
     } else {
       // 여러 칸짜리 줄: 표로 보고 칸 너비를 종이 폭에 맞춰 줄임
@@ -2677,10 +2963,9 @@ function paginate(ps){
         const m = mergeOf(r, c), c2 = m ? m.c2 : c, s = stShow(r, c), text = String(fmtValue(shown(r, c), s));
         chars += [...text.replace(/\n/g, '')].length;
         const x = (colX[c] - colX[area.c1]) * k, cwid = (colX[Math.min(c2, area.c2) + 1] - colX[c]) * k;
-        mctx.font = fontStr(s, 1);
-        const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28;
-        const lines = wrapOn(s, text) ? wrapLines(text, cwid - 8, mctx) : text.split('\n');
-        return {x, w: cwid, s, lines, lh, c, num: isNum(shown(r, c))};
+        const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28, rt = richFor(r, c, text);
+        const lines = pvLines(text, s, rt, cwid - 8, wrapOn(s, text));
+        return {x, w: cwid, s, lines, lh, c, rt, num: isNum(shown(r, c))};
       });
       const hh = Math.max(rh(r), ...cells.map(x => x.lines.length * x.lh + 4));
       if (y + hh > H && y > 0) newPage();
@@ -2697,6 +2982,13 @@ function paginate(ps){
   if (pages.length > 1 && !cur().length) pages.pop();
   return {pages, W, H, w, h, M, NUMH, chars, segs: []};
 }
+// 쪽 미리보기용 줄 나누기 (배율 1). 부분 서식이 있으면 글자 위치(a~b)도 함께
+function pvLines(text, s, rt, maxW, doWrap){
+  if (rt) return richLines(rt, s, maxW, mctx, 1, doWrap).lines.map(L => ({text: text.slice(L.a, L.b), a: L.a, b: L.b}));
+  mctx.font = fontStr(s, 1);
+  return (doWrap ? wrapLines(text, maxW, mctx) : text.split('\n')).map(t => ({text: t}));
+}
+const lineHTML = (l, rt, s) => (rt && l.a != null ? richHTML(rt, s, l.a, l.b) : esc(l.text)) || '&nbsp;';
 function cellCss(s, ha){
   return [`font-family:'${s.ff || DEF_FONT}','Malgun Gothic','Apple SD Gothic Neo',sans-serif`, `font-size:${((s.fs || DEF_FS) * 4 / 3).toFixed(2)}px`, s.b ? 'font-weight:700' : 'font-weight:400',
     s.i && 'font-style:italic', (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`, `color:${s.fc || '#111'}`, `text-align:${ha}`].filter(Boolean).join(';');
@@ -2709,11 +3001,11 @@ function pageHTML(P, i, ps){
   for (const it of P.pages[i]){
     if (it.k === 'line'){
       const ha = it.s.ha || 'left';
-      inner += `<div class="ln" data-r="${it.r}" data-c="${it.c}" style="top:${it.y.toFixed(2)}px;height:${it.h.toFixed(2)}px;line-height:${it.h.toFixed(2)}px;${cellCss(it.s, ha)}">${esc(it.text) || '&nbsp;'}</div>`;
+      inner += `<div class="ln" data-r="${it.r}" data-c="${it.c}" style="top:${it.y.toFixed(2)}px;height:${it.h.toFixed(2)}px;line-height:${it.h.toFixed(2)}px;${cellCss(it.rt ? noDeco(it.s) : it.s, ha)}">${lineHTML(it, it.rt, it.s)}</div>`;
     } else if (it.k === 'row'){
       for (const x of it.cells){
         const s = x.s, ha = s.ha || (x.num ? 'right' : 'left');
-        inner += `<div class="tc" data-r="${it.r}" data-c="${x.c}" style="left:${x.x.toFixed(2)}px;top:${it.y.toFixed(2)}px;width:${x.w.toFixed(2)}px;height:${it.h.toFixed(2)}px;${s.bg ? 'background:' + s.bg + ';' : ''}border-top:${bc(s.bt)};border-bottom:${bc(s.bb)};border-left:${bc(s.bl)};border-right:${bc(s.br)};${cellCss(s, ha)};line-height:${x.lh.toFixed(2)}px;justify-content:${vaOf(s) === 'middle' ? 'center' : vaOf(s) === 'bottom' ? 'flex-end' : 'flex-start'}">${x.lines.map(l => `<div>${esc(l) || '&nbsp;'}</div>`).join('')}</div>`;
+        inner += `<div class="tc" data-r="${it.r}" data-c="${x.c}" style="left:${x.x.toFixed(2)}px;top:${it.y.toFixed(2)}px;width:${x.w.toFixed(2)}px;height:${it.h.toFixed(2)}px;${s.bg ? 'background:' + s.bg + ';' : ''}border-top:${bc(s.bt)};border-bottom:${bc(s.bb)};border-left:${bc(s.bl)};border-right:${bc(s.br)};${cellCss(x.rt ? noDeco(s) : s, ha)};line-height:${x.lh.toFixed(2)}px;justify-content:${vaOf(s) === 'middle' ? 'center' : vaOf(s) === 'bottom' ? 'flex-end' : 'flex-start'}">${x.lines.map(l => `<div>${lineHTML(l, x.rt, s)}</div>`).join('')}</div>`;
       }
     } else if (it.k === 'img'){
       inner += `<img src="${it.src}" style="position:absolute;left:0;top:${it.y.toFixed(2)}px;width:${it.w.toFixed(2)}px;height:${it.h.toFixed(2)}px">`;
@@ -2933,14 +3225,14 @@ function toHTML(R){
     for (let c = R.c1; c <= R.c2; c++){
       const m = mergeOf(r,c);
       if (m && (m.r1 !== r || m.c1 !== c) && contains(R, m)) continue;
-      const s = st(r,c), v = fmtValue(shown(r,c), s);
+      const s = st(r,c), v = fmtValue(shown(r,c), s), rt = richFor(r, c, v);
       const css = [`font-family:'${XL_NAME[s.ff || DEF_FONT] || s.ff || DEF_FONT}'`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
-        (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`,
+        !rt && (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`,
         s.fc && `color:${s.fc}`, s.bg && `background:${s.bg}`, s.ha && `text-align:${s.ha}`, `vertical-align:${vaOf(s)}`,
         wrapOn(s, v) ? 'white-space:normal' : 'white-space:nowrap', r === R.r1 && `width:${Math.round(cw(c)*0.75)}pt`,
         s.bt && `border-top:${bcss(s.bt)}`, s.bb && `border-bottom:${bcss(s.bb)}`, s.bl && `border-left:${bcss(s.bl)}`, s.br && `border-right:${bcss(s.br)}`].filter(Boolean).join(';');
       const span = m && contains(R, m) ? ` rowspan="${m.r2-m.r1+1}" colspan="${m.c2-m.c1+1}"` : '';
-      h += `<td${span} style="${css}">${esc(v).replace(/\n/g, '<br>')}</td>`;
+      h += `<td${span} style="${css}">${(rt ? richHTML(rt, s, 0, v.length) : esc(v)).replace(/\n/g, '<br>')}</td>`;
     }
     h += '</tr>';
   }
@@ -2952,7 +3244,7 @@ function buildClip(cut){
   const cells = [], lines = [];
   for (let r = R.r1; r <= R.r2; r++){
     const row = [], line = [];
-    for (let c = R.c1; c <= R.c2; c++){ const s = st(r,c); row.push({v:getV(r,c), s: s === EMPTY ? undefined : cloneS(s)}); line.push(tsvCell(fmtValue(shown(r,c), st(r,c)))); }
+    for (let c = R.c1; c <= R.c2; c++){ const s = st(r,c), rt = runsOf(r, c); row.push({v:getV(r,c), s: s === EMPTY ? undefined : cloneS(s), rt: rt ? cloneS(rt) : undefined}); line.push(tsvCell(fmtValue(shown(r,c), st(r,c)))); }
     cells.push(row); lines.push(line.join('\t'));
   }
   const merges = sh.merges.filter(m => contains(R, m)).map(m => ({r1:m.r1-R.r1, r2:m.r2-R.r1, c1:m.c1-R.c1, c2:m.c2-R.c1}));
@@ -2997,6 +3289,7 @@ function doPaste(text){
       const src = data.cells[i % h][j % w];
       if (internal){
         const o = {}; if (src.v !== '') o.v = isFormula(src.v) && !clip.cut ? shiftFormula(src.v, r - (clip.range.r1 + i % h), c - (clip.range.c1 + j % w)) : src.v; if (src.s) o.s = cloneS(src.s);
+        if (src.rt && o.v === src.v) o.rt = cloneS(src.rt);
         if (o.v != null || o.s) sh.cells[r+':'+c] = o; else delete sh.cells[r+':'+c];
       } else setV(r, c, src.v);
     }
@@ -3324,7 +3617,8 @@ ed.addEventListener('keydown', e => {
     if (k === 'F2'){ e.preventDefault(); editMode = editMode === 'enter' ? 'edit' : 'enter'; return; }
     if (editMode === 'enter' && k.startsWith('Arrow') && !ctrl){ e.preventDefault(); commitEdit(); arrow(k, e.shiftKey, false); return; }
     if (ctrl && k.toLowerCase() === 's'){ e.preventDefault(); commitEdit(); saveFile(e.shiftKey); return; }
-    if (ctrl && ['b','i','u'].includes(k.toLowerCase())){ e.preventDefault(); commitEdit(); toggle({b:'b', i:'i', u:'u'}[k.toLowerCase()]); return; }
+    // 글자를 골라 두었으면 그 글자에만, 아니면 칸 전체에
+    if (ctrl && ['b','i','u','5'].includes(k.toLowerCase())){ e.preventDefault(); const key = {b:'b', i:'i', u:'u', '5':'st'}[k.toLowerCase()]; if (!richToggle(key)){ commitEdit(); toggle(key); } return; }
     return;
   }
   if (k === '=' && e.altKey && !ctrl){ e.preventDefault(); autoSum('SUM'); return; }
@@ -3363,12 +3657,25 @@ ed.addEventListener('keydown', e => {
     }
   }
 });
-ed.addEventListener('input', () => { pointRef = null; if (!editing) startEdit('enter', null); sizeEditor(); fx.value = ed.value; updateCharCount(); });
+ed.addEventListener('input', () => { if (!editing) startEdit('enter', null); edDeco(); edInputDone(); });
 ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter', null); });
 ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
+// 편집기에 서식 있는 글이 섞여 들어오지 않게: 붙여넣기·끌어 놓기는 글자만, 브라우저 자체 서식 명령은 막음
+function edInputDone(){ pointRef = null; sizeEditor(); fx.value = ed.value; updateCharCount(); }
+ed.addEventListener('beforeinput', e => {
+  const t = e.inputType || '';
+  if (t.startsWith('format') || t === 'insertFromDrop'){ e.preventDefault(); return; }
+  // 폰 자판의 Enter는 keydown 없이 들어올 때가 있음: 칸 안 줄 바꿈으로
+  if (t === 'insertParagraph' || t === 'insertLineBreak'){ e.preventDefault(); if (!editing) startEdit('enter', null); insertAtCaret('\n'); edInputDone(); }
+});
 ed.addEventListener('paste', e => {
-  if (editing) return;
+  if (editing){
+    e.preventDefault();
+    const t = (e.clipboardData.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+    if (t){ insertAtCaret(t); edInputDone(); }
+    return;
+  }
   e.preventDefault();
   const t = e.clipboardData.getData('text/plain');
   const img = [...(e.clipboardData.files || [])].find(x => x.type.startsWith('image/'))
@@ -3718,7 +4025,11 @@ function tints(){
 }
 const swatch = c => `<button class="sw" data-c="${c}" style="background:${c}" title="${c}"></button>`;
 function colorPop(anchor, kind){
-  const label = kind === 'fc' ? '자동 (검정)' : '채우기 없음';
+  // 편집 중 고른 글자가 있으면 그 글자에 (채우기 색은 형광펜)
+  const sl = editing ? edSel() : null;
+  savedSel = sl && sl[0] !== sl[1] ? [Math.min(...sl), Math.max(...sl)] : null;
+  const rk = kind === 'bg' ? 'hl' : 'fc';
+  const label = kind === 'fc' ? '자동 (검정)' : savedSel ? '형광펜 없음' : '채우기 없음';
   const html = `<div class="plabel">테마 색</div><div class="swgrid">${BASE.map(swatch).join('')}</div>
     <div class="swgrid tints" style="margin-top:4px">${tints().map(swatch).join('')}</div>
     <div class="plabel">표준 색</div><div class="swgrid">${STD.map(swatch).join('')}</div>
@@ -3728,13 +4039,13 @@ function colorPop(anchor, kind){
     p.onclick = e => {
       const b = e.target.closest('[data-c]');
       if (b){ pick(b.dataset.c); return; }
-      if (e.target.closest('[data-none]')){ hideMenus(); applyStyle({[kind]: null}); focusGrid(); }
+      if (e.target.closest('[data-none]')){ hideMenus(); if (!richColor(rk, null)) applyStyle({[kind]: null}); focusGrid(); }
     };
     p.querySelector('#pickC').onchange = e => pick(e.target.value.toUpperCase());
   });
   function pick(c){
     pens[kind] = c; recent = [c, ...recent.filter(x => x !== c)].slice(0, 10);
-    $('#' + kind + 'Bar').style.background = c; hideMenus(); applyStyle({[kind]: c}); focusGrid();
+    $('#' + kind + 'Bar').style.background = c; hideMenus(); if (!richColor(rk, c)) applyStyle({[kind]: c}); focusGrid();
   }
 }
 
@@ -3785,6 +4096,8 @@ function mergePop(anchor){
 
 // ===== 리본 =====
 const ribbon = $('#ribbon');
+// 편집 중 색 고르기 창을 눌러도 입력 칸의 글자 선택이 풀리지 않게
+pop.addEventListener('mousedown', e => { if (editing && !e.target.closest('input, select, label')) e.preventDefault(); });
 ribbon.addEventListener('mousedown', e => { if (e.target.closest('button.tb')) e.preventDefault(); });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-cmd]'); if (!b) return;
@@ -3797,10 +4110,11 @@ function run(cmd, el){
   const C = {
     undo, redo,
     painter: () => { if (painter){ painter = null; updatePainter(); } else startPainter(false); },
-    bold: () => toggle('b'), italic: () => toggle('i'), underline: () => toggle('u'), strike: () => toggle('st'),
+    // 편집 중 글자를 골라 두었으면 그 글자에만 (채우기 색은 형광펜으로)
+    bold: () => richToggle('b') || toggle('b'), italic: () => richToggle('i') || toggle('i'), underline: () => richToggle('u') || toggle('u'), strike: () => richToggle('st') || toggle('st'),
     grow: () => stepFont(1), shrink: () => stepFont(-1),
-    fc: () => applyStyle({fc: pens.fc}), fcMenu: () => colorPop(el, 'fc'),
-    bg: () => applyStyle({bg: pens.bg}), bgMenu: () => colorPop(el, 'bg'),
+    fc: () => richColor('fc', pens.fc) || applyStyle({fc: pens.fc}), fcMenu: () => colorPop(el, 'fc'),
+    bg: () => richColor('hl', pens.bg) || applyStyle({bg: pens.bg}), bgMenu: () => colorPop(el, 'bg'),
     alignL: () => applyStyle({ha: s().ha === 'left' ? null : 'left'}),
     alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
@@ -4069,6 +4383,16 @@ async function buildXlsx(){
           const dm = (es.nf === 'date' || es.nf === 'date2') && DATE.exec(v.trim());
           const fres = isFormula(v) ? cellValue(s, r, c) : null;
           if (isFormula(v)) cell.value = {formula: v.slice(1), result: isErr(fres) ? (fres === FE.circ ? undefined : {error: fres.code}) : fres};
+          else if (runsOfCell(s.cells[k]) && !dm){
+            // 칸 안 일부 서식 → 엑셀 서식 있는 글 (형광펜은 엑셀에 없어서 빠짐)
+            const bf = toXStyle(es).font;
+            cell.value = {richText: s.cells[k].rt.map(x => {
+              const f = {...bf};
+              if (x.b != null) f.bold = x.b; if (x.i != null) f.italic = x.i; if (x.u != null) f.underline = x.u; if (x.st != null) f.strike = x.st;
+              if (x.fc) f.color = {argb: argb(x.fc)};
+              return {text: x.t, font: f};
+            })};
+          }
           else cell.value = dm ? new Date(Date.UTC(+dm[1], +dm[3] - 1, +dm[4])) : es.nf !== 'text' && PLAIN.test(v.trim()) && !/^0\d/.test(v.trim()) ? parseFloat(v.replace(/,/g, '')) : v;
         }
         if (es !== EMPTY) cell.style = toXStyle(es);
@@ -4154,6 +4478,15 @@ async function importXlsx(buf){
         let fm = null; if (!slave){ try { fm = cell.formula || null; } catch (e) {} }
         if (fm){ o.v = '=' + fm; if (v !== '') o.xr = v; }
         else if (v !== '') o.v = v;
+        // 엑셀의 서식 있는 글 → 칸 안 일부 서식
+        if (!fm && !slave && o.v != null && cell.value && Array.isArray(cell.value.richText)){
+          const cf = (cell.style && cell.style.font) || {};
+          const abs = cell.value.richText.map(p => {
+            const f = fromXStyle({font: p.font || cf}) || {};
+            return {t: String(p.text ?? ''), b: !!f.b, i: !!f.i, u: !!f.u, st: !!f.st, fc: (f.fc || '#111111').toUpperCase(), hl: null};
+          });
+          if (abs.map(x => x.t).join('') === o.v){ const rt = absToRt(abs, sty || {}); if (rt) o.rt = rt; }
+        }
         if (sty) o.s = sty; else if (o.v != null) o.s = {wrap: false};
         if (o.v != null || o.s) s.cells[(rn-1)+':'+(cn-1)] = o;
       });
