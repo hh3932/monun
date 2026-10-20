@@ -93,6 +93,15 @@ button{font:inherit;color:inherit}
 #cv{position:sticky;left:0;top:0;display:block}
 #spacer{position:absolute;left:0;top:0;pointer-events:none}
 #ed{position:absolute;z-index:3;margin:0;border:0;outline:2px solid var(--sel);outline-offset:0;resize:none;overflow:hidden;padding:2px 4px;opacity:0;pointer-events:none;line-height:1.28;background:#fff;color:#111;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text;cursor:text}
+#docBack{position:fixed;left:0;right:0;bottom:0;top:var(--docTop,0px);z-index:40;background:#E4E7EC;display:flex;flex-direction:column}
+#docBack[hidden]{display:none}
+.docbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bar);border-bottom:1px solid var(--line);font-size:13px;color:var(--ink);-webkit-user-select:none;user-select:none}
+.docbar .sp{flex:1}
+.docbar .pbtn{flex:none;padding:0 12px}
+#docCount{color:var(--muted);font-variant-numeric:tabular-nums}
+#docZoomV{min-width:44px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+#ed.docmode{position:fixed!important;z-index:41;left:50%!important;transform:translateX(-50%);top:calc(var(--docTop,0px) + 62px)!important;bottom:18px;width:min(var(--docW,760px),calc(100vw - 24px))!important;height:auto!important;overflow-y:auto!important;padding:44px 48px!important;box-sizing:border-box;outline:0;box-shadow:0 2px 16px rgba(0,0,0,.14);border-radius:2px}
+@media (max-width:600px){#ed.docmode{padding:24px 18px!important}}
 #ed.on{opacity:1;pointer-events:auto;box-shadow:0 3px 12px rgba(0,0,0,.18)}
 
 .bottombar{display:flex;align-items:stretch;gap:6px;min-height:36px;padding:0 16px;background:var(--bar);border-top:1px solid var(--line)}
@@ -305,6 +314,8 @@ button{font:inherit;color:inherit}
       <button class="tb" data-cmd="vMid" id="tbVM" title="가운데 (세로) 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h14M10 2.5v4.5M7.5 4.5 10 7l2.5-2.5M10 17.5V13M7.5 15.5 10 13l2.5 2.5"/></svg></button>
       <button class="tb" data-cmd="vBot" id="tbVB" title="아래쪽 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5h14M10 3v10M6.5 9.5 10 13l3.5-3.5"/></svg></button>
       <button class="tb labeled" data-cmd="wrap" id="tbWrap" title="자동 줄 바꿈 (기본으로 켜짐): 끄면 긴 글이 오른쪽 빈칸으로 이어져 보입니다. 입력 중 Enter는 칸 안에서 다음 줄, Ctrl+Enter는 입력을 마치고 아래 칸으로"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14M3 10h11a2.5 2.5 0 0 1 0 5h-4"/><path d="M12 13l-2 2 2 2M3 15h4"/></svg><span>줄 바꿈</span></button>
+      <button class="tb labeled" data-cmd="paraMenu" id="tbPara" title="문단: 줄 간격, 문단 첫 줄 들여쓰기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h9M8 10h9M8 15h9"/><path d="M4 4v12M2.5 5.5 4 4l1.5 1.5M2.5 14.5 4 16l1.5-1.5"/></svg><span>문단</span></button>
+      <button class="tb labeled" data-cmd="docMode" id="tbDoc" title="원고 쓰기: 고른 칸 하나만 크게 띄워 문서처럼 씁니다 (Ctrl+Shift+E, 닫기 Esc)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h7l3.5 3.5v11.5H5z"/><path d="M12 2.5V6h3.5M7.5 9.5h5.5M7.5 12h5.5M7.5 14.5h3.5"/></svg><span>원고 쓰기</span></button>
       <button class="tb" data-cmd="merge" id="tbMerge" title="병합하고 가운데 맞춤"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1"/><path d="M5.5 10h9M7.5 8l-2 2 2 2M12.5 8l2 2-2 2"/></svg></button>
       <button class="tb caret" data-cmd="mergeMenu" title="병합 옵션"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
     </div>
@@ -354,6 +365,14 @@ button{font:inherit;color:inherit}
     <canvas id="cv"></canvas>
     <div id="spacer"></div>
     <div id="ed" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true" aria-label="칸 편집"></div>
+  </div>
+
+  <div id="docBack" hidden>
+    <div class="docbar">
+      <b id="docTitle"></b><span id="docCount"></span><span class="sp"></span>
+      <button class="pbtn" id="docZoomOut" title="글자 작게">−</button><span id="docZoomV"></span><button class="pbtn" id="docZoomIn" title="글자 크게">+</button>
+      <button class="pbtn on" id="docClose" title="원고 쓰기 닫기 (Esc)">닫기</button>
+    </div>
   </div>
 
   <footer class="bottombar">
@@ -526,7 +545,11 @@ function wrapLines(text, maxW, c){
 // ===== 칸 안 일부 서식 (굵게·기울임·밑줄·가운데 줄·글자 색·형광펜) =====
 // cell.rt = [{t:'글', b?, i?, u?, st?, fc?, hl?}, ...]: 칸 서식과 다른 부분만 적는다.
 // 이어 붙인 글이 cell.v와 같을 때만 쓰고, 다르면 없는 것으로 본다.
-const RT_KEYS = ['b', 'i', 'u', 'st', 'fc', 'hl'];
+const RT_KEYS = ['b', 'i', 'u', 'st', 'fc', 'hl', 'fs'];
+// 줄 간격(글자 크기의 몇 배)과 문단 첫 줄 들여쓰기(글자 수)
+const DEF_LH = 1.28;
+const lhOf = s => s.lh || DEF_LH;
+const indPx = (s, z) => (s.ind || 0) * (s.fs || DEF_FS) * 4/3 * z;
 function runsOfCell(cell){
   if (!cell || !Array.isArray(cell.rt) || cell.v == null) return null;
   let t = ''; for (const x of cell.rt) t += x.t;
@@ -564,8 +587,8 @@ function spliceRuns(runs, nt){
 // 칸 서식 + 이 부분의 서식
 const effS = (s, x) => { const o = Object.assign({}, s); for (const k of RT_KEYS) if (x[k] != null) o[k] = x[k]; return o; };
 // 편집기 안에서는 글자마다 실제 모양(abs)으로 다루고, 저장할 때 칸 서식과 다른 것만 남긴다
-const baseAbs = s => ({b: !!s.b, i: !!s.i, u: !!s.u, st: !!s.st, fc: (s.fc || '#111111').toUpperCase(), hl: null});
-const rtToAbs = (rt, s) => { const B = baseAbs(s); return rt.map(x => ({t: x.t, b: x.b ?? B.b, i: x.i ?? B.i, u: x.u ?? B.u, st: x.st ?? B.st, fc: x.fc ? x.fc.toUpperCase() : B.fc, hl: x.hl || null})); };
+const baseAbs = s => ({b: !!s.b, i: !!s.i, u: !!s.u, st: !!s.st, fc: (s.fc || '#111111').toUpperCase(), hl: null, fs: s.fs || DEF_FS});
+const rtToAbs = (rt, s) => { const B = baseAbs(s); return rt.map(x => ({t: x.t, b: x.b ?? B.b, i: x.i ?? B.i, u: x.u ?? B.u, st: x.st ?? B.st, fc: x.fc ? x.fc.toUpperCase() : B.fc, hl: x.hl || null, fs: x.fs || B.fs})); };
 function absToRt(abs, s){
   const B = baseAbs(s);
   const rt = mergeRuns(abs.map(x => {
@@ -573,6 +596,7 @@ function absToRt(abs, s){
     for (const k of ['b', 'i', 'u', 'st']) if (!!x[k] !== B[k]) o[k] = !!x[k];
     if (x.fc && x.fc.toUpperCase() !== B.fc) o.fc = x.fc.toUpperCase();
     if (x.hl) o.hl = x.hl.toUpperCase();
+    if (x.fs && x.fs !== B.fs) o.fs = x.fs;
     return o;
   }));
   return rt.some(x => Object.keys(x).length > 1) ? rt : null;
@@ -580,41 +604,54 @@ function absToRt(abs, s){
 // 부분 서식 글을 잴 때: 서식이 바뀌는 곳마다 글꼴을 바꿔 가며 잰다
 function richMeasurer(rt, s, c, z){
   const segs = []; let p = 0, text = '';
-  for (const x of rt){ const e = effS(s, x); if (e.b || e.i) ensureFont(e.ff, e.b); segs.push({a: p, b: p + x.t.length, font: fontStr(e, z), e}); p += x.t.length; text += x.t; }
+  for (const x of rt){ const e = effS(s, x); if (e.b || e.i) ensureFont(e.ff, e.b); segs.push({a: p, b: p + x.t.length, font: fontStr(e, z), px: (e.fs || DEF_FS) * 4/3 * z, e}); p += x.t.length; text += x.t; }
   const meas = (a, b) => {
     let w = 0;
     for (const g of segs){ if (g.b <= a || g.a >= b) continue; c.font = g.font; w += c.measureText(text.slice(Math.max(a, g.a), Math.min(b, g.b))).width; }
     return w;
   };
-  return {segs, text, meas};
+  return {segs, text, meas, z};
 }
-// wrapLines와 같은 규칙으로 줄을 나누되, 글자 위치(a~b)로 돌려준다
-function wrapIdx(text, maxW, meas){
+// wrapLines와 같은 규칙으로 줄을 나누되, 글자 위치(a~b)로 돌려준다. 문단 첫 줄은 들여쓴 만큼 좁게
+function wrapIdx(text, maxW, meas, ind = 0){
   const out = []; let p = 0;
   for (const para of text.split('\n')){
     const toks = para.match(TOK) || [''];
     let a = p, b = p, q = p;
+    const p0 = p, room = x => x === p0 ? maxW - ind : maxW;
     for (const t of toks){
       const ta = q, tb = q + t.length; q = tb;
-      if (meas(a, tb) <= maxW){ b = tb; continue; }
+      if (meas(a, tb) <= room(a)){ b = tb; continue; }
       if (/^\s+$/.test(t)){ out.push({a, b}); a = b = tb; continue; }
       if (b > a){ let e = b; while (e > a && /\s/.test(text[e - 1])) e--; out.push({a, b: e}); a = b = ta; }
-      if (meas(ta, tb) > maxW){
-        for (const ch of t){ if (b > a && meas(a, b + ch.length) > maxW){ out.push({a, b}); a = b; } b += ch.length; }
+      if (meas(ta, tb) > room(ta)){
+        for (const ch of t){ if (b > a && meas(a, b + ch.length) > room(a)){ out.push({a, b}); a = b; } b += ch.length; }
       } else b = tb;
     }
     out.push({a, b}); p = q + 1;
   }
   return out;
 }
+// 줄마다: 글자 범위(a~b), 너비 w, 들여쓰기 ind, 줄 높이 h(그 줄에서 가장 큰 글자 × 줄 간격), 가장 큰 글자 px
 function richLines(rt, s, maxW, c, z, doWrap){
-  const M = richMeasurer(rt, s, c, z);
+  const M = richMeasurer(rt, s, c, z), ind = indPx(s, z), k = lhOf(s);
   let lines;
-  if (doWrap) lines = wrapIdx(M.text, maxW, M.meas);
+  if (doWrap) lines = wrapIdx(M.text, maxW, M.meas, ind);
   else { lines = []; let p = 0; for (const ln of M.text.split('\n')){ lines.push({a: p, b: p + ln.length}); p += ln.length + 1; } }
-  for (const L of lines) L.w = M.meas(L.a, L.b);
+  const basePx = (s.fs || DEF_FS) * 4/3 * z;
+  for (const L of lines){
+    L.ind = ind && (L.a === 0 || M.text[L.a - 1] === '\n') ? ind : 0;
+    L.w = M.meas(L.a, L.b);
+    let px = 0;
+    for (const g of M.segs) if (g.a < L.b && g.b > L.a) px = Math.max(px, g.px);
+    if (!px){ const g = M.segs.find(g => g.a <= L.a && g.b >= L.a); px = g ? g.px : basePx; }
+    L.px = px; L.h = px * k;
+  }
   return {M, lines};
 }
+// 부분 서식·들여쓰기·줄 간격 때문에 글자별로 재야 하는 칸인가
+const needRich = (rt, s) => !!(rt || s.ind);
+const plainRuns = text => [{t: String(text)}];
 // 쪽 미리보기·인쇄용 HTML: 부분마다 실제 모양을 모두 적는다 (밑줄은 바깥에서 지울 수 없어서)
 function richHTML(rt, s, a, b){
   let h = '', p = 0;
@@ -622,7 +659,7 @@ function richHTML(rt, s, a, b){
     const s0 = p, e0 = p + x.t.length; p = e0;
     const s1 = Math.max(a, s0), e1 = Math.min(b, e0); if (s1 >= e1) continue;
     const e = effS(s, x), d = [e.u && 'underline', e.st && 'line-through'].filter(Boolean).join(' ') || 'none';
-    h += `<span style="font-weight:${e.b ? 700 : 400};font-style:${e.i ? 'italic' : 'normal'};text-decoration:${d};color:${e.fc || '#111'}${e.hl ? ';background:' + e.hl : ''}">${esc(x.t.slice(s1 - s0, e1 - s0))}</span>`;
+    h += `<span style="font-weight:${e.b ? 700 : 400};font-style:${e.i ? 'italic' : 'normal'};text-decoration:${d};color:${e.fc || '#111'}${x.fs ? ';font-size:' + x.fs + 'pt' : ''}${e.hl ? ';background:' + e.hl : ''}">${esc(x.t.slice(s1 - s0, e1 - s0))}</span>`;
   }
   return h;
 }
@@ -637,14 +674,12 @@ function autoRows(){
     const s = st(r,c), px = (s.fs || DEF_FS) * 4/3;
     // 높이를 직접 정한 행은 줄 바꿈 글자가 들어갈 때만 늘린다
     if (sh.rowManual[r] && !wrapOn(s, cell.v)) continue;
-    let lines;
-    if (wrapOn(s, cell.v)){
-      const t = shown(r, c), rt = String(t) === cell.v ? runsOfCell(cell) : null;
-      if (rt) lines = richLines(rt, s, cw(c) - 8, mctx, 1, true).lines.length;
-      else { mctx.font = fontStr(s,1); lines = wrapLines(t, cw(c) - 8, mctx).length; }
-    }
-    else lines = String(cell.v).split('\n').length;
-    const h = Math.ceil(lines * px * 1.28 + 4);
+    const t = shown(r, c), rt = String(t) === cell.v ? runsOfCell(cell) : null, wr = wrapOn(s, cell.v);
+    let th;   // 글 전체 높이
+    if (needRich(rt, s)) th = richLines(rt || plainRuns(t), s, cw(c) - 8, mctx, 1, wr).lines.reduce((a, L) => a + L.h, 0);
+    else if (wr){ mctx.font = fontStr(s,1); th = wrapLines(t, cw(c) - 8, mctx).length * px * lhOf(s); }
+    else th = String(cell.v).split('\n').length * px * lhOf(s);
+    const h = Math.ceil(th + 4);
     if (h > DEF_H && h > (need[r] || 0)) need[r] = h;
   }
   for (const r in sh.rowManual){ const base = sh.rowManual[r]; sh.rowH[r] = Math.max(base, need[r] || 0); }
@@ -783,12 +818,12 @@ function drawText(r, c, rect, isMerge){
   const px = (s.fs || DEF_FS) * 4/3 * z, pad = 3*z + 1;
   const ha = s.ha || (errCell ? 'center' : isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left'), va = vaOf(s);
   const doWrap = wrapOn(s, raw);
-  const rt = richFor(r, c, v), RL = rt ? richLines(rt, s, rect.w - pad*2, ctx, z, doWrap) : null;
+  const rt = richFor(r, c, v), RL = needRich(rt, s) ? richLines(rt || plainRuns(v), s, rect.w - pad*2, ctx, z, doWrap) : null;
   if (RL) ctx.font = fontStr(s, z);
   const lines = RL ? RL.lines.map(L => RL.M.text.slice(L.a, L.b)) : doWrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
   let clip = rect, tw = 0, spill = false;
   if (!isMerge && !doWrap){
-    if (RL) for (const L of RL.lines) tw = Math.max(tw, L.w);
+    if (RL) for (const L of RL.lines) tw = Math.max(tw, L.w + L.ind);
     else for (const l of lines) tw = Math.max(tw, ctx.measureText(l).width);
     const need = tw + pad*2;
     if (need > rect.w){
@@ -817,7 +852,7 @@ function drawText(r, c, rect, isMerge){
   ctx.fillStyle = s.fc || '#111111';
   ctx.textBaseline = 'middle';
   ctx.textAlign = ha;
-  const lh = px * 1.28, total = lh * lines.length;
+  const lh = px * lhOf(s), total = RL ? RL.lines.reduce((a, L) => a + L.h, 0) : lh * lines.length;
   // 칸 안쪽의 실제 빈 공간: 아래 눈금선 1px과 칸 안으로 들어온 굵은 테두리는 뺀다
   const above = !isMerge && r > 0 ? st(r-1, c).bb : null;
   const thickIn = b => b && (b.w > 1 || b.s === 'double');
@@ -831,9 +866,10 @@ function drawText(r, c, rect, isMerge){
     x = tw > clip.w - pad*2 ? clip.x + pad + half : Math.max(clip.x + pad + half, Math.min(clip.x + clip.w - pad - half, x));
   }
   const th = Math.max(1, px/15), shift = glyphShift(ctx.font);
+  let cy = y0;
   lines.forEach((ln, i) => {
+    if (RL){ const L = RL.lines[i]; drawRichLine(RL, L, x, cy + L.h/2, ha); cy += L.h; return; }
     const y = y0 + lh*(i+0.5);   // 이 줄의 가운데
-    if (RL){ drawRichLine(RL, RL.lines[i], x, y, ha, px, lh, th); return; }
     ctx.fillText(ln, x, y + shift);
     if (s.u || s.st){
       const w = ctx.measureText(ln).width, lx = ha === 'left' ? x : ha === 'right' ? x-w : x-w/2;
@@ -844,19 +880,21 @@ function drawText(r, c, rect, isMerge){
   ctx.restore();
 }
 // 부분 서식이 있는 한 줄: 서식이 바뀌는 곳마다 나눠서 형광펜 → 글자 → 밑줄·가운데 줄 순으로
-function drawRichLine(RL, L, x, y, ha, px, lh, th){
-  let cx = ha === 'left' ? x : ha === 'right' ? x - L.w : x - L.w/2;
+// y는 줄의 가운데. 글자 크기가 섞인 줄은 작은 글자를 내려서 글자 바닥선을 맞춘다
+function drawRichLine(RL, L, x, y, ha){
+  let cx = ha === 'left' ? x + L.ind : ha === 'right' ? x - L.w : x - L.w/2 + L.ind/2;
   ctx.textAlign = 'left';
   for (const g of RL.M.segs){
     if (g.b <= L.a || g.a >= L.b) continue;
-    const t = RL.M.text.slice(Math.max(L.a, g.a), Math.min(L.b, g.b)), e = g.e;
+    const t = RL.M.text.slice(Math.max(L.a, g.a), Math.min(L.b, g.b)), e = g.e, px = g.px;
+    const gy = y + (L.px - px) * 0.36, th = Math.max(1, px/15);
     ctx.font = g.font;
     const w = ctx.measureText(t).width;
-    if (e.hl){ ctx.fillStyle = e.hl; ctx.fillRect(cx, y - lh/2, w, lh); }
+    if (e.hl){ ctx.fillStyle = e.hl; ctx.fillRect(cx, gy - px*0.64, w, px*1.28); }
     ctx.fillStyle = e.fc || '#111111';
-    ctx.fillText(t, cx, y + glyphShift(g.font));
-    if (e.u) ctx.fillRect(cx, y + px*0.52, w, th);
-    if (e.st) ctx.fillRect(cx, y, w, th);
+    ctx.fillText(t, cx, gy + glyphShift(g.font));
+    if (e.u) ctx.fillRect(cx, gy + px*0.52, w, th);
+    if (e.st) ctx.fillRect(cx, gy, w, th);
     cx += w;
   }
 }
@@ -1087,6 +1125,7 @@ function positionEditor(){
   sizeEditor();
 }
 function sizeEditor(){
+  if (docMode) return;   // 원고 쓰기 화면은 CSS로 크기를 정함
   if (!editing){ ed.style.width = edMinW+'px'; ed.style.height = edMinH+'px'; return; }
   const s = st(act.r, act.c); let w = edMinW;
   if (!wrapOn(s, ed.value)){
@@ -1104,7 +1143,10 @@ function startEdit(mode, text){
   editing = true; editMode = mode;
   const s = st(act.r, act.c);
   edBase = baseAbs(s);
-  ed.style.font = fontStr(s, sh.zoom);
+  edZoom = docMode ? docZoom : sh.zoom;
+  ed.style.font = fontStr(s, edZoom);
+  ed.style.lineHeight = String(lhOf(s));
+  ed.style.textIndent = s.ind ? s.ind + 'em each-line' : '0';
   ed.style.color = s.fc || '#111';
   ed.style.background = s.bg || '#fff';
   ed.style.textAlign = s.ha || 'left';
@@ -1122,6 +1164,7 @@ function startEdit(mode, text){
 }
 function commitEdit(){
   if (!editing) return;
+  const dc = docKeep();
   const v = finalizeInput(ed.value);
   const rt = v !== '' && !isFormula(v) ? absToRt(readAbs(), st(act.r, act.c)) : null;
   pointRef = null; hideFnHint(); savedSel = null;
@@ -1133,10 +1176,13 @@ function commitEdit(){
     if (cell){ if (rt) cell.rt = rt; else delete cell.rt; }
   });
   positionEditor(); refreshUI(); schedule();
+  if (dc) queueMicrotask(() => reopenDoc(dc));
 }
 function cancelEdit(){
   pointRef = null; hideFnHint(); savedSel = null;
   if (!editing) return;
+  const dc = docKeep();
+  if (dc) queueMicrotask(() => reopenDoc(dc));
   editing = false; ed.classList.remove('on'); ed.value = '';
   positionEditor(); refreshUI(); schedule();
 }
@@ -1147,10 +1193,70 @@ function insertAtCaret(t){
   sizeEditor(); fx.value = ed.value;
 }
 
+// ===== 원고 쓰기: 칸 하나만 크게 띄워 문서처럼 =====
+let docMode = false, docZoom = 1.4;
+try { docZoom = +localStorage.getItem('monun.docZoom') || 1.4; } catch (e) {}
+const docKeep = () => docMode ? [ed.selectionStart, ed.selectionEnd, ed.scrollTop] : null;
+function layoutDoc(){
+  const top = $('#ribbon').getBoundingClientRect().bottom;
+  document.documentElement.style.setProperty('--docTop', Math.max(0, top) + 'px');
+  // 글 폭은 칸 너비를 확대한 만큼 (칸 안 줄 바꿈과 같게), 너무 좁거나 넓지 않게
+  const m = unitOf(act.r, act.c), cwid = (colX[m.c2 + 1] - colX[m.c1] - 8) * docZoom;
+  document.documentElement.style.setProperty('--docW', (Math.max(320, Math.min(window.innerWidth - 120, cwid)) + 96) + 'px');
+  $('#docZoomV').textContent = Math.round(docZoom * 100) + '%';
+}
+function updDocInfo(){
+  if (!docMode) return;
+  const [a, b] = countText(ed.value);
+  $('#docTitle').textContent = '원고 쓰기 · ' + ref(act.r, act.c);
+  $('#docCount').textContent = `${a.toLocaleString('ko-KR')}자 · 공백 빼고 ${b.toLocaleString('ko-KR')}자`;
+}
+function openDoc(){
+  if (pvOpen) return;
+  const keep = editing ? [ed.selectionStart, ed.selectionEnd, 0] : null;
+  if (editing) commitEdit();
+  const m = mergeOf(act.r, act.c); if (m) setSel(m.r1, m.c1);
+  if (isFormula(getV(act.r, act.c))) return toast('수식이 든 칸은 원고 쓰기로 열 수 없어요');
+  docMode = true;
+  layoutDoc();
+  $('#docBack').hidden = false; ed.classList.add('docmode'); setOn('tbDoc', true);
+  startEdit('edit', getV(act.r, act.c));
+  ed.focus({preventScroll: true});
+  if (keep) ed.setSelectionRange(keep[0], keep[1]);
+  else { ed.setSelectionRange(ed.value.length, ed.value.length); ed.scrollTop = ed.scrollHeight; }
+  updDocInfo();
+}
+function reopenDoc(dc){
+  if (!docMode || editing) return;
+  startEdit('edit', getV(act.r, act.c));
+  ed.focus({preventScroll: true});
+  const n = ed.value.length;
+  ed.setSelectionRange(Math.min(dc[0], n), Math.min(dc[1], n)); ed.scrollTop = dc[2];
+  updDocInfo();
+}
+function closeDoc(){
+  if (!docMode) return;
+  docMode = false;
+  if (editing) commitEdit();
+  ed.classList.remove('docmode'); $('#docBack').hidden = true; setOn('tbDoc', false);
+  positionEditor(); ensureVisible(act.r, act.c); focusGrid(); schedule();
+}
+function setDocZoom(z){
+  docZoom = Math.round(Math.max(0.8, Math.min(3, z)) * 10) / 10;
+  try { localStorage.setItem('monun.docZoom', String(docZoom)); } catch (e) {}
+  layoutDoc();
+  if (editing) commitEdit();   // 다시 열면서 새 크기로 그림
+}
+$('#docBack').addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });
+$('#docClose').addEventListener('click', closeDoc);
+$('#docZoomIn').addEventListener('click', () => setDocZoom(docZoom + 0.1));
+$('#docZoomOut').addEventListener('click', () => setDocZoom(docZoom - 0.1));
+window.addEventListener('resize', () => { if (docMode) layoutDoc(); });
+
 // ===== 입력 칸: 글자 일부에 서식을 넣을 수 있게 contenteditable =====
 // 예전 textarea처럼 value·selectionStart·selectionEnd·setSelectionRange·select를 쓸 수 있게 맞춰 둔다.
 // 글 속 줄 바꿈은 '\n' 글자 또는 <br>. 맨 끝의 <br>은 빈 줄을 보이게 하는 자리표시라 글자로 치지 않는다.
-let edBase = baseAbs({}), savedSel = null;
+let edBase = baseAbs({}), savedSel = null, edZoom = 1;
 function edItems(){
   const items = []; let pos = 0;
   const walk = n => {
@@ -1228,7 +1334,8 @@ function readAbs(){
       if (d.includes('line-through')) s = true;
       if (!hl && el !== ed) hl = toHex(k.backgroundColor);
     }
-    return {b: parseInt(c.fontWeight, 10) >= 600, i: c.fontStyle !== 'normal', u, st: s, fc: toHex(c.color) || edBase.fc, hl};
+    const fz = Math.round(parseFloat(c.fontSize) * 3/4 / edZoom * 2) / 2;
+    return {b: parseInt(c.fontWeight, 10) >= 600, i: c.fontStyle !== 'normal', u, st: s, fc: toHex(c.color) || edBase.fc, hl, fs: Math.abs(fz - edBase.fs) < 0.3 ? edBase.fs : fz};
   };
   let prev = edBase;
   for (const it of edItems().items){
@@ -1238,7 +1345,7 @@ function readAbs(){
   }
   return mergeRuns(out);
 }
-const absCss = x => `font-weight:${x.b ? 700 : 400};font-style:${x.i ? 'italic' : 'normal'};text-decoration:${[x.u && 'underline', x.st && 'line-through'].filter(Boolean).join(' ') || 'none'};color:${x.fc}${x.hl ? ';background-color:' + x.hl : ''}`;
+const absCss = x => `font-size:${((x.fs || edBase.fs) * 4/3 * edZoom).toFixed(2)}px;font-weight:${x.b ? 700 : 400};font-style:${x.i ? 'italic' : 'normal'};text-decoration:${[x.u && 'underline', x.st && 'line-through'].filter(Boolean).join(' ') || 'none'};color:${x.fc}${x.hl ? ';background-color:' + x.hl : ''}`;
 function setAbs(runs){
   runs = mergeRuns(runs);
   const t = runs.map(x => x.t).join('');
@@ -1264,7 +1371,7 @@ function richApply(k, fn){
   if (!R) return false;
   const [a, b] = R, abs = readAbs(), mid = sliceRuns(abs, a, b);
   const val = fn(mid.every(x => x[k]));
-  setAbs([...sliceRuns(abs, 0, a), ...mid.map(x => ({...x, [k]: val})), ...sliceRuns(abs, b, Infinity)]);
+  setAbs([...sliceRuns(abs, 0, a), ...mid.map(x => ({...x, [k]: typeof val === 'function' ? val(x) : val})), ...sliceRuns(abs, b, Infinity)]);
   ed.focus({preventScroll: true}); ed.setSelectionRange(a, b);
   sizeEditor(); richButtons();
   return true;
@@ -1278,6 +1385,7 @@ function richButtons(){
   const i = s[0] < s[1] ? s[0] : Math.max(0, s[0] - 1);
   const x = sliceRuns(readAbs(), i, i + 1)[0] || edBase;
   setOn('tbBold', x.b); setOn('tbItalic', x.i); setOn('tbUnder', x.u); setOn('tbStrike', x.st);
+  if (document.activeElement !== sizeIn) sizeIn.value = x.fs;
 }
 document.addEventListener('selectionchange', () => { if (editing && document.activeElement === ed) richButtons(); });
 
@@ -1311,7 +1419,7 @@ function applyStyle(patch){
   if (editing) commitEdit();
   const s = sel;
   // 칸 전체에 굵게·밑줄·글자 색 등을 정하면, 그 칸 안 부분 서식의 같은 항목은 지움 (한글·워드처럼 전체에 적용)
-  const rk = ['b', 'i', 'u', 'st', 'fc'].filter(k => k in patch);
+  const rk = ['b', 'i', 'u', 'st', 'fc', 'fs'].filter(k => k in patch);
   const strip = cell => {
     if (!cell.rt || !rk.length) return;
     cell.rt = mergeRuns(cell.rt.map(x => { const o = {...x}; for (const k of rk) delete o[k]; return o; }));
@@ -1336,13 +1444,14 @@ function toggle(k){ const cur = !!st(act.r, act.c)[k]; applyStyle({[k]: cur ? nu
 function setFontSize(n){
   n = Math.round(parseFloat(n)*2)/2;
   if (!(n >= 1 && n <= 409)) return toast('글자 크기는 1~409 사이로 입력하세요');
+  if (richApply('fs', () => n)) return;   // 편집 중 고른 글자에만
   applyStyle({fs: n === DEF_FS ? null : n});
 }
+const stepSize = (cur, dir) => { const n = dir > 0 ? SIZES.find(x => x > cur) : [...SIZES].reverse().find(x => x < cur); return n == null ? (dir > 0 ? cur + 4 : Math.max(1, cur - 1)) : n; };
 function stepFont(dir){
-  const cur = st(act.r, act.c).fs || DEF_FS;
-  let n = dir > 0 ? SIZES.find(x => x > cur) : [...SIZES].reverse().find(x => x < cur);
-  if (n == null) n = dir > 0 ? cur + 4 : Math.max(1, cur - 1);
-  setFontSize(n);
+  // 편집 중 고른 글자가 있으면 그 글자들만 한 단계씩
+  if (richApply('fs', () => x => stepSize(x.fs, dir))) return;
+  setFontSize(stepSize(st(act.r, act.c).fs || DEF_FS, dir));
 }
 function clearFormats(){
   if (editing) commitEdit();
@@ -2837,7 +2946,7 @@ function buildPrintHTML(o){
       const span = m ? ` rowspan="${Math.min(m.r2, A.r2) - Math.max(m.r1, A.r1) + 1}" colspan="${Math.min(m.c2, A.c2) - Math.max(m.c1, A.c1) + 1}"` : '';
       const css = [`font-family:'${s.ff || DEF_FONT}','Malgun Gothic',sans-serif`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
         !rt && (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`, `color:${s.fc || '#111'}`, s.bg && `background:${s.bg}`,
-        `text-align:${ha}`, `vertical-align:${vaOf(s)}`, wrapOn(s, raw) ? 'white-space:pre-wrap;word-break:keep-all' : 'white-space:pre',
+        `text-align:${ha}`, `vertical-align:${vaOf(s)}`, wrapOn(s, raw) ? 'white-space:pre-wrap;word-break:keep-all' : 'white-space:pre', `line-height:${lhOf(s)}`, s.ind && `text-indent:${s.ind}em each-line`,
         `border-top:${bc(s.bt) || grid}`, `border-bottom:${bc(s.bb) || grid}`, `border-left:${bc(s.bl) || grid}`, `border-right:${bc(s.br) || grid}`].filter(Boolean).join(';');
       const bar = s._bar ? `<div style="position:absolute;left:2px;top:3px;bottom:3px;width:calc(${Math.round(s._bar.t * 100)}% - 4px);background:${s._bar.color};opacity:.55"></div>` : '';
       h += `<td${span} style="${css}">${bar}<div class="v">${rt ? richHTML(rt, s, 0, v.length) : esc(v)}</div></td>`;
@@ -2933,8 +3042,8 @@ function paginate(ps){
       const from = pages.length - 1;
       const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28, rt = richFor(r, c, text);
       for (const ln of pvLines(text, s, rt, W, true)){
-        if (y + lh > H + 0.5 && y > 0) newPage();
-        cur().push({k: 'line', y, h: lh, text: ln.text, a: ln.a, b: ln.b, rt, s, r, c}); y += lh;
+        if (y + ln.h > H + 0.5 && y > 0) newPage();
+        cur().push({k: 'line', y, h: ln.h, text: ln.text, a: ln.a, b: ln.b, ind: ln.ind, rt, s, r, c}); y += ln.h;
       }
       segs.push({r, c, from, to: pages.length - 1, chars: n});
     }
@@ -2954,8 +3063,8 @@ function paginate(ps){
       chars += [...text.replace(/\n/g, '')].length;
       const lh = (s.fs || DEF_FS) * 4 / 3 * 1.28, rt = richFor(r, c, text);
       for (const ln of pvLines(text, s, rt, W, true)){
-        if (y + lh > H + 0.5 && y > 0) newPage();
-        cur().push({k: 'line', y, h: lh, text: ln.text, a: ln.a, b: ln.b, rt, s, r, c}); y += lh;
+        if (y + ln.h > H + 0.5 && y > 0) newPage();
+        cur().push({k: 'line', y, h: ln.h, text: ln.text, a: ln.a, b: ln.b, ind: ln.ind, rt, s, r, c}); y += ln.h;
       }
     } else {
       // 여러 칸짜리 줄: 표로 보고 칸 너비를 종이 폭에 맞춰 줄임
@@ -2967,7 +3076,7 @@ function paginate(ps){
         const lines = pvLines(text, s, rt, cwid - 8, wrapOn(s, text));
         return {x, w: cwid, s, lines, lh, c, rt, num: isNum(shown(r, c))};
       });
-      const hh = Math.max(rh(r), ...cells.map(x => x.lines.length * x.lh + 4));
+      const hh = Math.max(rh(r), ...cells.map(x => x.lines.reduce((a, l) => a + l.h, 0) + 4));
       if (y + hh > H && y > 0) newPage();
       cur().push({k: 'row', y, h: hh, cells, r}); y += hh;
     }
@@ -2984,9 +3093,10 @@ function paginate(ps){
 }
 // 쪽 미리보기용 줄 나누기 (배율 1). 부분 서식이 있으면 글자 위치(a~b)도 함께
 function pvLines(text, s, rt, maxW, doWrap){
-  if (rt) return richLines(rt, s, maxW, mctx, 1, doWrap).lines.map(L => ({text: text.slice(L.a, L.b), a: L.a, b: L.b}));
+  if (needRich(rt, s)) return richLines(rt || plainRuns(text), s, maxW, mctx, 1, doWrap).lines.map(L => ({text: text.slice(L.a, L.b), a: L.a, b: L.b, h: L.h, ind: L.ind}));
   mctx.font = fontStr(s, 1);
-  return (doWrap ? wrapLines(text, maxW, mctx) : text.split('\n')).map(t => ({text: t}));
+  const lh = (s.fs || DEF_FS) * 4 / 3 * lhOf(s);
+  return (doWrap ? wrapLines(text, maxW, mctx) : text.split('\n')).map(t => ({text: t, h: lh, ind: 0}));
 }
 const lineHTML = (l, rt, s) => (rt && l.a != null ? richHTML(rt, s, l.a, l.b) : esc(l.text)) || '&nbsp;';
 function cellCss(s, ha){
@@ -3001,11 +3111,11 @@ function pageHTML(P, i, ps){
   for (const it of P.pages[i]){
     if (it.k === 'line'){
       const ha = it.s.ha || 'left';
-      inner += `<div class="ln" data-r="${it.r}" data-c="${it.c}" style="top:${it.y.toFixed(2)}px;height:${it.h.toFixed(2)}px;line-height:${it.h.toFixed(2)}px;${cellCss(it.rt ? noDeco(it.s) : it.s, ha)}">${lineHTML(it, it.rt, it.s)}</div>`;
+      inner += `<div class="ln" data-r="${it.r}" data-c="${it.c}" style="top:${it.y.toFixed(2)}px;height:${it.h.toFixed(2)}px;line-height:${it.h.toFixed(2)}px;${it.ind ? 'padding-left:' + it.ind.toFixed(2) + 'px;' : ''}${cellCss(it.rt ? noDeco(it.s) : it.s, ha)}">${lineHTML(it, it.rt, it.s)}</div>`;
     } else if (it.k === 'row'){
       for (const x of it.cells){
         const s = x.s, ha = s.ha || (x.num ? 'right' : 'left');
-        inner += `<div class="tc" data-r="${it.r}" data-c="${x.c}" style="left:${x.x.toFixed(2)}px;top:${it.y.toFixed(2)}px;width:${x.w.toFixed(2)}px;height:${it.h.toFixed(2)}px;${s.bg ? 'background:' + s.bg + ';' : ''}border-top:${bc(s.bt)};border-bottom:${bc(s.bb)};border-left:${bc(s.bl)};border-right:${bc(s.br)};${cellCss(x.rt ? noDeco(s) : s, ha)};line-height:${x.lh.toFixed(2)}px;justify-content:${vaOf(s) === 'middle' ? 'center' : vaOf(s) === 'bottom' ? 'flex-end' : 'flex-start'}">${x.lines.map(l => `<div>${lineHTML(l, x.rt, s)}</div>`).join('')}</div>`;
+        inner += `<div class="tc" data-r="${it.r}" data-c="${x.c}" style="left:${x.x.toFixed(2)}px;top:${it.y.toFixed(2)}px;width:${x.w.toFixed(2)}px;height:${it.h.toFixed(2)}px;${s.bg ? 'background:' + s.bg + ';' : ''}border-top:${bc(s.bt)};border-bottom:${bc(s.bb)};border-left:${bc(s.bl)};border-right:${bc(s.br)};${cellCss(x.rt ? noDeco(s) : s, ha)};line-height:${x.lh.toFixed(2)}px;justify-content:${vaOf(s) === 'middle' ? 'center' : vaOf(s) === 'bottom' ? 'flex-end' : 'flex-start'}">${x.lines.map(l => `<div style="height:${l.h.toFixed(2)}px;line-height:${l.h.toFixed(2)}px;flex:none${l.ind ? ';padding-left:' + l.ind.toFixed(2) + 'px' : ''}">${lineHTML(l, x.rt, s)}</div>`).join('')}</div>`;
       }
     } else if (it.k === 'img'){
       inner += `<img src="${it.src}" style="position:absolute;left:0;top:${it.y.toFixed(2)}px;width:${it.w.toFixed(2)}px;height:${it.h.toFixed(2)}px">`;
@@ -3228,7 +3338,7 @@ function toHTML(R){
       const s = st(r,c), v = fmtValue(shown(r,c), s), rt = richFor(r, c, v);
       const css = [`font-family:'${XL_NAME[s.ff || DEF_FONT] || s.ff || DEF_FONT}'`, `font-size:${s.fs || DEF_FS}pt`, s.b && 'font-weight:700', s.i && 'font-style:italic',
         !rt && (s.u || s.st) && `text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`,
-        s.fc && `color:${s.fc}`, s.bg && `background:${s.bg}`, s.ha && `text-align:${s.ha}`, `vertical-align:${vaOf(s)}`,
+        s.fc && `color:${s.fc}`, s.bg && `background:${s.bg}`, s.ha && `text-align:${s.ha}`, `vertical-align:${vaOf(s)}`, s.lh && `line-height:${s.lh}`,
         wrapOn(s, v) ? 'white-space:normal' : 'white-space:nowrap', r === R.r1 && `width:${Math.round(cw(c)*0.75)}pt`,
         s.bt && `border-top:${bcss(s.bt)}`, s.bb && `border-bottom:${bcss(s.bb)}`, s.bl && `border-left:${bcss(s.bl)}`, s.br && `border-right:${bcss(s.br)}`].filter(Boolean).join(';');
       const span = m && contains(R, m) ? ` rowspan="${m.r2-m.r1+1}" colspan="${m.c2-m.c1+1}"` : '';
@@ -3595,6 +3705,13 @@ ed.addEventListener('keydown', e => {
   if (pvOpen){ if (e.key !== 'Escape') e.preventDefault(); return; }
   const k = e.key, ctrl = e.ctrlKey || e.metaKey;
   if (e.isComposing || k === 'Process') return;
+  if (ctrl && e.shiftKey && k.toLowerCase() === 'e'){ e.preventDefault(); docMode ? closeDoc() : openDoc(); return; }
+  if (docMode){
+    if (k === 'Escape' || (ctrl && k === 'Enter')){ e.preventDefault(); closeDoc(); return; }
+    if (k === 'Tab' || k === 'F2'){ e.preventDefault(); return; }
+    if (k === 'Enter'){ e.preventDefault(); if (!editing) return; insertAtCaret('\n'); edInputDone(); return; }
+    if (!editing && !ctrl){ e.preventDefault(); return; }
+  }
   if (editing && fnList && !fnHint.hidden){
     if (k === 'Tab'){ e.preventDefault(); acceptFn(fnList.names[fnSelI]); return; }
     if (k === 'ArrowDown' || k === 'ArrowUp'){ e.preventDefault(); fnSelI = (fnSelI + (k === 'ArrowDown' ? 1 : -1) + fnList.names.length) % fnList.names.length; updateFnHint(); return; }
@@ -3662,7 +3779,7 @@ ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter',
 ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 // 편집기에 서식 있는 글이 섞여 들어오지 않게: 붙여넣기·끌어 놓기는 글자만, 브라우저 자체 서식 명령은 막음
-function edInputDone(){ pointRef = null; sizeEditor(); fx.value = ed.value; updateCharCount(); }
+function edInputDone(){ pointRef = null; sizeEditor(); fx.value = ed.value; updateCharCount(); updDocInfo(); }
 ed.addEventListener('beforeinput', e => {
   const t = e.inputType || '';
   if (t.startsWith('format') || t === 'insertFromDrop'){ e.preventDefault(); return; }
@@ -3916,6 +4033,21 @@ function equalRows(){
   const rows = selRowsList();
   askNumber('행 높이 같게', `${rows[0] + 1}${rows.length > 1 ? '~' + (rows[rows.length - 1] + 1) : ''} 행을 모두 이 높이로 맞춥니다. 단위는 픽셀 (지금 ${rh(act.r)}px ≈ ${pxmm(rh(act.r))}mm). 줄 바꿈 글이 더 길면 그만큼은 늘어납니다.`, rh(act.r), 6, 4000, n => { setRowHeight(rows, n); toast(`${rows.length}개 행을 ${n}px(약 ${pxmm(n)}mm)로 맞췄습니다`); });
 }
+// 줄 간격(글자 크기의 몇 배)과 문단 첫 줄 들여쓰기(글자 수)
+const LH_OPTS = [[1, '1.0'], [1.15, '1.15'], [DEF_LH, '기본 (1.28)'], [1.5, '1.5'], [1.6, '1.6'], [1.8, '1.8'], [2, '2.0'], [2.5, '2.5'], [3, '3.0']];
+const IND_OPTS = [[0, '없음'], [0.5, '반 글자'], [1, '1글자'], [2, '2글자'], [3, '3글자'], [4, '4글자']];
+const CHECK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>';
+function paraMenu(el){
+  const s = st(act.r, act.c), b = el.getBoundingClientRect(), cur = lhOf(s), ind = s.ind || 0;
+  showMenu(b.left - 10, b.bottom + 4, [
+    {label: '<b>줄 간격</b>', run: () => {}},
+    ...LH_OPTS.map(([v, l]) => ({label: l, icon: Math.abs(cur - v) < 0.001 ? CHECK : null, run: () => applyStyle({lh: v === DEF_LH ? null : v})})),
+    {label: '직접 정하기…', run: () => askNumber('줄 간격', '글자 크기의 몇 배로 줄을 띄울지 (예: 1.6). 한글 문서의 160%와 같습니다.', cur, 0.8, 5, n => applyStyle({lh: n === DEF_LH ? null : n}), 0.05)},
+    '-',
+    {label: '<b>문단 첫 줄 들여쓰기</b>', run: () => {}},
+    ...IND_OPTS.map(([v, l]) => ({label: l, icon: Math.abs(ind - v) < 0.001 ? CHECK : null, run: () => applyStyle({ind: v || null})})),
+  ]);
+}
 function sizeMenu(el){
   const b = el.getBoundingClientRect();
   showMenu(b.left - 10, b.bottom + 4, [
@@ -3964,9 +4096,9 @@ function fitPaperDialog(){
     return {ps: nps, cwPx: Math.round(W + 8), rhPx: Math.round(H), wmm: Math.round(w - M.in - M.out), hmm: Math.round(H / MM)};
   }
 }
-function askNumber(title, label, val, min, max, cb){
-  modal(title, `<p>${label}</p><input class="ctl" id="mdlNum" type="number" min="${min}" max="${max}" value="${val}">`, '적용', b => {
-    const n = Math.round(parseFloat(b.querySelector('#mdlNum').value));
+function askNumber(title, label, val, min, max, cb, step){
+  modal(title, `<p>${label}</p><input class="ctl" id="mdlNum" type="number" min="${min}" max="${max}"${step ? ` step="${step}"` : ''} value="${val}">`, '적용', b => {
+    const raw = parseFloat(b.querySelector('#mdlNum').value), n = step ? Math.round(raw * 100) / 100 : Math.round(raw);   // step이 있으면 소수도
     if (!(n >= min && n <= max)){ toast(`${min}~${max} 사이 숫자를 입력하세요`); return false; }
     cb(n);
   });
@@ -3983,6 +4115,7 @@ function openCellMenu(x, y){
   const fc = fullCols(sel);
   const items = [
     {label:'선택한 칸 쪽 미리보기', icon:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 5.5C8.5 4.3 6 3.8 3 4v11.5c3-.2 5.5.3 7 1.5 1.5-1.2 4-1.7 7-1.5V4c-3-.2-5.5.3-7 1.5z"/><path d="M10 5.5V17"/></svg>', run: () => openPageView(true)},
+    {label:'원고 쓰기 (이 칸만 크게)', kbd:'Ctrl+Shift+E', run: openDoc},
     '-',
     {label:'잘라내기', kbd:'Ctrl+X', icon:IC.cut, run: () => menuCopy(true)},
     {label:'복사', kbd:'Ctrl+C', icon:IC.copy, run: () => menuCopy(false)},
@@ -4119,7 +4252,7 @@ function run(cmd, el){
     alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
-    wrap: () => applyStyle({wrap: wrapOn(st(act.r, act.c)) ? false : null}), merge: mergeToggle, mergeMenu: () => mergePop(el),
+    wrap: () => applyStyle({wrap: wrapOn(st(act.r, act.c)) ? false : null}), paraMenu: () => paraMenu(el), docMode: () => docMode ? closeDoc() : openDoc(), merge: mergeToggle, mergeMenu: () => mergePop(el),
     border: () => applyBorder(lastBorder), borderMenu: () => borderPop(el),
     clear: clearFormats,
     decUp: () => stepDecimals(1), decDown: () => stepDecimals(-1),
@@ -4136,7 +4269,7 @@ FONTS.forEach(([v, l]) => { const o = new Option(l, v); o.style.fontFamily = fam
 fontSel.addEventListener('change', () => { ensureFont(fontSel.value); applyStyle({ff: fontSel.value === DEF_FONT ? null : fontSel.value}); focusGrid(); });
 const sizeIn = $('#sizeIn');
 function openSizeList(){
-  if (editing) commitEdit();
+  if (editing && !richRange()) commitEdit();
   const cur = st(act.r, act.c).fs || DEF_FS;
   hideMenus();
   pop.innerHTML = '<div class="szlist">' + SIZES.map(n => `<button class="szi${n === cur ? ' on' : ''}" data-sz="${n}">${n}</button>`).join('') + '</div>';
@@ -4146,12 +4279,17 @@ function openSizeList(){
   menuOpenedAt = Date.now();
   const on = pop.querySelector('.szi.on'); if (on) on.scrollIntoView({block: 'center'});
 }
+// 편집 중 글자를 골라 둔 채 크기 칸을 누르면, 그 선택을 기억해 두었다가 그 글자에만
+sizeIn.addEventListener('mousedown', () => { if (!editing) return; const s = edSel(); savedSel = s && s[0] !== s[1] ? [Math.min(...s), Math.max(...s)] : null; });
 sizeIn.addEventListener('click', openSizeList);
 $('#sizeBtn').addEventListener('mousedown', e => e.preventDefault());
 $('#sizeBtn').addEventListener('click', () => { if (!pop.hidden && pop.querySelector('.szlist')) hideMenus(); else openSizeList(); });
 sizeIn.addEventListener('input', () => { if (pop.querySelector('.szlist')) hideMenus(); });
 sizeIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); setFontSize(sizeIn.value); focusGrid(); } if (e.key === 'Escape'){ refreshUI(); focusGrid(); } });
-sizeIn.addEventListener('change', () => { const n = parseFloat(sizeIn.value); if (n !== (st(act.r, act.c).fs || DEF_FS)) setFontSize(n); });
+sizeIn.addEventListener('change', () => {
+  const n = parseFloat(sizeIn.value);
+  if (editing){ if (savedSel) setFontSize(n); return; }   // 편집 중엔 골라 둔 글자에만 (Enter로 이미 넣었으면 그냥 둠)
+  if (n !== (st(act.r, act.c).fs || DEF_FS)) setFontSize(n); });
 $('#addSheet').onclick = addSheet;
 $('#zoomR').oninput = e => setZoom(+e.target.value / 100);
 $('#zoomIn').onclick = () => setZoom(sh.zoom + 0.1);
@@ -4390,6 +4528,7 @@ async function buildXlsx(){
               const f = {...bf};
               if (x.b != null) f.bold = x.b; if (x.i != null) f.italic = x.i; if (x.u != null) f.underline = x.u; if (x.st != null) f.strike = x.st;
               if (x.fc) f.color = {argb: argb(x.fc)};
+              if (x.fs) f.size = x.fs;
               return {text: x.t, font: f};
             })};
           }
@@ -4483,7 +4622,7 @@ async function importXlsx(buf){
           const cf = (cell.style && cell.style.font) || {};
           const abs = cell.value.richText.map(p => {
             const f = fromXStyle({font: p.font || cf}) || {};
-            return {t: String(p.text ?? ''), b: !!f.b, i: !!f.i, u: !!f.u, st: !!f.st, fc: (f.fc || '#111111').toUpperCase(), hl: null};
+            return {t: String(p.text ?? ''), b: !!f.b, i: !!f.i, u: !!f.u, st: !!f.st, fc: (f.fc || '#111111').toUpperCase(), hl: null, fs: f.fs || DEF_FS};
           });
           if (abs.map(x => x.t).join('') === o.v){ const rt = absToRt(abs, sty || {}); if (rt) o.rt = rt; }
         }
