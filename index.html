@@ -101,6 +101,19 @@ button{font:inherit;color:inherit}
 #recBtn.on.blink{background:#A8380B}
 #recBtn.pause{color:#3B2A00;background:#F2C230;border-radius:6px}
 #recLbl{font-variant-numeric:tabular-nums}
+.rset{display:flex;flex-direction:column;gap:7px;min-width:330px;margin-bottom:12px;max-height:calc(100vh - 190px);overflow-y:auto;padding-right:4px}
+.rset .rsrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.rset .rsrow .ctl{width:110px}
+.rset #rsArea{width:200px}
+.rset .sub{margin-left:22px}
+.rset .rsinfo{margin:0 0 2px;font-size:12px;color:var(--muted)}
+.rset .rskey{width:140px;text-align:center;cursor:pointer}
+.rsdir{display:flex;gap:6px;align-items:center}
+.rsdir span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted)}
+.rsdir .pbtn{flex:none;padding:0 10px}
+#recBtn{touch-action:none}
+.recghost{position:fixed;z-index:60;transform:translate(-50%,-50%);pointer-events:none;background:#2D3033;color:#E8EAED;padding:9px 14px;border-radius:9px;font-size:12px;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.recghost b{color:#FF4D3A;margin-right:4px}
 html.darksheet #ed{filter:invert(.9) hue-rotate(180deg);outline-color:#C19017}
 html.darksheet #docBack{background:#0B0D10}
 html.darksheet #ed.docmode{box-shadow:0 2px 16px rgba(255,255,255,.06)}
@@ -4495,7 +4508,7 @@ function run(cmd, el){
     alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
-    themeMenu: () => themeMenu(el), recMenu: () => recMenu(el),
+    themeMenu: () => themeMenu(el), recMenu: () => { if (!el.dataset.noclick) recMenu(el); },
     wrap: () => applyStyle({wrap: wrapOn(st(act.r, act.c)) ? false : null}), paraMenu: () => paraMenu(el), docMode: () => docMode ? closeDoc() : openDoc(), merge: mergeToggle, mergeMenu: () => mergePop(el),
     border: () => applyBorder(lastBorder), borderMenu: () => borderPop(el),
     clear: clearFormats,
@@ -5250,9 +5263,18 @@ osDark.addEventListener('change', applyTheme);
 // ===== 녹화: 쓰는 과정을 동영상으로 =====
 // 모눈 화면을 받아 칸 영역(원고 쓰기 중이면 종이)만 잘라 가로 1080px 영상으로 만든다. 제목 줄의 녹화 단추는 영상에 안 찍힘.
 // 일시정지한 동안은 영상에서 빠지고, 정한 시간 동안 입력이 없으면 저절로 멈췄다가 다시 쓰면 이어서 녹화.
-const REC = {on: false, paused: false, auto: false, rec: null, stream: null, video: null, cv: null, g: null, draw: 0, t0: 0, acc: 0, wq: Promise.resolve(), chunks: [], ext: 'mp4', last: Date.now(), blink: 0, path: ''};
-let recSet = {area: 'sheet', idle: 10, detached: false};
-try { Object.assign(recSet, JSON.parse(localStorage.getItem('monun.rec') || '{}')); } catch (e) {}
+// 설정은 글자수 카운터와 같게: 목표 글자 수, 자동 일시정지(초), 경과 시간 표시, 일시정지 중에도 시간 세기,
+// 녹화 중지 시에도 시간 측정, 도구 창 맨 앞 고정, 마우스 커서 포함, 원고 글씨 크기, 단축키.
+const REC = {on: false, paused: false, auto: false, rec: null, stream: null, video: null, cv: null, g: null, draw: 0, t0: 0, acc: 0, wq: Promise.resolve(), chunks: [], ext: 'mp4', last: Date.now(), blink: 0, path: '', mx: -1, my: -1};
+const REC_DEF = {area: 'sheet', autoPause: true, idleSec: 10, blurPause: true, detached: false, goal: 0, goalNoSpace: false,
+  showTime: true, countDuringPause: false, countWhenStopped: false, topMost: true, showCursor: false,
+  keys: {rec: 'Ctrl+Alt+R', pause: 'Ctrl+Alt+P', stop: 'Ctrl+Alt+S'}};
+let recSet = JSON.parse(JSON.stringify(REC_DEF));
+try {
+  const o = JSON.parse(localStorage.getItem('monun.rec') || '{}');
+  if (o.idle != null && o.idleSec == null){ o.autoPause = o.idle > 0; o.idleSec = o.idle || 10; delete o.idle; }   // 예전 설정 옮기기
+  Object.assign(recSet, o); recSet.keys = Object.assign({}, REC_DEF.keys, o.keys || {});
+} catch (e) {}
 const saveRecSet = () => { try { localStorage.setItem('monun.rec', JSON.stringify(recSet)); } catch (e) {} };
 const canRec = () => !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && window.MediaRecorder) && !touchDevice();
 const recLbl = $('#recLbl'), recBtn = $('#recBtn'), recStopBtn = $('#recStop');
@@ -5266,24 +5288,45 @@ function recArea(){
   return R(wrap);
 }
 const fmtDur = ms => { const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return (h ? h + ':' + pad2(m) : m) + ':' + pad2(s % 60); };
-const recElapsed = () => REC.acc + (REC.on && !REC.paused ? Date.now() - REC.t0 : 0);
+const recElapsed = () => REC.acc + (REC.on && !REC.paused ? Date.now() - REC.t0 : 0);   // 영상 길이
+// 쓰기 시간 (카운터의 경과 시간): 설정에 따라 일시정지·녹화 중지 중에도 셈
+const SW = {acc: 0, t0: null};
+const swRun = () => { if (SW.t0 == null) SW.t0 = Date.now(); };
+const swStop = () => { if (SW.t0 != null){ SW.acc += Date.now() - SW.t0; SW.t0 = null; } };
+const swReset = () => { SW.acc = 0; if (SW.t0 != null) SW.t0 = Date.now(); };
+const swMs = () => SW.acc + (SW.t0 != null ? Date.now() - SW.t0 : 0);
+if (recSet.countWhenStopped) swRun();
+// 지금 칸 글자 수 / 목표 (원고 쓰기의 칸 목표가 있으면 그것, 없으면 설정의 목표)
+function recCount(){
+  const t = editing ? ed.value : cellText(act.r, act.c), n = countText(t)[recSet.goalNoSpace ? 1 : 0];
+  const g = (sh.cells[act.r + ':' + act.c] || {}).goal || recSet.goal || 0;
+  return (g ? `${n.toLocaleString('ko-KR')} / ${g.toLocaleString('ko-KR')}` : `${n.toLocaleString('ko-KR')}자`) + (recSet.goalNoSpace ? ' (공백 빼고)' : '');
+}
+const keyLabel = k => (recSet.keys && recSet.keys[k]) || REC_DEF.keys[k];
 function recUI(){
+  const showT = recSet.showTime, t = fmtDur(swMs());
   recBtn.classList.toggle('on', REC.on && !REC.paused);
   recBtn.classList.toggle('pause', REC.on && REC.paused);
-  recStopBtn.hidden = !REC.on;
-  recLbl.textContent = REC.on ? (REC.paused ? (REC.auto ? '자동 멈춤 ' : '멈춤 ') : '') + fmtDur(recElapsed()) : '녹화';
+  recLbl.textContent = REC.on ? (REC.paused ? (REC.auto ? '자동 멈춤' : '멈춤') + (showT ? ' ' + t : '') : (showT ? t : '녹화 중')) : (showT && recSet.countWhenStopped ? '녹화 · ' + t : '녹화');
   const bar = recSet.detached && NATIVE && NATIVE.recBarState;
   recBtn.hidden = !!bar || (!canRec() && !NATIVE); recStopBtn.hidden = !!bar || !REC.on;
-  if (bar) NATIVE.recBarState({on: REC.on, paused: REC.paused, auto: REC.auto, time: fmtDur(recElapsed()), msg: REC.msg || ''});
-  recBtn.title = REC.on ? (REC.paused ? '녹화 멈춤 · 누르면 메뉴 (다시 시작: Ctrl+Alt+P)' : '녹화 중 · 누르면 메뉴 (일시정지: Ctrl+Alt+P)') : '녹화: 쓰는 과정을 동영상으로 (Ctrl+Alt+R 시작·중지, Ctrl+Alt+P 일시정지)';
+  if (bar) NATIVE.recBarState({on: REC.on, paused: REC.paused, auto: REC.auto, time: showT && (REC.on || recSet.countWhenStopped) ? t : '', count: recCount(), msg: REC.msg || ''});
+  recBtn.title = (REC.on ? (REC.paused ? `녹화 멈춤 · 누르면 메뉴 (다시 시작: ${keyLabel('pause')})` : `녹화 중 · 누르면 메뉴 (일시정지: ${keyLabel('pause')})`) : `녹화: 쓰는 과정을 동영상으로 (${keyLabel('rec')} 시작·중지, ${keyLabel('pause')} 일시정지)`) + (NATIVE && NATIVE.recBarOpen ? '\n끌어서 밖에 놓으면 작은 창으로 떼어집니다' : '');
 }
 function recFrame(){
   if (!REC.on || REC.paused || !REC.video.videoWidth) return;
   const A = recArea(), V = REC.video, kx = V.videoWidth / innerWidth, ky = V.videoHeight / innerHeight, C = REC.cv, g = REC.g;
   g.fillStyle = getComputedStyle(document.body).backgroundColor || '#fff';
   g.fillRect(0, 0, C.width, C.height);
-  const s = Math.min(C.width / A.w, C.height / A.h), dw = A.w * s, dh = A.h * s;
-  try { g.drawImage(V, A.x * kx, A.y * ky, A.w * kx, A.h * ky, (C.width - dw) / 2, (C.height - dh) / 2, dw, dh); } catch (e) {}
+  const s = Math.min(C.width / A.w, C.height / A.h), dw = A.w * s, dh = A.h * s, ox = (C.width - dw) / 2, oy = (C.height - dh) / 2;
+  try { g.drawImage(V, A.x * kx, A.y * ky, A.w * kx, A.h * ky, ox, oy, dw, dh); } catch (e) {}
+  // 마우스 커서 (설정에서 켰을 때): 화면 공유에는 커서가 안 찍혀서 직접 그림
+  if (recSet.showCursor && REC.mx >= A.x && REC.mx <= A.x + A.w && REC.my >= A.y && REC.my <= A.y + A.h){
+    const x = ox + (REC.mx - A.x) * s, y = oy + (REC.my - A.y) * s, k = Math.max(1, s) * 1.1;
+    g.save(); g.translate(x, y); g.scale(k, k);
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 17); g.lineTo(4.2, 13); g.lineTo(7, 19.5); g.lineTo(9.6, 18.4); g.lineTo(6.9, 12.2); g.lineTo(12.5, 12.2); g.closePath();
+    g.fillStyle = '#fff'; g.fill(); g.lineWidth = 1.3; g.strokeStyle = '#111'; g.stroke(); g.restore();
+  }
 }
 async function recStart(){
   if (REC.on) return;
@@ -5291,7 +5334,7 @@ async function recStart(){
   hideMenus();
   let stream;
   try {
-    stream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: 30, displaySurface: 'browser'}, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include'});
+    stream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: 30, displaySurface: 'browser', cursor: 'never'}, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include'});
   } catch (e){ return toast('녹화를 시작하지 못했습니다'); }
   const video = document.createElement('video');
   video.muted = true; video.srcObject = stream; video.play().catch(() => {});
@@ -5302,6 +5345,8 @@ async function recStart(){
   const types = ['video/mp4;codecs=avc1.640028', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
   const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
   Object.assign(REC, {on: true, paused: false, auto: false, stream, video, cv, g: cv.getContext('2d'), acc: 0, t0: Date.now(), chunks: [], wq: Promise.resolve(), ext: mime.startsWith('video/mp4') ? 'mp4' : 'webm', last: Date.now()});
+  if (!recSet.countWhenStopped) swReset();
+  swRun();
   recFrame();
   const rec = new MediaRecorder(cv.captureStream(30), {mimeType: mime || undefined, videoBitsPerSecond: 8e6});
   REC.rec = rec;
@@ -5321,12 +5366,14 @@ async function recStart(){
 function recPause(auto){
   if (!REC.on || REC.paused) return;
   REC.paused = true; REC.auto = !!auto; REC.acc += Date.now() - REC.t0;
+  if (!recSet.countDuringPause && !recSet.countWhenStopped) swStop();   // 일시정지 중엔 시간을 안 셈
   try { REC.rec.pause(); } catch (e) {}
   recUI();
 }
 function recResume(){
   if (!REC.on || !REC.paused) return;
   REC.paused = false; REC.auto = false; REC.t0 = Date.now(); REC.last = Date.now();
+  swRun();
   recFrame();
   try { REC.rec.resume(); } catch (e) {}
   recUI();
@@ -5336,6 +5383,7 @@ function recStop(){
   if (!REC.on) return Promise.resolve();
   const rec = REC.rec, total = recElapsed();
   REC.on = false; REC.paused = false;
+  if (!recSet.countWhenStopped) swStop();   // 연속 측정이면 계속 흐름
   clearInterval(REC.draw); clearInterval(REC.blink); recBtn.classList.remove('blink');
   recUI();
   return new Promise(res => {
@@ -5371,29 +5419,89 @@ async function recShot(){
 }
 function recMenu(el){
   const b = el.getBoundingClientRect();
-  const chk = on => on ? CHECK : null;
   const items = REC.on ? [
-    {label: REC.paused ? '다시 시작' : '일시정지', kbd: 'Ctrl+Alt+P', run: recTogglePause},
-    {label: '중지하고 저장', kbd: 'Ctrl+Alt+S', run: recStop},
+    {label: REC.paused ? '다시 시작' : '일시정지', kbd: keyLabel('pause'), run: recTogglePause},
+    {label: '중지하고 저장', kbd: keyLabel('stop'), run: recStop},
   ] : [
-    {label: '녹화 시작', kbd: 'Ctrl+Alt+R', run: recStart},
+    {label: '녹화 시작', kbd: keyLabel('rec'), run: recStart},
   ];
-  items.push({label: '화면 캡처 (그림으로 저장)', run: recShot}, '-',
-    {label: '<b>찍을 곳</b>', run: () => {}},
-    {label: '칸 영역 (원고 쓰기 중엔 종이만)', icon: chk(recSet.area !== 'window'), run: () => { recSet.area = 'sheet'; saveRecSet(); }},
-    {label: '모눈 창 전체', icon: chk(recSet.area === 'window'), run: () => { recSet.area = 'window'; saveRecSet(); }},
-    '-', {label: '<b>입력이 없으면 자동 일시정지</b>', run: () => {}},
-    ...[[0, '끄기'], [5, '5초'], [10, '10초'], [30, '30초'], [60, '1분']].map(([v, l]) => ({label: l, icon: chk(recSet.idle === v), run: () => { recSet.idle = v; saveRecSet(); }})));
-  if (NATIVE && NATIVE.recBarOpen) items.push('-', {label: '녹화 도구 떼어 띄우기 (늘 위에 떠 있는 작은 창)', run: () => recDetach(true)});
-  if (NATIVE && NATIVE.recFolder) items.push('-', {label: '녹화·캡처 폴더 열기', run: () => NATIVE.recFolder()}, {label: '저장할 폴더 바꾸기…', run: async () => { const d = await NATIVE.recChooseDir(); if (d) toast('이제 여기에 저장합니다: ' + d); }});
+  items.push({label: '화면 캡처 (그림으로 저장)', run: recShot});
+  if (NATIVE && NATIVE.recBarOpen) items.push({label: '녹화 도구 떼어 띄우기 (작은 창)', run: () => recDetach(true)});
+  if (NATIVE && NATIVE.recFolder) items.push({label: '녹화·캡처 폴더 열기', run: () => NATIVE.recFolder()});
+  items.push('-', {label: '녹화 설정…', run: recSettings});
   showMenu(b.left - 10, b.bottom + 4, items);
+}
+// --- 녹화 설정 (글자수 카운터 설정과 같은 항목) ---
+const comboOf = e => {
+  const k = /^Key([A-Z])$/.exec(e.code) ? e.code.slice(3) : /^Digit(\d)$/.exec(e.code) ? e.code.slice(5) : /^F\d{1,2}$/.test(e.code) ? e.code : null;
+  if (!k) return null;
+  return [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift'].filter(Boolean).concat(k).join('+');
+};
+async function recSettings(){
+  hideMenus();
+  if (editing && !docMode) commitEdit();
+  const dir = NATIVE && NATIVE.recDir ? await NATIVE.recDir() : '';
+  const S = recSet, ck = v => v ? ' checked' : '';
+  const keyRow = (k, l) => `<label class="rsrow">${l} <input class="ctl rskey" data-k="${k}" value="${esc(keyLabel(k))}" readonly title="칸을 누른 뒤 원하는 조합키를 누르세요"></label>`;
+  modal('녹화 설정', `<div class="rset">
+    <label class="rsrow">목표 글자 수 <input class="ctl" id="rsGoal" type="number" min="0" max="10000000" value="${S.goal || 0}"></label>
+    <label class="chk sub"><input type="checkbox" id="rsGoalNS"${ck(S.goalNoSpace)}> 공백 빼고 세기</label>
+    <p class="rsinfo">0이면 목표 없음. 원고 쓰기에서 칸마다 목표를 정했으면 그쪽을 씁니다.</p>
+    <label class="chk"><input type="checkbox" id="rsAuto"${ck(S.autoPause)}> 자동 일시정지 사용</label>
+    <label class="rsrow sub">몇 초 입력 없으면 멈춤 <input class="ctl" id="rsIdle" type="number" min="1" max="120" value="${S.idleSec}"></label>
+    <label class="chk"><input type="checkbox" id="rsBlur"${ck(S.blurPause !== false)}> 다른 프로그램을 쓰면 바로 멈춤</label>
+    <label class="chk"><input type="checkbox" id="rsTime"${ck(S.showTime)}> 경과 시간 표시 (녹화 시간)</label>
+    <label class="chk sub"><input type="checkbox" id="rsCntP"${ck(S.countDuringPause)}> 일시정지 중에도 시간 세기</label>
+    <label class="chk"><input type="checkbox" id="rsCntS"${ck(S.countWhenStopped)}> 녹화 중지 시에도 시간 측정</label>
+    <label class="chk"><input type="checkbox" id="rsTop"${ck(S.topMost)}> 녹화 도구 창을 항상 맨 앞에 고정</label>
+    <label class="chk"><input type="checkbox" id="rsCur"${ck(S.showCursor)}> 녹화에 마우스 커서 포함</label>
+    <label class="rsrow">찍을 곳 <select class="ctl" id="rsArea"><option value="sheet"${S.area !== 'window' ? ' selected' : ''}>칸 영역 (원고 쓰기 중엔 종이만)</option><option value="window"${S.area === 'window' ? ' selected' : ''}>모눈 창 전체</option></select></label>
+    <label class="rsrow">원고 쓰기 글씨 크기 <span><input class="ctl" id="rsDocZ" type="number" min="80" max="300" step="10" value="${Math.round(docZoom * 100)}"> %</span></label>
+    <div class="plabel" style="margin-top:6px">단축키 (칸을 누르고 조합키를 누르세요)</div>
+    ${keyRow('rec', '녹화 시작·중지')}${keyRow('pause', '일시정지·다시')}${keyRow('stop', '중지하고 저장')}
+    ${NATIVE && NATIVE.recChooseDir ? `<div class="plabel" style="margin-top:6px">저장 폴더</div><div class="rsdir"><span id="rsDir" title="${esc(dir)}">${esc(dir)}</span><button class="pbtn" id="rsDirBtn">바꾸기</button><button class="pbtn" id="rsDirOpen">열기</button></div>` : ''}
+    <p class="rsinfo">"녹화 중지 시에도 시간 측정"을 켜면 녹화와 상관없이 시간이 계속 흘러요 (전체 쓰기 시간).</p>
+  </div>`, '확인', b => {
+    const q = id => b.querySelector(id);
+    const was = recSet.countWhenStopped;
+    Object.assign(recSet, {
+      goal: Math.max(0, parseInt(q('#rsGoal').value, 10) || 0), goalNoSpace: q('#rsGoalNS').checked,
+      autoPause: q('#rsAuto').checked, idleSec: Math.min(120, Math.max(1, parseInt(q('#rsIdle').value, 10) || 10)),
+      blurPause: q('#rsBlur').checked, showTime: q('#rsTime').checked, countDuringPause: q('#rsCntP').checked,
+      countWhenStopped: q('#rsCntS').checked, topMost: q('#rsTop').checked, showCursor: q('#rsCur').checked, area: q('#rsArea').value,
+      keys: Object.fromEntries([...b.querySelectorAll('.rskey')].map(x => [x.dataset.k, x.value])),
+    });
+    saveRecSet();
+    if (recSet.countWhenStopped && !was) swRun();
+    if (!recSet.countWhenStopped && was && !REC.on) swStop();
+    const z = parseInt(q('#rsDocZ').value, 10);
+    if (z && Math.abs(z / 100 - docZoom) > 0.001) setDocZoom(z / 100);
+    if (NATIVE && NATIVE.recBarTop) NATIVE.recBarTop(recSet.topMost);
+    recUI(); toast('녹화 설정을 바꿨습니다');
+  }, back => {
+    back.querySelectorAll('.rskey').forEach(inp => inp.addEventListener('keydown', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (e.key === 'Escape' || e.key === 'Tab') return;
+      const c = comboOf(e);
+      if (!c || !(e.ctrlKey || e.altKey)) { inp.value = '(Ctrl이나 Alt와 함께)'; setTimeout(() => { if (inp.value.startsWith('(')) inp.value = keyLabel(inp.dataset.k); }, 1200); return; }
+      inp.value = c;
+    }));
+    const sync = () => { back.querySelector('#rsIdle').disabled = !back.querySelector('#rsAuto').checked; back.querySelector('#rsCntP').disabled = !back.querySelector('#rsTime').checked; };
+    back.querySelector('#rsAuto').onchange = sync; back.querySelector('#rsTime').onchange = sync; sync();
+    const db = back.querySelector('#rsDirBtn');
+    if (db){
+      db.onclick = async () => { const d = await NATIVE.recChooseDir(); if (d){ back.querySelector('#rsDir').textContent = d; back.querySelector('#rsDir').title = d; } };
+      back.querySelector('#rsDirOpen').onclick = () => NATIVE.recFolder();
+    }
+  });
 }
 recStopBtn.addEventListener('click', () => recStop());
 // 녹화 도구를 작은 창으로 떼어 내기 / 제목 줄에 다시 붙이기
-function recDetach(on){
+function recDetach(on, at){
   if (!NATIVE || !NATIVE.recBarOpen) return;
   recSet.detached = on; saveRecSet();
-  if (on) NATIVE.recBarOpen(); else NATIVE.recBarClose();
+  if (on){ NATIVE.recBarOpen(at); if (NATIVE.recBarTop) setTimeout(() => NATIVE.recBarTop(recSet.topMost), 300); }
+  else NATIVE.recBarClose();
   recUI();
 }
 // 도구 창 단추 (main이 이 창에서 실행해 줌)
@@ -5402,26 +5510,64 @@ window.__recCmd = c => {
   if (c === 'pause') return recTogglePause();
   if (c === 'shot') return recShot();
   if (c === 'folder') return NATIVE && NATIVE.recFolder && NATIVE.recFolder();
+  if (c === 'settings') return recSettings();
   if (c === 'dock') return recDetach(false);
 };
 if (NATIVE && NATIVE.onRecBarReady){
-  NATIVE.onRecBarReady(() => recUI());
+  NATIVE.onRecBarReady(() => { if (NATIVE.recBarTop) NATIVE.recBarTop(recSet.topMost); recUI(); });
   NATIVE.onRecBarClosed(() => { recSet.detached = false; saveRecSet(); recUI(); });
   if (recSet.detached) setTimeout(() => NATIVE.recBarOpen(), 800);
 }
+// 시간·글자 수 표시 갱신 (녹화하지 않을 때도: 연속 측정이나 떼어 낸 도구 창의 글자 수)
+setInterval(() => { if (!REC.on && (recSet.countWhenStopped || recSet.detached)) recUI(); }, 1000);
+// 다른 프로그램으로 넘어가면 바로 일시정지 (돌아와서 쓰거나 누르면 이어서)
+const recAway = () => { if (REC.on && !REC.paused && recSet.blurPause !== false){ recPause(true); recMsg('다른 프로그램 사용 중 · 멈춤'); } };
+if (NATIVE && NATIVE.onWinBlur) NATIVE.onWinBlur(recAway);
+else window.addEventListener('blur', () => setTimeout(() => { if (!document.hasFocus()) recAway(); }, 150));
+// 녹화 단추를 끌어 제목 줄 밖에 놓으면 작은 창으로 떼어 냄
+(() => {
+  if (!NATIVE || !NATIVE.recBarOpen) return;
+  let d = null, ghost = null;
+  recBtn.addEventListener('pointerdown', e => { if (e.button === 0) d = {x: e.clientX, y: e.clientY, id: e.pointerId, moved: false}; });
+  recBtn.addEventListener('pointermove', e => {
+    if (!d) return;
+    if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12){
+      d.moved = true; try { recBtn.setPointerCapture(d.id); } catch (er) {}
+      ghost = document.createElement('div'); ghost.className = 'recghost'; ghost.innerHTML = '<b>●</b> 녹화 도구 · 놓으면 떼어집니다';
+      document.body.appendChild(ghost);
+    }
+    if (ghost){ ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; }
+  });
+  const end = e => {
+    if (!d) return;
+    const moved = d.moved; d = null;
+    if (ghost){ ghost.remove(); ghost = null; }
+    if (!moved) return;
+    recBtn.dataset.noclick = '1'; setTimeout(() => delete recBtn.dataset.noclick, 50);
+    const tb = document.querySelector('.titlebar').getBoundingClientRect();
+    if (e.type === 'pointerup' && (e.clientY > tb.bottom + 6 || e.clientY < 0 || e.clientX < 0 || e.clientX > innerWidth))
+      recDetach(true, {x: e.screenX, y: e.screenY});
+  };
+  recBtn.addEventListener('pointerup', end);
+  recBtn.addEventListener('pointercancel', end);
+})();
 // 쓰는 중인지 살펴서 자동 일시정지·다시 시작
 const recActivity = () => { REC.last = Date.now(); if (REC.on && REC.paused && REC.auto) recResume(); };
 ['keydown', 'input', 'pointerdown', 'wheel', 'compositionupdate'].forEach(t => document.addEventListener(t, recActivity, true));
+document.addEventListener('pointermove', e => { REC.mx = e.clientX; REC.my = e.clientY; }, true);
 setInterval(() => {
-  if (REC.on && !REC.paused && recSet.idle > 0 && Date.now() - REC.last >= recSet.idle * 1000) recPause(true);
+  if (REC.on && !REC.paused && recSet.autoPause && Date.now() - REC.last >= recSet.idleSec * 1000) recPause(true);
 }, 500);
-// 단축키 (편집 중에도)
+// 단축키 (편집 중에도). 한글 자판이어도 되게 글쇠 위치(code)로 봄
 document.addEventListener('keydown', e => {
-  if (!(e.ctrlKey && e.altKey) || e.shiftKey) return;
-  const k = e.key.toLowerCase();
-  if (k === 'r'){ e.preventDefault(); e.stopPropagation(); REC.on ? recStop() : recStart(); }
-  else if (k === 'p'){ e.preventDefault(); e.stopPropagation(); recTogglePause(); }
-  else if (k === 's'){ e.preventDefault(); e.stopPropagation(); recStop(); }
+  if (!(e.ctrlKey || e.altKey) || (e.target.classList && e.target.classList.contains('rskey'))) return;
+  const c = comboOf(e); if (!c) return;
+  const act = Object.keys(REC_DEF.keys).find(k => keyLabel(k) === c);
+  if (!act) return;
+  e.preventDefault(); e.stopPropagation();
+  if (act === 'rec') REC.on ? recStop() : recStart();
+  else if (act === 'pause') recTogglePause();
+  else if (act === 'stop') recStop();
 }, true);
 if (NATIVE && NATIVE.onRecStopThenClose) NATIVE.onRecStopThenClose(async () => { await recStop(); window.close(); });
 window.addEventListener('beforeunload', () => { if (REC.on && REC.rec) try { REC.rec.requestData(); } catch (e) {} });
