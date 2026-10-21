@@ -5310,7 +5310,7 @@ function recUI(){
   recLbl.textContent = REC.on ? (REC.paused ? (REC.auto ? '자동 멈춤' : '멈춤') + (showT ? ' ' + t : '') : (showT ? t : '녹화 중')) : (showT && recSet.countWhenStopped ? '녹화 · ' + t : '녹화');
   const bar = recSet.detached && NATIVE && NATIVE.recBarState;
   recBtn.hidden = !!bar || (!canRec() && !NATIVE); recStopBtn.hidden = !!bar || !REC.on;
-  if (bar) NATIVE.recBarState({on: REC.on, paused: REC.paused, auto: REC.auto, time: showT && (REC.on || recSet.countWhenStopped) ? t : '', count: recCount(), msg: REC.msg || ''});
+  if (NATIVE && NATIVE.recBarState) NATIVE.recBarState({on: REC.on, paused: REC.paused, auto: REC.auto, time: showT && (REC.on || recSet.countWhenStopped) ? t : '', sw: t, count: recCount(), msg: REC.msg || ''});
   recBtn.title = (REC.on ? (REC.paused ? `녹화 멈춤 · 누르면 메뉴 (다시 시작: ${keyLabel('pause')})` : `녹화 중 · 누르면 메뉴 (일시정지: ${keyLabel('pause')})`) : `녹화: 쓰는 과정을 동영상으로 (${keyLabel('rec')} 시작·중지, ${keyLabel('pause')} 일시정지)`) + (NATIVE && NATIVE.recBarOpen ? '\n끌어서 밖에 놓으면 작은 창으로 떼어집니다' : '');
 }
 function recFrame(){
@@ -5439,6 +5439,7 @@ const comboOf = e => {
 };
 async function recSettings(){
   hideMenus();
+  if (NATIVE && NATIVE.recSetOpen) return NATIVE.recSetOpen();   // 프로그램: 따로 떨어진 설정 창
   if (editing && !docMode) commitEdit();
   const dir = NATIVE && NATIVE.recDir ? await NATIVE.recDir() : '';
   const S = recSet, ck = v => v ? ' checked' : '';
@@ -5513,6 +5514,9 @@ window.__recCmd = c => {
   if (c === 'shot') return recShot();
   if (c === 'folder') return NATIVE && NATIVE.recFolder && NATIVE.recFolder();
   if (c === 'settings') return recSettings();
+  if (c === 'ping') return recUI();
+  if (c === 'resettime'){ SW.acc = 0; if (SW.t0 != null) SW.t0 = Date.now(); recUI(); return toast('경과 시간을 0으로 되돌렸습니다'); }
+  if (c === 'reloadSettings') return recReload();
   if (c === 'dock') return recDetach(false);
 };
 if (NATIVE && NATIVE.onRecBarReady){
@@ -5521,7 +5525,18 @@ if (NATIVE && NATIVE.onRecBarReady){
   if (recSet.detached) setTimeout(() => NATIVE.recBarOpen(), 800);
 }
 // 시간·글자 수 표시 갱신 (녹화하지 않을 때도: 연속 측정이나 떼어 낸 도구 창의 글자 수)
-setInterval(() => { if (!REC.on && (recSet.countWhenStopped || recSet.detached)) recUI(); }, 1000);
+setInterval(() => { if (!REC.on && (recSet.countWhenStopped || recSet.detached || NATIVE)) recUI(); }, 1000);
+// 따로 떨어진 설정 창에서 바꾼 설정 다시 읽기
+function recReload(){
+  const was = recSet.countWhenStopped;
+  try { const o = JSON.parse(localStorage.getItem('monun.rec') || '{}'); Object.assign(recSet, o); recSet.keys = Object.assign({}, REC_DEF.keys, o.keys || {}); } catch (e) {}
+  if (recSet.countWhenStopped && !was) swRun();
+  if (!recSet.countWhenStopped && was && !REC.on) swStop();
+  const z = +localStorage.getItem('monun.docZoom');
+  if (z && Math.abs(z - docZoom) > 0.001) setDocZoom(z);
+  if (NATIVE && NATIVE.recBarTop) NATIVE.recBarTop(recSet.topMost);
+  recUI(); toast('녹화 설정을 바꿨습니다');
+}
 // 다른 프로그램으로 넘어가면 바로 일시정지 (돌아와서 쓰거나 누르면 이어서)
 const recAway = () => { if (REC.on && !REC.paused && recSet.blurPause !== false){ recPause(true); recMsg('다른 프로그램 사용 중 · 멈춤'); } };
 if (NATIVE && NATIVE.onWinBlur) NATIVE.onWinBlur(recAway);
