@@ -966,7 +966,10 @@ function drawText(r, c, rect, isMerge){
   const px = (s.fs || DEF_FS) * 4/3 * z, pad = 3*z + 1;
   const ha = s.ha || (errCell ? 'center' : isNum(raw) || (s.nf && s.nf !== 'text' && v !== raw) ? 'right' : 'left'), va = vaOf(s);
   const doWrap = wrapOn(s, raw);
-  const rt = richFor(r, c, v), RL = needRich(rt, s) ? richLines(rt || plainRuns(v), s, rect.w - pad*2, ctx, z, doWrap) : null;
+  // 찾기 중이면 찾은 글자를 칠하려고 글자 위치를 아는 방식(richLines)으로 그림
+  const fq = findTerm(), hitHere = !!fq && String(v).toLowerCase().includes(fq);
+  const rt = richFor(r, c, v), RL = needRich(rt, s) || hitHere ? richLines(rt || plainRuns(v), s, rect.w - pad*2, ctx, z, doWrap) : null;
+  if (RL && hitHere){ RL.fq = fq; RL.cur = r === act.r && c === act.c; }
   if (RL) ctx.font = fontStr(s, z);
   const lines = RL ? RL.lines.map(L => RL.M.text.slice(L.a, L.b)) : doWrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
   let clip = rect, tw = 0, spill = false;
@@ -1043,6 +1046,15 @@ function drawText(r, c, rect, isMerge){
 function drawRichLine(RL, L, x, y, ha){
   let cx = ha === 'left' ? x + L.ind : ha === 'right' ? x - L.w : x - L.w/2 + L.ind/2;
   ctx.textAlign = 'left';
+  // 찾기: 찾은 글자 뒤에 형광색 (지금 칸은 주황)
+  if (RL.fq){
+    if (!RL.hits){ RL.hits = []; const lt = RL.M.text.toLowerCase(); for (let i = lt.indexOf(RL.fq); i >= 0; i = lt.indexOf(RL.fq, i + RL.fq.length)) RL.hits.push([i, i + RL.fq.length]); }
+    for (const [s0, e0] of RL.hits){
+      const a = Math.max(s0, L.a), b = Math.min(e0, L.b); if (a >= b) continue;
+      const hx = cx + RL.M.meas(L.a, a), hw = RL.M.meas(a, b);
+      ctx.fillStyle = DC(RL.cur ? '#FFA94D' : '#FFE14D'); ctx.fillRect(hx, y - L.px*0.66, hw, L.px*1.32);
+    }
+  }
   for (const g of RL.M.segs){
     if (g.b <= L.a || g.a >= L.b) continue;
     const t = RL.M.text.slice(Math.max(L.a, g.a), Math.min(L.b, g.b)), e = g.e, px = g.px;
@@ -2228,7 +2240,7 @@ function openFind(withReplace){
   setTimeout(() => { findQ.focus(); findQ.select(); }, 0);
   runFind();
 }
-function closeFind(){ findBar.hidden = true; pvUnmark(); if (!pvOpen) focusGrid(); }
+function closeFind(){ findBar.hidden = true; pvUnmark(); schedule(); if (!pvOpen) focusGrid(); }
 // 쪽 미리보기에서 찾기: 맞는 줄을 노랗게, 지금 보는 것은 진하게
 let pvHits = [], pvHitI = -1;
 function pvUnmark(){
@@ -2262,8 +2274,10 @@ function findGoPV(d){
   el.scrollIntoView({block: 'center', behavior: 'smooth'});
   updFindCount();
 }
+const findTerm = () => findBar && !findBar.hidden && !pvOpen && findQ.value ? findQ.value.toLowerCase() : '';
 function runFind(){
   if (pvOpen) return runFindPV();
+  schedule();   // 찾은 글자 형광색 다시 그리기
   const q = findQ.value.toLowerCase();
   findHits = [];
   if (q) for (const k in sh.cells){
