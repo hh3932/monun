@@ -4362,9 +4362,15 @@ function sizeMenu(el){
 function ovItems(){
   const cur = st(act.r, act.c).ov || null;
   const setOv = v => {
-    if (v){ const rows = selRowsList(); mutate(() => { for (const r of rows) if (!sh.rowManual[r]) sh.rowManual[r] = rh(r); }); }
+    const rows = selRowsList();
+    if (v){ mutate(() => { for (const r of rows) if (!sh.rowManual[r]) sh.rowManual[r] = rh(r); }); }
+    // 행 높이는 그 행의 칸들이 함께 쓰므로, 자르기와 되돌리기는 행 전체에 (한 칸이라도 '늘리기'로 남으면 그 칸 글에 맞춰 행이 다시 늘어남)
+    // 넘쳐 보이기는 그 칸만 (행을 줄이려는 게 아니라서)
+    const keep = {...sel}, keepAct = {...act};
+    if (v !== 'spill') sel = {r1: rows[0], r2: rows[rows.length - 1], c1: 0, c2: COLS - 1};
     applyStyle({ov: v});
-    toast(v === 'clip' ? '이제 행 경계를 끌어 칸을 줄일 수 있어요. 넘치는 글은 가려집니다' : v === 'spill' ? '칸보다 긴 글이 아래 빈칸으로 이어져 보입니다' : '칸이 글에 맞춰 늘어납니다');
+    sel = keep; act = keepAct; refreshUI(); schedule();
+    toast(v === 'clip' ? `${rows.length > 1 ? rows.length + '개 행' : (rows[0] + 1) + '행'} 전체를 자르기로 바꿨어요. 행 경계를 끌어 줄이면 넘치는 글은 가려집니다` : v === 'spill' ? '칸보다 긴 글이 아래 빈칸으로 이어져 보입니다' : '행이 다시 글에 맞춰 늘어납니다');
   };
   return [
     {label: '칸을 글에 맞춰 늘리기 (기본)', icon: cur ? null : CHECK, run: () => setOv(null)},
