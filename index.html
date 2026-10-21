@@ -1841,7 +1841,17 @@ function selCols(c){ return (fullCols(sel) && c >= sel.c1 && c <= sel.c2) ? rang
 function selRows(r){ return (fullRows(sel) && r >= sel.r1 && r <= sel.r2) ? range(sel.r1, sel.r2) : [r]; }
 const range = (a, b) => Array.from({length: b-a+1}, (_, i) => a+i);
 function setColWidth(cols, w){ mutate(() => { for (const c of cols) sh.colW[c] = w; }); }
-function setRowHeight(rows, h){ mutate(() => { for (const r of rows){ sh.rowH[r] = h; sh.rowManual[r] = h; } }); }
+function setRowHeight(rows, h){ mutate(() => { for (const r of rows){ sh.rowH[r] = h; sh.rowManual[r] = h; } }); clipGrown(rows); }
+// 행 높이를 글보다 작게 정했는데 글 때문에 다시 늘었으면, 그 행은 '자르기'로 바꿔 정한 높이를 지킴
+// (넘치는 글은 가려지고, 칸을 누르면 펼쳐 보임). 실행 취소하면 행 높이와 함께 돌아감
+function clipGrown(rows){
+  const grown = rows.filter(r => sh.rowManual[r] && !hiddenRows.has(r) && rh(r) > sh.rowManual[r] + 1);
+  if (!grown.length) return false;
+  for (const r of grown) sh.rowStyle[r] = Object.assign({}, sh.rowStyle[r], {ov: 'clip'});
+  afterChange();
+  toast('글이 칸보다 길어 넘치는 부분은 가려집니다 · 칸을 누르면 전체가 보여요 (되돌리기: [칸 크기] → 늘리기)');
+  return true;
+}
 
 // ===== 행/열 삽입 삭제 =====
 function shiftAxis(axis, at, n, del){
@@ -3847,7 +3857,7 @@ cv.addEventListener('pointerup', e => {
   if (d.mode === 'pointref'){ ed.focus(); schedule(); return; }
   if (d.mode === 'imgmove' || d.mode === 'imgresize'){ if (d.moved) afterChange(); else undoStack.pop(); schedule(); }
   else if (d.mode === 'colw' || d.mode === 'rowh'){ afterChange();
-    if (d.mode === 'rowh' && d.rows.some(r => rh(r) > (sh.rowManual[r] || 0) + 1)) toast('글이 칸보다 길어서 칸이 다시 늘었어요. 줄이려면 [칸 크기] → "칸 크기에서 자르기"를 고르세요');
+    if (d.mode === 'rowh') clipGrown(d.rows);
   }
   else if (d.mode === 'fill'){ if (d.target) applyFill(d.base, d.target, e.ctrlKey || e.metaKey); else schedule(); }
   else if (d.mode === 'move'){ cv.style.cursor = ''; if (d.target) applyMove(d.base, d.target, e.ctrlKey || e.metaKey); else schedule(); }
