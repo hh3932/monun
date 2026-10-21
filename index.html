@@ -4872,7 +4872,7 @@ async function shareOrDownload(blob, name){
 }
 async function fileData(name){ return isX(name) ? await buildXlsx() : monunJSON(); }
 let autoSaving = false;
-function markSaved(name){ fileName = name; fileDirty = false; updateDoc(); queueAutosave(); toast((autoSaving ? '자동 저장했습니다: ' : '저장했습니다: ') + name); }
+function markSaved(name){ if (NATIVE && NATIVE.fileSynced && filePath) NATIVE.fileSynced(filePath); fileName = name; fileDirty = false; updateDoc(); queueAutosave(); toast((autoSaving ? '자동 저장했습니다: ' : '저장했습니다: ') + name); }
 // --- 저장 기록: 언제, 어디서(PC/폰/웹) 저장했는지 파일 안에 남김 ---
 const deviceLabel = () => NATIVE ? 'PC' : touchDevice() ? '폰' : '웹';
 function stampSave(name){
@@ -4963,6 +4963,7 @@ async function openData(name, bytes, src){
   } catch (err){ toast('파일을 열 수 없습니다. 모눈(.monun) 또는 엑셀(.xlsx) 파일인지 확인하세요'); return; }
   confirmDiscard(() => {
     loadWorkbook(obj); fileHandle = src.handle || null; filePath = src.path || null; fileName = name; fileDirty = false;
+    if (NATIVE && NATIVE.fileSynced && filePath) NATIVE.fileSynced(filePath);
     if (obj.savedAt) setTimeout(() => toast(`${whenText(obj.savedAt)}에 ${obj.savedOn ? obj.savedOn + '에서 ' : ''}저장된 파일입니다`), 1600);
     updateDoc(); queueAutosave(); toast('열었습니다: ' + name);
   });
@@ -5908,6 +5909,27 @@ takeSharedFile();
 if (touchDevice()) touchMode = true;
 focusGrid();
 if (recovered){ toast('지난번에 저장하지 못하고 꺼진 작업을 복구했습니다'); changedSinceBackup = true; doBackup(false); }
+// 저장된 파일이 기준: 저장 안 한 변경이 없는 창은 복구 기록 대신 파일을 새로 읽는다
+// (복구 기록이 파일보다 오래돼서, 파일을 눌러도 옛 내용이 보이던 문제)
+let reloading = false;
+async function reloadFromDisk(reason){
+  if (!NATIVE || !filePath || reloading) return;
+  reloading = true; setTimeout(() => reloading = false, 1500);
+  if (editing) commitEdit();
+  let f = null; try { f = await NATIVE.readFile(filePath); } catch (e) {}
+  if (!f) return;
+  const keepSheet = wb.sheets[wb.active] && wb.sheets[wb.active].name;
+  await openData(f.name, f.data, {path: f.path || filePath});
+  const i = wb.sheets.findIndex(s => s.name === keepSheet);
+  if (i >= 0 && i !== wb.active) switchSheet(i);
+  if (reason) toast(reason);
+}
+if (NATIVE && filePath && !fileDirty) reloadFromDisk();
+if (NATIVE && NATIVE.onDiskNewer) NATIVE.onDiskNewer(() => {
+  if (!filePath) return;
+  if (!fileDirty) return reloadFromDisk('파일이 더 새로 저장돼 있어서 새 내용으로 다시 불러왔어요');
+  modal('파일이 더 새로 저장돼 있어요', '<p>이 파일이 다른 창(또는 다른 프로그램)에서 더 나중에 저장됐어요. 그런데 이 창에도 저장하지 않은 변경이 있어요.</p><p><b>다시 불러오기</b>를 누르면 파일의 새 내용이 열리고 이 창의 저장 안 한 변경은 사라집니다. 이 창의 변경을 지키려면 <b>취소</b>를 누르고 [다른 이름으로 저장]으로 따로 저장하세요.</p>', '다시 불러오기', () => { fileDirty = false; reloadFromDisk('파일의 새 내용으로 다시 불러왔어요'); });
+});
 const flushAutosave = () => { clearTimeout(asT); writeSession(true); };
 window.addEventListener('beforeunload', flushAutosave);
 document.addEventListener('visibilitychange', () => { if (document.hidden) writeSession(false); });
