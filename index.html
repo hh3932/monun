@@ -5452,6 +5452,7 @@ async function recSettings(){
     <label class="chk"><input type="checkbox" id="rsBlur"${ck(S.blurPause !== false)}> 다른 프로그램을 쓰면 바로 멈춤</label>
     <label class="chk"><input type="checkbox" id="rsTime"${ck(S.showTime)}> 경과 시간 표시 (녹화 시간)</label>
     <label class="chk sub"><input type="checkbox" id="rsCntP"${ck(S.countDuringPause)}> 일시정지 중에도 시간 세기</label>
+    <div class="rsrow sub"><span>지금 경과 시간 <b id="rsNow">${fmtDur(swMs())}</b></span><button class="pbtn" id="rsReset" style="flex:none;padding:0 12px">시간 초기화</button></div>
     <label class="chk"><input type="checkbox" id="rsCntS"${ck(S.countWhenStopped)}> 녹화 중지 시에도 시간 측정</label>
     <label class="chk"><input type="checkbox" id="rsTop"${ck(S.topMost)}> 녹화 도구 창을 항상 맨 앞에 고정</label>
     <label class="chk"><input type="checkbox" id="rsCur"${ck(S.showCursor)}> 녹화에 마우스 커서 포함</label>
@@ -5486,6 +5487,7 @@ async function recSettings(){
       if (!c || !(e.ctrlKey || e.altKey)) { inp.value = '(Ctrl이나 Alt와 함께)'; setTimeout(() => { if (inp.value.startsWith('(')) inp.value = keyLabel(inp.dataset.k); }, 1200); return; }
       inp.value = c;
     }));
+    back.querySelector('#rsReset').onclick = () => { SW.acc = 0; if (SW.t0 != null) SW.t0 = Date.now(); back.querySelector('#rsNow').textContent = fmtDur(0); recUI(); toast('경과 시간을 0으로 되돌렸습니다'); };
     const sync = () => { back.querySelector('#rsIdle').disabled = !back.querySelector('#rsAuto').checked; back.querySelector('#rsCntP').disabled = !back.querySelector('#rsTime').checked; };
     back.querySelector('#rsAuto').onchange = sync; back.querySelector('#rsTime').onchange = sync; sync();
     const db = back.querySelector('#rsDirBtn');
