@@ -5502,6 +5502,7 @@ recStopBtn.addEventListener('click', () => recStop());
 // 녹화 도구를 작은 창으로 떼어 내기 / 제목 줄에 다시 붙이기
 function recDetach(on, at){
   if (!NATIVE || !NATIVE.recBarOpen) return;
+  document.querySelectorAll('.recghost').forEach(g => g.remove());
   recSet.detached = on; saveRecSet();
   if (on){ NATIVE.recBarOpen(at); if (NATIVE.recBarTop) setTimeout(() => NATIVE.recBarTop(recSet.topMost), 300); }
   else NATIVE.recBarClose();
@@ -5550,6 +5551,7 @@ else window.addEventListener('blur', () => setTimeout(() => { if (!document.hasF
     if (!d) return;
     if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12){
       d.moved = true; try { recBtn.setPointerCapture(d.id); } catch (er) {}
+      document.querySelectorAll('.recghost').forEach(g => g.remove());
       ghost = document.createElement('div'); ghost.className = 'recghost'; ghost.innerHTML = '<b>●</b> 녹화 도구 · 놓으면 떼어집니다';
       document.body.appendChild(ghost);
     }
@@ -5558,7 +5560,7 @@ else window.addEventListener('blur', () => setTimeout(() => { if (!document.hasF
   const end = e => {
     if (!d) return;
     const moved = d.moved; d = null;
-    if (ghost){ ghost.remove(); ghost = null; }
+    document.querySelectorAll('.recghost').forEach(g => g.remove()); ghost = null;
     if (!moved) return;
     recBtn.dataset.noclick = '1'; setTimeout(() => delete recBtn.dataset.noclick, 50);
     const tb = document.querySelector('.titlebar').getBoundingClientRect();
@@ -5567,6 +5569,10 @@ else window.addEventListener('blur', () => setTimeout(() => { if (!document.hasF
   };
   recBtn.addEventListener('pointerup', end);
   recBtn.addEventListener('pointercancel', end);
+  // 끄는 중에 단추가 숨거나 포인터를 놓쳐도 안내가 남지 않게
+  recBtn.addEventListener('lostpointercapture', e => { if (d) end({type: 'pointerup', clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY}); });
+  const sweep = () => { if (!d){ document.querySelectorAll('.recghost').forEach(g => g.remove()); ghost = null; } };
+  document.addEventListener('pointerup', sweep, true); document.addEventListener('pointerdown', sweep, true); window.addEventListener('blur', sweep);
 })();
 // 쓰는 중인지 살펴서 자동 일시정지·다시 시작
 const recActivity = () => { REC.last = Date.now(); if (REC.on && REC.paused && REC.auto) recResume(); };
