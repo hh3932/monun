@@ -532,7 +532,8 @@ const XL_BACK = Object.fromEntries(Object.entries(XL_NAME).map(([a,b]) => [b,a])
 const SIZES = [8,9,10,11,12,14,16,18,20,22,24,26,28,36,48,72];
 
 const $ = s => document.querySelector(s);
-const wrap = $('#wrap'), cv = $('#cv'), ctx = cv.getContext('2d'), spacer = $('#spacer'), ed = $('#ed');
+const wrap = $('#wrap'), cv = $('#cv'), spacer = $('#spacer'), ed = $('#ed');
+let ctx = cv.getContext('2d');   // 그림으로 복사할 때 잠깐 다른 캔버스로 바꿔 그림
 const fx = $('#fx'), nameBox = $('#nameBox'), pop = $('#pop'), menuEl = $('#ctx');
 const mctx = document.createElement('canvas').getContext('2d');
 
@@ -4029,6 +4030,7 @@ ed.addEventListener('keydown', e => {
   }
   if (ctrl){
     const kl = k.toLowerCase();
+    if (kl === 'c' && e.shiftKey){ e.preventDefault(); copyRangeImage(); return; }
     if (kl === 'c'){ prepareCopy(false); return; }
     if (kl === 'x'){ prepareCopy(true); return; }
     if (kl === 'v') return;
@@ -4440,6 +4442,38 @@ const IC = {
   copy: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6.5" y="6.5" width="10" height="10.5" rx="1.5"/><path d="M13.5 6.5V4a1 1 0 0 0-1-1h-8a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h2"/></svg>',
   paste: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="12" height="13.5" rx="1.5"/><rect x="7" y="2.5" width="6" height="3" rx="1"/></svg>',
 };
+// ===== 그림으로 복사: 고른 칸을 화면에 보이는 그대로 그림(PNG)으로 =====
+// 칸 그리는 코드를 그대로 쓰되, 그리는 곳만 잠깐 따로 만든 캔버스로 바꿔서 2배 선명하게 그림 (밝은 화면 기준)
+async function copyRangeImage(){
+  if (editing) commitEdit();
+  hideMenus();
+  const cols = selColsList(), rows = selRowsList();
+  const R = {r1: rows[0], r2: rows[rows.length - 1], c1: cols[0], c2: cols[cols.length - 1]};
+  const w = colX[R.c2 + 1] - colX[R.c1], hh = rowY[R.r2 + 1] - rowY[R.r1], k = 2;
+  if (w < 2 || hh < 2) return;
+  if (w * hh * k * k > 64e6) return toast('범위가 너무 커서 그림으로 만들 수 없어요. 조금 줄여서 골라 주세요');
+  const off = document.createElement('canvas');
+  off.width = Math.ceil((HW + w) * k); off.height = Math.ceil((HH + hh) * k);
+  const keep = {ctx, V, zoom: sh.zoom, dark: darkSheet, peek: sh.peek};
+  try {
+    ctx = off.getContext('2d'); ctx.setTransform(k, 0, 0, k, 0, 0);
+    sh.zoom = 1; darkSheet = false;
+    V = {X: c => HW + colX[c] - colX[R.c1], Y: r => HH + rowY[r] - rowY[R.r1], W: HW + w, H: HH + hh, z: 1, c0: R.c1, c1: R.c2, r0: R.r1, r1: R.r2};
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, HW + w, HH + hh);
+    ctx.save(); ctx.beginPath(); ctx.rect(HW, HH, w, hh); ctx.clip();
+    drawCells(); drawImages();
+    ctx.restore();
+  } finally {
+    ctx = keep.ctx; V = keep.V; sh.zoom = keep.zoom; darkSheet = keep.dark; schedule();
+  }
+  const out = document.createElement('canvas'); out.width = Math.ceil(w * k); out.height = Math.ceil(hh * k);
+  out.getContext('2d').drawImage(off, HW * k, HH * k, w * k, hh * k, 0, 0, w * k, hh * k);
+  try {
+    if (NATIVE && NATIVE.copyImage) await NATIVE.copyImage(out.toDataURL('image/png'));
+    else { const blob = await new Promise(r => out.toBlob(r, 'image/png')); await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]); }
+    toast(`${ref(R.r1, R.c1)}${R.r1 !== R.r2 || R.c1 !== R.c2 ? ':' + ref(R.r2, R.c2) : ''}을 그림으로 복사했습니다 · 카톡·한글 등에 붙여넣으세요`);
+  } catch (e){ toast('그림으로 복사하지 못했습니다'); }
+}
 function openCellMenu(x, y){
   const fc = fullCols(sel);
   const items = [
@@ -4448,6 +4482,7 @@ function openCellMenu(x, y){
     '-',
     {label:'잘라내기', kbd:'Ctrl+X', icon:IC.cut, run: () => menuCopy(true)},
     {label:'복사', kbd:'Ctrl+C', icon:IC.copy, run: () => menuCopy(false)},
+    {label:'그림으로 복사', kbd:'Ctrl+Shift+C', icon:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><path d="m3.5 14 4-4 3 3 2-2 4 4"/><circle cx="13" cy="7.5" r="1.3"/></svg>', run: copyRangeImage},
     {label:'붙여넣기', kbd:'Ctrl+V', icon:IC.paste, run: menuPaste},
     '-',
     {label:'행 삽입 (위에)', run: insertRows},
