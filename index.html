@@ -50,6 +50,31 @@ button{font:inherit;color:inherit}
 #bkState{font-size:12px;color:var(--muted);white-space:nowrap}
 #bkState:not(:empty)::before{content:"·";margin-right:10px}
 .filebtns{display:flex;gap:2px;flex-wrap:wrap;padding-block:6px}
+.tabstrip{display:flex;align-items:flex-end;gap:2px;padding:4px 12px 0;background:var(--bar);border-bottom:1px solid var(--line);flex:none}
+.tabbtn{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:5px 15px 6px;border-radius:7px 7px 0 0;cursor:pointer;margin-bottom:-1px;border:1px solid transparent;border-bottom:0}
+.tabbtn:hover{color:var(--ink);background:var(--hover)}
+.tabbtn.on{color:var(--accent);font-weight:600;background:var(--panel);border-color:var(--line)}
+.tabbtn.filetab{background:var(--accent);color:var(--accent-ink);font-weight:600;margin-right:8px;display:inline-flex;align-items:center;gap:4px}
+.tabbtn.filetab:hover{filter:brightness(1.08);background:var(--accent);color:var(--accent-ink)}
+.tabbtn.filetab svg{width:11px;height:11px}
+.ribbon[hidden],.fbtn[hidden],.tb[hidden]{display:none!important}
+.ribbon .grp.stylegal{display:grid;grid-template-columns:repeat(3,auto);gap:2px 3px;align-content:center}
+.stybtn{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:0 8px;height:18px;font-size:11px!important;cursor:pointer;color:var(--ink);font-family:inherit;line-height:1.2;text-align:left;white-space:nowrap;min-width:74px}
+.stybtn:hover{border-color:var(--accent);background:var(--accent-soft)}
+.lhbox{position:relative;display:inline-flex;align-items:center;gap:4px;color:var(--muted)}
+.lhbox svg{width:18px;height:18px}
+.lhbox #lhIn{width:76px;padding-right:36px;text-align:right}
+.lhbox .pct{position:absolute;right:24px;pointer-events:none;font-size:12px}
+.lhbox .szbtn{right:2px}
+.mi.dis{opacity:.5;cursor:default}
+.mi.dis:hover{background:none}
+.mi .mpath{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mi .mpath b{font-weight:600}
+.mi .mpath.gone{opacity:.5;text-decoration:line-through}
+.mi .mpin{margin-left:auto;padding:2px 4px;border-radius:4px;color:var(--muted);display:grid;place-items:center}
+.mi .mpin:hover{background:var(--line);color:var(--ink)}
+.mi .mpin.on{color:var(--accent)}
+.mi .mpin svg{width:14px;height:14px}
 .fbtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:0;border-radius:6px;background:none;cursor:pointer;white-space:nowrap}
 .fbtn svg{width:17px;height:17px;flex:none}
 .fbtn:hover{background:var(--hover)}
@@ -316,6 +341,33 @@ html.darksheet .wrap{background:#1A1B1D}
     </div>
   </header>
 
+  <div class="tabstrip" id="tabstrip">
+    <button class="tabbtn filetab" data-cmd="fileMenu" id="fileMenuBtn" title="파일 (Alt+F)">파일 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
+    <button class="tabbtn" data-tab="edit">편집</button>
+    <button class="tabbtn" data-tab="fmt">서식</button>
+  </div>
+  <div class="ribbon" id="ribbonFmt" hidden>
+    <div class="grp stylegal" id="styleGal"></div>
+    <div class="sep"></div>
+    <div class="grp" id="slotFont"></div>
+    <div class="sep"></div>
+    <div class="grp" id="slotFmt"></div>
+    <div class="sep"></div>
+    <div class="grp" id="fmtAlign"></div>
+    <div class="sep"></div>
+    <div class="grp">
+      <span class="lhbox" title="줄 간격 (글자 크기의 %, 한글의 줄 간격과 같음)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h9M8 10h9M8 15h9"/><path d="M4 4v12M2.5 5.5 4 4l1.5 1.5M2.5 14.5 4 16l1.5-1.5"/></svg><input class="ctl" id="lhIn" inputmode="numeric" autocomplete="off"><span class="pct">%</span><button class="szbtn" id="lhBtn" tabindex="-1" title="줄 간격 목록"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button></span>
+      <button class="tb" data-cmd="indUp" title="첫 줄 들여쓰기 한 글자 더"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h8M9 10h8M3 15h14"/><path d="M3 7.5 6 10l-3 2.5"/></svg></button>
+      <button class="tb" data-cmd="indDown" title="첫 줄 들여쓰기 한 글자 덜"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h8M9 10h8M3 15h14"/><path d="M6 7.5 3 10l3 2.5"/></svg></button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="tb" data-cmd="bullet" id="tbBullet" title="글머리표 (• ) 넣기·빼기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="4.5" cy="5.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="10" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="14.5" r="1.3" fill="currentColor" stroke="none"/><path d="M8 5.5h9M8 10h9M8 14.5h9"/></svg></button>
+      <button class="tb" data-cmd="numbering" id="tbNumber" title="문단 번호 (1. 2. 3.) 넣기·빼기"><span class="glyph" style="font-family:inherit;font-size:10px;line-height:1.05;text-align:left">1—<br>2—<br>3—</span></button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp" id="fmtMore"></div>
+  </div>
   <div class="ribbon" id="ribbon">
     <div class="grp">
       <button class="tb" data-cmd="undo" title="실행 취소 (Ctrl+Z)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 4 8l3.5 3.5"/><path d="M4.5 8H12a4 4 0 0 1 0 8H8"/></svg></button>
@@ -323,14 +375,14 @@ html.darksheet .wrap{background:#1A1B1D}
       <button class="tb" data-cmd="painter" id="painterBtn" title="서식 복사 (두 번 누르면 계속 적용)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="2.5" width="11" height="4.5" rx="1"/><path d="M14 4.75h2.5V9.5H9.5v2.5"/><rect x="8.25" y="12" width="2.5" height="5.5" rx=".6"/></svg></button>
     </div>
     <div class="sep"></div>
-    <div class="grp">
+    <div class="grp" id="gFont">
       <select class="ctl" id="fontSel" title="글꼴"></select>
       <span class="szbox"><input class="ctl" id="sizeIn" title="글자 크기: 눌러서 고르거나 숫자를 치고 Enter" inputmode="decimal" autocomplete="off"><button class="szbtn" id="sizeBtn" tabindex="-1" title="글자 크기 목록"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button></span>
       <button class="tb" data-cmd="grow" title="글자 크게"><span class="glyph" style="font-family:inherit;font-size:14px">A<sup style="font-size:9px">+</sup></span></button>
       <button class="tb" data-cmd="shrink" title="글자 작게"><span class="glyph" style="font-family:inherit;font-size:12px">A<sup style="font-size:9px">−</sup></span></button>
     </div>
     <div class="sep"></div>
-    <div class="grp">
+    <div class="grp" id="gFmt">
       <button class="tb" data-cmd="bold" id="tbBold" title="굵게 (Ctrl+B)"><span class="glyph" style="font-weight:700">B</span></button>
       <button class="tb" data-cmd="italic" id="tbItalic" title="기울임 (Ctrl+I)"><span class="glyph" style="font-style:italic">I</span></button>
       <button class="tb" data-cmd="underline" id="tbUnder" title="밑줄 (Ctrl+U)"><span class="glyph" style="text-decoration:underline">U</span></button>
@@ -1304,7 +1356,7 @@ let docMode = false, docZoom = 1.4;
 try { docZoom = +localStorage.getItem('monun.docZoom') || 1.4; } catch (e) {}
 const docKeep = () => docMode ? [ed.selectionStart, ed.selectionEnd, ed.scrollTop] : null;
 function layoutDoc(){
-  const top = $('#ribbon').getBoundingClientRect().bottom;
+  const top = $('.ribbon:not([hidden])').getBoundingClientRect().bottom;
   document.documentElement.style.setProperty('--docTop', Math.max(0, top) + 'px');
   // 글 폭은 칸 너비를 확대한 만큼 (칸 안 줄 바꿈과 같게), 너무 좁거나 넓지 않게
   const m = unitOf(act.r, act.c), cwid = (colX[m.c2 + 1] - colX[m.c1] - 8) * docZoom;
@@ -4057,7 +4109,7 @@ nameBox.addEventListener('keydown', e => {
 });
 
 // ===== 화면 갱신 =====
-function setOn(id, on){ const el = document.getElementById(id); if (el) el.classList.toggle('on', !!on); }
+function setOn(id, on){ const el = document.getElementById(id); if (el) el.classList.toggle('on', !!on); document.querySelectorAll(`[data-mirror="${id}"]`).forEach(x => x.classList.toggle('on', !!on)); }
 function refreshUI(){
   const s = st(act.r, act.c);
   setOn('tbBold', s.b); setOn('tbItalic', s.i); setOn('tbUnder', s.u); setOn('tbStrike', s.st);
@@ -4070,6 +4122,7 @@ function refreshUI(){
   if (![...fs.options].some(o => o.value === ff)) fs.add(new Option(ff, ff));
   if (document.activeElement !== fs) fs.value = ff;
   if (document.activeElement !== $('#sizeIn')) $('#sizeIn').value = s.fs || DEF_FS;
+  if (document.activeElement !== $('#lhIn')) $('#lhIn').value = Math.round(lhOf(s) * 100);
   const single = sel.r1 === sel.r2 && sel.c1 === sel.c2 || (mergeOf(act.r, act.c) && contains(mergeOf(act.r, act.c), sel));
   if (document.activeElement !== nameBox) nameBox.value = single ? ref(act.r, act.c) : `${ref(sel.r1, sel.c1)}:${ref(sel.r2, sel.c2)}`;
   if (!editing && document.activeElement !== fx) fx.value = getV(act.r, act.c);
@@ -4227,8 +4280,13 @@ function showMenu(x, y, items){
   hideMenus();
   menuOpenedAt = Date.now();
   menuEl.innerHTML = items.map((it, i) => it === '-' ? '<div class="msep"></div>' :
-    `<button class="mi" data-i="${i}">${it.icon || '<span class="sp"></span>'}<span>${it.label}</span>${it.kbd ? `<kbd>${it.kbd}</kbd>` : ''}</button>`).join('');
-  menuEl.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; hideMenus(); items[+b.dataset.i].run(); };
+    `<button class="mi${it.disabled ? ' dis' : ''}" data-i="${i}"${it.title ? ` title="${esc(it.title)}"` : ''}>${it.icon || '<span class="sp"></span>'}<span class="${it.cls || ''}">${it.label}</span>${it.kbd ? `<kbd>${it.kbd}</kbd>` : ''}${it.pin ? `<span class="mpin${it.pinned ? ' on' : ''}" data-pin="1" title="${it.pinned ? '즐겨찾기에서 빼기' : '즐겨찾기에 고정'}"><svg viewBox="0 0 16 16" fill="${it.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M6 2h4l-.6 4 2.6 2.2H4L6.6 6z"/><path d="M8 8.2V14"/></svg></span>` : ''}</button>`).join('');
+  menuEl.onclick = e => {
+    const b = e.target.closest('[data-i]'); if (!b) return;
+    const it = items[+b.dataset.i]; if (it.disabled) return;
+    if (it.pin && e.target.closest('[data-pin]')){ it.pin(); return; }   // 핀: 메뉴를 닫지 않음
+    hideMenus(); it.run();
+  };
   place(menuEl, x, y);
 }
 function showPop(anchor, html, bind){
@@ -4483,11 +4541,177 @@ function mergePop(anchor){
   ]);
 }
 
+// ===== 탭: 편집 / 서식 =====
+// 서식 탭: 스타일 + (편집 탭의 글꼴·글자 묶음을 옮겨 와서 함께 씀) + 정렬·줄 간격·들여쓰기·글머리표
+const STYLES = [
+  ['바탕글', {b: null, i: null, u: null, st: null, fs: null, fc: null, lh: null, ind: null, ha: null}, 'font-size:12px'],
+  ['본문', {b: null, i: null, fs: 11, lh: 1.6, ind: 1, ha: null}, 'font-size:12px'],
+  ['제목', {b: true, fs: 20, lh: 1.4, ind: null, ha: 'center'}, 'font-size:13px;font-weight:700'],
+  ['개요 1', {b: true, fs: 16, lh: 1.5, ind: null, ha: null}, 'font-size:12.5px;font-weight:700'],
+  ['개요 2', {b: true, fs: 13, lh: 1.5, ind: null, ha: null}, 'font-size:12px;font-weight:700'],
+  ['개요 3', {b: null, fs: 12, lh: 1.5, ind: 1, ha: null}, 'font-size:12px'],
+];
+$('#styleGal').innerHTML = STYLES.map(([n, , css], i) => `<button class="stybtn" data-sty="${i}" style="${css}" title="${n} 스타일 적용">${n}</button>`).join('');
+$('#styleGal').addEventListener('click', e => {
+  const b = e.target.closest('[data-sty]'); if (!b) return;
+  const [n, patch] = STYLES[+b.dataset.sty];
+  applyStyle(Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, v === DEF_LH || (k === 'fs' && v === DEF_FS) ? null : v])));
+  toast(n + ' 스타일을 넣었습니다'); focusGrid();
+});
+// 편집 탭 단추를 복제해 서식 탭에도 (같은 명령, 켜짐 표시는 따라감)
+(() => {
+  const clone = id => { const s = document.getElementById(id), c = s.cloneNode(true); c.removeAttribute('id'); c.dataset.mirror = id; return c; };
+  ['tbAL', 'tbAC', 'tbAR', 'tbWrap'].forEach(id => $('#fmtAlign').appendChild(clone(id)));
+  ['tbPara', 'tbDoc'].forEach(id => $('#fmtMore').appendChild(clone(id)));
+  const cf = document.querySelector('#ribbon [data-cmd="clear"]').cloneNode(true); $('#fmtMore').appendChild(cf);
+})();
+// 줄 간격 % 칸
+const lhIn = $('#lhIn');
+function setLhPct(v){
+  v = Math.round(parseFloat(v));
+  if (!(v >= 50 && v <= 500)) return toast('줄 간격은 50~500% 사이로 넣으세요');
+  applyStyle({lh: Math.abs(v / 100 - DEF_LH) < 0.001 ? null : v / 100});
+}
+lhIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); setLhPct(lhIn.value); focusGrid(); } if (e.key === 'Escape'){ refreshUI(); focusGrid(); } });
+lhIn.addEventListener('change', () => { if (Math.round(parseFloat(lhIn.value)) !== Math.round(lhOf(st(act.r, act.c)) * 100)) setLhPct(lhIn.value); });
+$('#lhBtn').addEventListener('click', () => {
+  const b = lhIn.getBoundingClientRect(), cur = Math.round(lhOf(st(act.r, act.c)) * 100);
+  showMenu(b.left - 10, b.bottom + 4, [100, 115, 128, 130, 150, 160, 180, 200, 250, 300].map(v => ({label: v + '%' + (v === 128 ? ' (기본)' : ''), icon: v === cur ? CHECK : null, run: () => { setLhPct(v); focusGrid(); }})));
+});
+// 글머리표·번호: 칸의 문단마다 맨 앞에 넣거나 (모두 있으면) 뺌. 편집 중이면 커서가 있는 문단만
+const BUL = '• ', NUMRE_P = /^\d+\. /;
+function listPrefix(kind){
+  const has = t => kind === 'bullet' ? t.startsWith(BUL) : NUMRE_P.test(t);
+  const otherLen = t => kind === 'bullet' ? ((t.match(NUMRE_P) || [''])[0].length) : (t.startsWith(BUL) ? BUL.length : 0);   // 다른 종류의 머리표 길이
+  if (editing){
+    if (isFormula(ed.value)) return;
+    const v = ed.value, pos = ed.selectionStart, ls = v.lastIndexOf('\n', pos - 1) + 1, line = v.slice(ls).split('\n')[0];
+    let pre = BUL, n = 1;
+    if (kind === 'num'){ const prev = v.slice(0, ls).split('\n'); prev.pop(); for (let i = prev.length - 1; i >= 0 && NUMRE_P.test(prev[i]); i--) n++; pre = n + '. '; }
+    if (has(line)){ const m = kind === 'bullet' ? BUL.length : line.match(NUMRE_P)[0].length; ed.value = v.slice(0, ls) + v.slice(ls + m); ed.setSelectionRange(Math.max(ls, pos - m), Math.max(ls, pos - m)); }
+    else { const o = otherLen(line); ed.value = v.slice(0, ls) + pre + v.slice(ls + o); const np = Math.max(ls + pre.length, pos + pre.length - o); ed.setSelectionRange(np, np); }
+    sizeEditor(); edInputDone(); return;
+  }
+  const cells = [];
+  for (let r = sel.r1; r <= Math.min(sel.r2, sel.r1 + 2000); r++) for (let c = sel.c1; c <= Math.min(sel.c2, sel.c1 + 200); c++){
+    const m = mergeOf(r, c); if (m && (m.r1 !== r || m.c1 !== c)) continue;
+    const v = getV(r, c); if (v !== '' && !isFormula(v)) cells.push([r, c, v]);
+  }
+  if (!cells.length){ if (sel.r1 === sel.r2 && sel.c1 === sel.c2 && getV(act.r, act.c) === ''){ startEdit('edit', kind === 'bullet' ? BUL : '1. '); } return; }
+  const paras = cells.flatMap(([, , v]) => v.split('\n').filter(t => t.trim()));
+  const remove = paras.length && paras.every(has);
+  mutate(() => {
+    for (const [r, c, v0] of cells){
+      // 문단 하나씩 끼우거나 빼서(setV) 부분 서식이 그대로 남게
+      let v = v0, at = 0, n = 0;
+      const lines = v0.split('\n');
+      for (const line of lines){
+        const keep = line.trim() !== '';
+        if (keep){
+          n++;
+          if (remove && has(line)){ const m = kind === 'bullet' ? BUL.length : line.match(NUMRE_P)[0].length; v = v.slice(0, at) + v.slice(at + m); setV(r, c, v); at += line.length - m + 1; continue; }
+          if (!remove && !has(line)){
+            const pre = kind === 'bullet' ? BUL : n + '. ', o = otherLen(line);
+            if (o){ v = v.slice(0, at) + v.slice(at + o); setV(r, c, v); }
+            v = v.slice(0, at) + pre + v.slice(at); setV(r, c, v); at += line.length - o + pre.length + 1; continue;
+          }
+        }
+        at += line.length + 1;
+      }
+    }
+  });
+}
+let curTab = 'edit';
+try { curTab = localStorage.getItem('monun.tab') || 'edit'; } catch (e) {}
+function setTab(t){
+  curTab = t === 'fmt' ? 'fmt' : 'edit';
+  try { localStorage.setItem('monun.tab', curTab); } catch (e) {}
+  const fmt = curTab === 'fmt';
+  // 글꼴·글자 묶음은 한 벌만 있어서 보이는 탭으로 옮김
+  const gF = $('#gFont'), gM = $('#gFmt');
+  if (fmt){ $('#slotFont').appendChild(gF); $('#slotFmt').appendChild(gM); gF.classList.add('inslot'); gM.classList.add('inslot'); }
+  else if (gF.classList.contains('inslot')){
+    const seps = [...$('#ribbon').querySelectorAll(':scope > .sep')];
+    seps[0].after(gF); seps[1].after(gM); gF.classList.remove('inslot'); gM.classList.remove('inslot');
+  }
+  $('#ribbon').hidden = fmt; $('#ribbonFmt').hidden = !fmt;
+  document.querySelectorAll('.tabbtn[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === curTab));
+  if (docMode) layoutDoc();
+  if (sh) refreshUI();
+}
+$('#tabstrip').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
+setTab(curTab);
+
+// ===== 파일 메뉴 (한글처럼) =====
+// 경로가 길면 한글처럼 가운데를 줄여서: C:\Users\...\폴더\파일.monun
+function shortPath(p){
+  const parts = String(p).split(/[\\/]/);
+  const name = parts.pop(), dir = parts.join('\\');
+  const d = dir.length > 34 ? parts.slice(0, 2).join('\\') + '\\...\\' + parts[parts.length - 1] : dir;
+  return {dir: d, name};
+}
+async function openRecent(p){
+  let f = null;
+  try { f = await NATIVE.readFile(p); } catch (e) {}
+  if (!f) return toast('파일을 찾을 수 없습니다: ' + p);
+  openNative(f);
+}
+function closeDocument(){
+  if (editing) commitEdit();
+  if (NATIVE) return window.close();   // 저장 안 했으면 프로그램이 저장할지 물어봄
+  confirmDiscard(() => { loadWorkbook({sheets: [newSheet('Sheet1')], active: 0}); fileHandle = null; filePath = null; fileName = '제목 없음'; fileDirty = false; updateDoc(); queueAutosave(); });
+}
+async function fileMenu(el){
+  if (editing) commitEdit();
+  const b = (el || $('#fileMenuBtn')).getBoundingClientRect();
+  const items = [
+    {label: '새 문서', kbd: 'Ctrl+N', run: newFile},
+    '-',
+    {label: '불러오기…', kbd: 'Ctrl+O', run: openFile},
+    {label: '저장하기', kbd: 'Ctrl+S', run: () => saveFile(false)},
+    {label: '다른 이름으로 저장하기…', kbd: 'Ctrl+Shift+S', run: () => saveFile(true)},
+    {label: '엑셀(.xlsx)로 저장하기…', run: exportXlsx},
+    {label: 'PDF로 저장하기…', run: openPrint},
+    '-',
+    {label: '쪽 미리 보기', run: () => openPageView()},
+    {label: '인쇄…', kbd: 'Ctrl+P', run: openPrint},
+    {label: '백업·복원…', run: openBackups},
+  ];
+  // 최근 항목: 즐겨찾기(핀)한 파일이 먼저, 그다음 최근에 연 파일 (모두 10개까지)
+  if (NATIVE && NATIVE.recentList){
+    let L = {recent: [], fav: []};
+    try { L = await NATIVE.recentList(); } catch (e) {}
+    const favSet = new Set(L.fav.map(x => x.path.toLowerCase()));
+    const list = [...L.fav.map(x => ({...x, pinned: true})), ...L.recent.filter(x => !favSet.has(x.path.toLowerCase()))].slice(0, 10);
+    items.push('-');
+    if (!list.length) items.push({label: '최근에 연 파일이 없습니다', disabled: true, run: () => {}});
+    list.forEach((x, i) => {
+      const s = shortPath(x.path);
+      items.push({
+        label: `<span class="${x.exists ? '' : 'gone'} mpath">${i + 1}  ${esc(s.dir)}\\<b>${esc(s.name)}</b></span>`,
+        title: x.exists ? x.path : x.path + ' (찾을 수 없음)', pin: async () => { await NATIVE.favToggle(x.path); fileMenu(el); }, pinned: x.pinned,
+        run: () => openRecent(x.path),
+      });
+    });
+  }
+  items.push('-', {label: '문서 닫기', kbd: 'Ctrl+F4', run: closeDocument});
+  if (NATIVE && NATIVE.quitApp) items.push({label: '끝', kbd: 'Alt+X', run: () => { if (editing) commitEdit(); NATIVE.quitApp(); }});
+  showMenu(b.left - 4, b.bottom + 4, items);
+}
+document.addEventListener('keydown', e => {
+  if (e.altKey && !e.ctrlKey && !e.shiftKey && e.code === 'KeyF'){ e.preventDefault(); e.stopPropagation(); fileMenu(); }
+  else if (e.altKey && !e.ctrlKey && !e.shiftKey && e.code === 'KeyX' && NATIVE && NATIVE.quitApp){ e.preventDefault(); e.stopPropagation(); NATIVE.quitApp(); }
+  else if (e.ctrlKey && !e.altKey && e.key === 'F4'){ e.preventDefault(); e.stopPropagation(); closeDocument(); }
+  else if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyN' && !editing){ e.preventDefault(); e.stopPropagation(); newFile(); }
+}, true);
+
 // ===== 리본 =====
 const ribbon = $('#ribbon');
 // 편집 중 색 고르기 창을 눌러도 입력 칸의 글자 선택이 풀리지 않게
 pop.addEventListener('mousedown', e => { if (editing && !e.target.closest('input, select, label')) e.preventDefault(); });
 ribbon.addEventListener('mousedown', e => { if (e.target.closest('button.tb')) e.preventDefault(); });
+$('#ribbonFmt').addEventListener('mousedown', e => { if (e.target.closest('button.tb, .stybtn')) e.preventDefault(); });
+$('#tabstrip').addEventListener('mousedown', e => { if (e.target.closest('.tabbtn')) e.preventDefault(); });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-cmd]'); if (!b) return;
   run(b.dataset.cmd, b);
@@ -4508,7 +4732,9 @@ function run(cmd, el){
     alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
-    themeMenu: () => themeMenu(el), recMenu: () => { if (!el.dataset.noclick) recMenu(el); },
+    themeMenu: () => themeMenu(el), fileMenu: () => fileMenu(el),
+    indUp: () => applyStyle({ind: Math.min(8, (s().ind || 0) + 1)}), indDown: () => applyStyle({ind: Math.max(0, (s().ind || 0) - 1) || null}),
+    bullet: () => listPrefix('bullet'), numbering: () => listPrefix('num'), recMenu: () => { if (!el.dataset.noclick) recMenu(el); },
     wrap: () => applyStyle({wrap: wrapOn(st(act.r, act.c)) ? false : null}), paraMenu: () => paraMenu(el), docMode: () => docMode ? closeDoc() : openDoc(), merge: mergeToggle, mergeMenu: () => mergePop(el),
     border: () => applyBorder(lastBorder), borderMenu: () => borderPop(el),
     clear: clearFormats,
