@@ -67,6 +67,10 @@ button{font:inherit;color:inherit}
 .lhbox .pct{position:absolute;right:24px;pointer-events:none;font-size:12px}
 .lhbox .szbtn{right:2px}
 .mi.dis{opacity:.5;cursor:default}
+.findbar .fall{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--muted);cursor:pointer;padding:0 4px}
+.findbar #findGoBtn{flex:none;padding:0 12px;height:28px}
+::highlight(findhl){background-color:#FFE14D}
+
 .mi.dis:hover{background:none}
 .mi .mpath{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mi .mpath b{font-weight:600}
@@ -483,9 +487,12 @@ html.darksheet .wrap{background:#1A1B1D}
 <div id="findBar" class="findbar" hidden>
   <div class="frow">
     <input class="ctl" id="findQ" placeholder="찾을 내용" spellcheck="false" autocomplete="off">
+    <button class="pbtn" id="findGoBtn" title="찾기 (Enter)">찾기</button>
     <span id="findCount"></span>
     <button class="tb" id="findPrev" title="이전 (Shift+Enter)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 5-5 5 5"/></svg></button>
     <button class="tb" id="findNext" title="다음 (Enter)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 7.5 5 5 5-5"/></svg></button>
+    <label class="chk fall" title="모든 시트에서 찾기"><input type="checkbox" id="findAll"> 모든 시트</label>
+    <button class="tb" id="findClear" title="형광펜 지우기 (Ctrl+D)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m11.5 3.5 5 5-7 7H5v-4.5z"/><path d="M3 17.5h14"/><path d="m4.5 4.5 11 11" stroke-width="1.7"/></svg></button>
     <button class="tb" id="findToggle" title="바꾸기 열기/닫기 (Ctrl+H)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11l-3-3M16 13H5l3 3"/></svg></button>
     <button class="tb" id="findClose" title="닫기 (Esc)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
   </div>
@@ -1328,6 +1335,7 @@ function startEdit(mode, text){
   }
   edDeco();
   ed.classList.add('on');
+  if (findHL) setTimeout(edMarkFind, 0);
   positionEditor();
   if (mode === 'edit'){ const n = ed.value.length; ed.setSelectionRange(n, n); }
   fx.value = ed.value;
@@ -2274,19 +2282,46 @@ function findGoPV(d){
   el.scrollIntoView({block: 'center', behavior: 'smooth'});
   updFindCount();
 }
-const findTerm = () => findBar && !findBar.hidden && !pvOpen && findQ.value ? findQ.value.toLowerCase() : '';
+let findHL = '';   // 칸 안에 형광펜으로 칠하는 찾은 글자 (찾기 창을 닫아도 남음, Ctrl+D로 지움)
+const findTerm = () => !pvOpen ? findHL : '';
+function clearFindHL(){
+  if (!findHL) return;
+  findHL = ''; edMarkFind(); schedule(); toast('형광펜을 지웠습니다');
+}
+// 편집 칸 안에도 형광펜 (글자는 건드리지 않고 표시만: CSS Highlight)
+function edMarkFind(){
+  if (!window.CSS || !CSS.highlights || typeof Highlight === 'undefined') return;
+  CSS.highlights.delete('findhl');
+  if (!editing || !findHL) return;
+  const t = ed.value.toLowerCase(), ranges = [];
+  for (let i = t.indexOf(findHL); i >= 0 && ranges.length < 2000; i = t.indexOf(findHL, i + findHL.length)){
+    try { const a = edPoint(i), b = edPoint(i + findHL.length), r = document.createRange(); r.setStart(a[0], a[1]); r.setEnd(b[0], b[1]); ranges.push(r); } catch (e) {}
+  }
+  if (ranges.length) CSS.highlights.set('findhl', new Highlight(...ranges));
+}
 function runFind(){
   if (pvOpen) return runFindPV();
   schedule();   // 찾은 글자 형광색 다시 그리기
   const q = findQ.value.toLowerCase();
+  findHL = q; edMarkFind();
   findHits = [];
-  if (q) for (const k in sh.cells){
-    const [r, c] = k.split(':').map(Number), v = getV(r, c);
-    if (v === '' || hiddenRows.has(r)) continue;
-    const m = mergeOf(r, c); if (m && (m.r1 !== r || m.c1 !== c)) continue;
-    if (String(v).toLowerCase().includes(q) || String(fmtValue(shown(r, c), st(r, c))).toLowerCase().includes(q)) findHits.push([r, c]);
-  }
-  findHits.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const all = $('#findAll').checked;
+  if (q) wb.sheets.forEach((S, si) => {
+    if (!all && si !== wb.active) return;
+    for (const k in S.cells){
+      const [r, c] = k.split(':').map(Number);
+      if (si === wb.active){
+        const v = getV(r, c);
+        if (v === '' || hiddenRows.has(r)) continue;
+        const m = mergeOf(r, c); if (m && (m.r1 !== r || m.c1 !== c)) continue;
+        if (String(v).toLowerCase().includes(q) || String(fmtValue(shown(r, c), st(r, c))).toLowerCase().includes(q)) findHits.push([si, r, c]);
+      } else {
+        const v = S.cells[k].v;   // 다른 시트는 적힌 글로
+        if (v != null && String(v).toLowerCase().includes(q)) findHits.push([si, r, c]);
+      }
+    }
+  });
+  findHits.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
   updFindCount();
 }
 function updFindCount(){
@@ -2294,17 +2329,20 @@ function updFindCount(){
   if (!findQ.value){ el.textContent = ''; return; }
   if (pvOpen){ el.textContent = !pvHits.length ? '없음' : pvHitI >= 0 ? `${pvHitI + 1}/${pvHits.length}` : `${pvHits.length}줄`; return; }
   if (!findHits.length){ el.textContent = '없음'; return; }
-  const i = findHits.findIndex(([r, c]) => r === act.r && c === act.c);
-  el.textContent = i >= 0 ? `${i + 1}/${findHits.length}` : `${findHits.length}개`;
+  const i = findHits.findIndex(([si, r, c]) => si === wb.active && r === act.r && c === act.c);
+  const ns = new Set(findHits.map(x => x[0])).size;
+  el.textContent = (i >= 0 ? `${i + 1}/${findHits.length}` : `${findHits.length}개`) + (ns > 1 ? ` · 시트 ${ns}개` : '');
 }
 function findGo(d){
   if (pvOpen) return findGoPV(d);
   runFind();
   if (!findHits.length) return toast('찾는 내용이 없습니다');
-  let i = d > 0 ? findHits.findIndex(([r, c]) => r > act.r || (r === act.r && c > act.c))
-                : findHits.map(([r, c]) => r < act.r || (r === act.r && c < act.c)).lastIndexOf(true);
+  // 시트 → 행 → 열 순서로 지금 칸 다음(이전) 것
+  const cur = [wb.active, act.r, act.c], cmp = (x) => x[0] - cur[0] || x[1] - cur[1] || x[2] - cur[2];
+  let i = d > 0 ? findHits.findIndex(x => cmp(x) > 0) : findHits.map(x => cmp(x) < 0).lastIndexOf(true);
   if (i < 0) i = d > 0 ? 0 : findHits.length - 1;
-  const [r, c] = findHits[i];
+  const [si, r, c] = findHits[i];
+  if (si !== wb.active){ switchSheet(si); toast(wb.sheets[si].name + ' 시트'); }
   setSel(r, c); ensureVisible(r, c); updFindCount();
 }
 const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -2324,7 +2362,7 @@ function replaceOne(){
   if (!findQ.value) return;
   if (pvOpen) return toast('쪽 미리보기에서는 [모두 바꾸기]만 됩니다');
   runFind();
-  const onHit = findHits.some(([r, c]) => r === act.r && c === act.c) && String(getV(act.r, act.c)).toLowerCase().includes(findQ.value.toLowerCase());
+  const onHit = findHits.some(([si, r, c]) => si === wb.active && r === act.r && c === act.c) && String(getV(act.r, act.c)).toLowerCase().includes(findQ.value.toLowerCase());
   if (!onHit) return findGo(1);
   mutate(() => replaceCell(act.r, act.c));
   findGo(1);
@@ -2332,7 +2370,7 @@ function replaceOne(){
 function replaceAll(){
   if (!findQ.value) return;
   const wasPV = pvOpen; pvOpen = false; runFind(); pvOpen = wasPV;
-  const targets = findHits.filter(([r, c]) => String(getV(r, c)).toLowerCase().includes(findQ.value.toLowerCase()));
+  const targets = findHits.filter(([si]) => si === wb.active).map(([, r, c]) => [r, c]).filter(([r, c]) => String(getV(r, c)).toLowerCase().includes(findQ.value.toLowerCase()));
   if (!targets.length) return toast('바꿀 내용이 없습니다');
   mutate(() => { for (const [r, c] of targets) replaceCell(r, c); });
   if (pvOpen){ renderPageView().then(() => runFindPV()); } else runFind();
@@ -2349,6 +2387,13 @@ replQ.addEventListener('keydown', e => {
 });
 findBar.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
 $('#findNext').onclick = () => findGo(1);
+$('#findGoBtn').onclick = () => findGo(1);
+$('#findClear').onclick = () => { clearFindHL(); findQ.focus(); };
+$('#findAll').onchange = () => { runFind(); findQ.focus(); };
+// Ctrl+D: 형광펜 지우기 (편집 중에도)
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyD' && findHL){ e.preventDefault(); e.stopPropagation(); clearFindHL(); }
+}, true);
 $('#findPrev').onclick = () => findGo(-1);
 $('#findClose').onclick = closeFind;
 $('#findToggle').onclick = () => { const r = $('#replRow'); r.hidden = !r.hidden; if (!r.hidden) replQ.focus(); };
@@ -4078,7 +4123,7 @@ ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter',
 ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 // 편집기에 서식 있는 글이 섞여 들어오지 않게: 붙여넣기·끌어 놓기는 글자만, 브라우저 자체 서식 명령은 막음
-function edInputDone(){ pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); }
+function edInputDone(){ pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); if (findHL) edMarkFind(); }
 // 수식 입력줄 맞추기: 긴 글을 글자마다 넣으면 입력줄 다시 그리는 데 오래 걸려서, 원고 쓰기 중엔 건너뛰고(닫을 때 맞춤) 긴 글은 잠깐 쉴 때 맞춤
 let fxT = 0;
 function syncFx(){
