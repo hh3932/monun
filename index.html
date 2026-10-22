@@ -3849,7 +3849,7 @@ cv.addEventListener('pointerdown', e => {
     }
     else {
       if (e.shiftKey){ foc = {r:h.r, c:h.c}; sel = expand(norm(act, foc)); afterSel(); }
-      else setSel(h.r, h.c);
+      else { const ow = overlayOwner(h.r, h.c); setSel(ow ? ow.r : h.r, ow ? ow.c : h.c); }   // 넘쳐 보이는 글 위면 그 글의 칸
       drag = {mode:'cells'};
     }
   }
@@ -4032,8 +4032,36 @@ cv.addEventListener('dblclick', e => {
   const h = hit(e);
   if (h.type === 'colh' && h.edge != null) return autofitCols(selCols(h.edge));
   if (h.type === 'rowh' && h.edge != null) return autofitRows(selRows(h.edge));
-  if (h.type === 'cell' && !h.handle){ setSel(h.r, h.c); startEdit('edit', getV(act.r, act.c)); focusGrid(); }
+  if (h.type === 'cell' && !h.handle){
+    const ow = overlayOwner(h.r, h.c);
+    setSel(ow ? ow.r : h.r, ow ? ow.c : h.c); startEdit('edit', getV(act.r, act.c)); focusGrid();
+    caretAtPoint(e.clientX, e.clientY);   // 누른 자리에 커서
+  }
 });
+// 넘쳐 보이는 글(아래 빈칸으로 넘쳐 보이기)이나 펼쳐 보기 위를 누르면, 그 글이 실제로 들어 있는 칸
+function overlayOwner(r, c){
+  if (getV(r, c) !== '' || mergeOf(r, c)) return null;
+  const m = unitOf(act.r, act.c);
+  if (!editing && sh.peek !== false && st(m.r1, m.c1).ov === 'clip' && sel.r1 === m.r1 && sel.c1 === m.c1 && c >= m.c1 && c <= m.c2 && r > m.r2){
+    if (rowY[r] < rowY[m.r1] + textHeight(m.r1, m.c1, colX[m.c2 + 1] - colX[m.c1])) return {r: m.r1, c: m.c1};
+  }
+  for (let r0 = r - 1, n = 0; r0 >= 0 && n < 300; r0--, n++){
+    if (hiddenRows.has(r0)) continue;
+    if (mergeOf(r0, c)) return null;
+    if (getV(r0, c) === '') continue;
+    if (st(r0, c).ov !== 'spill') return null;
+    return rowY[r] < rowY[r0] + textHeight(r0, c, cw(c)) ? {r: r0, c} : null;
+  }
+  return null;
+}
+// 화면의 한 점에 해당하는 글자 위치로 편집 커서 옮기기
+function caretAtPoint(x, y){
+  if (!editing) return;
+  let rg = null;
+  try { rg = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null; } catch (e) {}
+  if (!rg || !ed.contains(rg.startContainer)) return;
+  const s = getSelection(); s.removeAllRanges(); s.addRange(rg);
+}
 cv.addEventListener('contextmenu', e => { e.preventDefault(); if (imageAt(e)) return; openCellMenu(e.clientX, e.clientY); });
 wrap.addEventListener('scroll', () => { const fz = frz(); if (fz.c || fz.r) positionEditor(); schedule(); });
 wrap.addEventListener('wheel', e => {
