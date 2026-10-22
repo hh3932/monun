@@ -4123,7 +4123,11 @@ ed.addEventListener('compositionstart', () => { if (!editing) startEdit('enter',
 ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 // 편집기에 서식 있는 글이 섞여 들어오지 않게: 붙여넣기·끌어 놓기는 글자만, 브라우저 자체 서식 명령은 막음
-function edInputDone(){ pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); if (findHL) edMarkFind(); }
+function edInputDone(){
+  pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); if (findHL) edMarkFind();
+  // 칸에 쓰는 중에도 저장 안 됨(•)으로: 편집을 마치기 전이라도 업데이트·창 닫기 때 저장할지 묻도록
+  if (!fileDirty){ fileDirty = true; updateDoc(); }
+}
 // 수식 입력줄 맞추기: 긴 글을 글자마다 넣으면 입력줄 다시 그리는 데 오래 걸려서, 원고 쓰기 중엔 건너뛰고(닫을 때 맞춤) 긴 글은 잠깐 쉴 때 맞춤
 let fxT = 0;
 function syncFx(){
