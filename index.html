@@ -1002,8 +1002,10 @@ function render(){
   drawHeaders(f, fx, fy, sl, stp, z, W, H);
 }
 
-// 잘린 칸 펼쳐 보기 (편집 중이 아닐 때, 칸 하나만 골랐을 때)
+// 잘린 칸 펼쳐 보기 (편집 중이 아닐 때, 칸 하나만 골랐을 때). 상자보다 글이 길면 peekOff만큼 굴려서 보임
+let peekOff = 0, peekBox = null;
 function drawPeek(){
+  peekBox = null;
   if (sh.peek === false || editing || selImg) return;
   const m = unitOf(act.r, act.c);
   if (!(sel.r1 === m.r1 && sel.c1 === m.c1 && sel.r2 === m.r2 && sel.c2 === m.c2)) return;
@@ -1017,8 +1019,15 @@ function drawPeek(){
   ctx.shadowColor = 'rgba(0,0,0,.22)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 3;
   ctx.fillStyle = DC(s.bg || '#FFFFFF'); ctx.fillRect(x, y, bw, bh);
   ctx.restore();
-  drawText(m.r1, m.c1, {x, y, w: bw, h: bh}, true);
+  const full = need * z + 4, maxOff = Math.max(0, full - bh);
+  peekOff = Math.max(0, Math.min(maxOff / z, peekOff));
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, bw, bh); ctx.clip();
+  drawText(m.r1, m.c1, {x, y: y - peekOff * z, w: bw, h: Math.max(bh, full)}, true);
+  ctx.restore();
   ctx.strokeStyle = TH.sel; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, bw - 2, bh - 2);
+  // 굴릴 수 있으면 오른쪽에 위치 막대
+  if (maxOff > 1){ const th = Math.max(24, bh * bh / full), ty = y + (bh - th) * (peekOff * z / maxOff); ctx.fillStyle = 'rgba(120,128,140,.55)'; ctx.fillRect(x + bw - 6, ty + 2, 3, th - 4); }
+  peekBox = {x, y, w: bw, h: bh, max: maxOff / z};
 }
 // 지금 V(그리는 부분)의 칸들을 그린다: 눈금선, 채우기, 글자, 테두리, 필터 단추
 function drawCells(){
@@ -1384,7 +1393,7 @@ function setRange(R, a){
   const m = mergeOf(act.r, act.c); if (m) act = {r:m.r1, c:m.c1};
   afterSel();
 }
-function afterSel(){ selImg = null; if (!editing) ed.value = ''; positionEditor(); refreshUI(); schedule(); }
+function afterSel(){ peekOff = 0; selImg = null; if (!editing) ed.value = ''; positionEditor(); refreshUI(); schedule(); }
 function clampSel(){
   const cl = (v, n) => Math.max(0, Math.min(n-1, v));
   act = {r:cl(act.r,ROWS), c:cl(act.c,COLS)};
@@ -2981,6 +2990,14 @@ function scrollToText(r, c, at){
   const f = frz(), vh = wrap.clientHeight - HH - rowY[f.r] * z;
   if (r < f.r) return;
   const y = (rowY[m.r1] - rowY[f.r]) * z + pad * 0.5 + yIn;   // 그 줄의 위
+  const have = (rowY[m.r2 + 1] - rowY[m.r1]) * z;
+  if (s.ov === 'clip' && yIn + lineH > have && sh.peek !== false){
+    const cellTop = (rowY[m.r1] - rowY[f.r]) * z;
+    if (cellTop < wrap.scrollTop || cellTop > wrap.scrollTop + vh * 0.4) wrap.scrollTop = Math.max(0, cellTop - 30);
+    const avail = Math.max(lineH * 3, vh - (cellTop - wrap.scrollTop) - 40);
+    peekOff = Math.max(0, (yIn - avail / 2 + lineH / 2) / z);
+    return;
+  }
   if (y < wrap.scrollTop + 20 || y + lineH > wrap.scrollTop + vh - 20) wrap.scrollTop = Math.max(0, y - vh / 2 + lineH / 2);
 }
 function updFindCount(){
@@ -4752,6 +4769,13 @@ function caretAtPoint(x, y){
 cv.addEventListener('contextmenu', e => { e.preventDefault(); if (imageAt(e)) return; openCellMenu(e.clientX, e.clientY); });
 wrap.addEventListener('scroll', () => { const fz = frz(); if (fz.c || fz.r) positionEditor(); schedule(); });
 wrap.addEventListener('wheel', e => {
+  if (!(e.ctrlKey || e.metaKey) && peekBox && peekBox.max > 0){
+    const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, B = peekBox;
+    if (mx >= B.x && mx <= B.x + B.w && my >= B.y && my <= B.y + B.h){
+      const n = Math.max(0, Math.min(B.max, peekOff + e.deltaY / sh.zoom));
+      if (n !== peekOff || (n > 0 && n < B.max)){ e.preventDefault(); peekOff = n; schedule(); return; }
+    }
+  }
   if (!(e.ctrlKey || e.metaKey)) return;
   e.preventDefault(); setZoom(sh.zoom + (e.deltaY < 0 ? 0.1 : -0.1));
 }, {passive:false});
