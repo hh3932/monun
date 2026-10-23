@@ -976,7 +976,7 @@ function drawText(r, c, rect, isMerge){
   // 찾기 중이면 찾은 글자를 칠하려고 글자 위치를 아는 방식(richLines)으로 그림
   const fq = findTerm(), hitHere = !!fq && String(v).toLowerCase().includes(fq);
   const rt = richFor(r, c, v), RL = needRich(rt, s) || hitHere ? richLines(rt || plainRuns(v), s, rect.w - pad*2, ctx, z, doWrap) : null;
-  if (RL && hitHere){ RL.fq = fq; RL.cur = r === act.r && c === act.c; }
+  if (RL && hitHere){ RL.fq = fq; const ch = findCur >= 0 && findHits[findCur]; RL.curAt = ch && ch[0] === wb.active && ch[1] === r && ch[2] === c ? ch[3] : -1; }
   if (RL) ctx.font = fontStr(s, z);
   const lines = RL ? RL.lines.map(L => RL.M.text.slice(L.a, L.b)) : doWrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
   let clip = rect, tw = 0, spill = false;
@@ -1059,7 +1059,7 @@ function drawRichLine(RL, L, x, y, ha){
     for (const [s0, e0] of RL.hits){
       const a = Math.max(s0, L.a), b = Math.min(e0, L.b); if (a >= b) continue;
       const hx = cx + RL.M.meas(L.a, a), hw = RL.M.meas(a, b);
-      ctx.fillStyle = DC(RL.cur ? '#FFA94D' : '#FFE14D'); ctx.fillRect(hx, y - L.px*0.66, hw, L.px*1.32);
+      ctx.fillStyle = DC(s0 === RL.curAt ? '#FFA94D' : '#FFE14D'); ctx.fillRect(hx, y - L.px*0.66, hw, L.px*1.32);
     }
   }
   for (const g of RL.M.segs){
@@ -2314,22 +2314,44 @@ function runFind(){
         const v = getV(r, c);
         if (v === '' || hiddenRows.has(r)) continue;
         const m = mergeOf(r, c); if (m && (m.r1 !== r || m.c1 !== c)) continue;
-        if (String(v).toLowerCase().includes(q) || String(fmtValue(shown(r, c), st(r, c))).toLowerCase().includes(q)) findHits.push([si, r, c]);
+        const shownT = String(fmtValue(shown(r, c), st(r, c))).toLowerCase();   // 화면에 보이는 글 기준 (칠하는 자리와 같게)
+        const t = shownT.includes(q) ? shownT : String(v).toLowerCase();
+        for (let i = t.indexOf(q); i >= 0; i = t.indexOf(q, i + q.length)) findHits.push([si, r, c, i]);
       } else {
         const v = S.cells[k].v;   // 다른 시트는 적힌 글로
-        if (v != null && String(v).toLowerCase().includes(q)) findHits.push([si, r, c]);
+        if (v == null) continue;
+        const t = String(v).toLowerCase();
+        for (let i = t.indexOf(q); i >= 0; i = t.indexOf(q, i + q.length)) findHits.push([si, r, c, i]);
       }
     }
   });
-  findHits.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
+  findHits.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3]);
+  // 지금 보고 있던 것 그대로 유지
+  if (findCurHit) findCur = findHits.findIndex(x => x.join() === findCurHit.join());
   updFindCount();
+}
+let findCur = -1, findCurHit = null;   // 지금 보고 있는 찾은 곳
+// 칸 안에서 at번째 글자가 있는 줄이 화면 가운데쯤 오게 스크롤 (긴 글 칸 안의 단어도 보이게)
+function scrollToText(r, c, at){
+  const m = unitOf(r, c), z = sh.zoom, s = stShow(r, c), raw = shown(r, c), v = String(fmtValue(raw, s));
+  const pad = 3 * z + 1, w = (colX[m.c2 + 1] - colX[m.c1]) * z - pad * 2;
+  let yIn = 0, lineH = (s.fs || DEF_FS) * 4/3 * z * lhOf(s);
+  try {
+    const RL = richLines(richFor(r, c, v) || plainRuns(v), s, w, mctx, z, wrapOn(s, raw));
+    for (const L of RL.lines){ if (at < L.b || L === RL.lines[RL.lines.length - 1]){ lineH = L.h; break; } yIn += L.h; }
+  } catch (e) {}
+  const f = frz(), vh = wrap.clientHeight - HH - rowY[f.r] * z;
+  if (r < f.r) return;
+  const y = (rowY[m.r1] - rowY[f.r]) * z + pad * 0.5 + yIn;   // 그 줄의 위
+  if (y < wrap.scrollTop + 20 || y + lineH > wrap.scrollTop + vh - 20) wrap.scrollTop = Math.max(0, y - vh / 2 + lineH / 2);
 }
 function updFindCount(){
   const el = $('#findCount');
   if (!findQ.value){ el.textContent = ''; return; }
   if (pvOpen){ el.textContent = !pvHits.length ? '없음' : pvHitI >= 0 ? `${pvHitI + 1}/${pvHits.length}` : `${pvHits.length}줄`; return; }
   if (!findHits.length){ el.textContent = '없음'; return; }
-  const i = findHits.findIndex(([si, r, c]) => si === wb.active && r === act.r && c === act.c);
+  const onCur = findCur >= 0 && findHits[findCur] && findHits[findCur][0] === wb.active && findHits[findCur][1] === act.r && findHits[findCur][2] === act.c;
+  const i = onCur ? findCur : findHits.findIndex(([si, r, c]) => si === wb.active && r === act.r && c === act.c);
   const ns = new Set(findHits.map(x => x[0])).size;
   el.textContent = (i >= 0 ? `${i + 1}/${findHits.length}` : `${findHits.length}개`) + (ns > 1 ? ` · 시트 ${ns}개` : '');
 }
@@ -2337,13 +2359,19 @@ function findGo(d){
   if (pvOpen) return findGoPV(d);
   runFind();
   if (!findHits.length) return toast('찾는 내용이 없습니다');
-  // 시트 → 행 → 열 순서로 지금 칸 다음(이전) 것
-  const cur = [wb.active, act.r, act.c], cmp = (x) => x[0] - cur[0] || x[1] - cur[1] || x[2] - cur[2];
-  let i = d > 0 ? findHits.findIndex(x => cmp(x) > 0) : findHits.map(x => cmp(x) < 0).lastIndexOf(true);
-  if (i < 0) i = d > 0 ? 0 : findHits.length - 1;
-  const [si, r, c] = findHits[i];
+  // 지금 보던 것 바로 다음(이전). 다른 칸으로 옮겼으면 그 칸 기준으로 시트 → 행 → 열 → 글자 순서
+  let i;
+  const onCur = findCur >= 0 && findHits[findCur] && findHits[findCur][0] === wb.active && findHits[findCur][1] === act.r && findHits[findCur][2] === act.c;
+  if (onCur) i = (findCur + d + findHits.length) % findHits.length;
+  else {
+    const cur = [wb.active, act.r, act.c], cmp = x => x[0] - cur[0] || x[1] - cur[1] || x[2] - cur[2];
+    i = d > 0 ? findHits.findIndex(x => cmp(x) >= 0) : findHits.map(x => cmp(x) < 0).lastIndexOf(true);
+    if (i < 0) i = d > 0 ? 0 : findHits.length - 1;
+  }
+  findCur = i; findCurHit = findHits[i];
+  const [si, r, c, at] = findHits[i];
   if (si !== wb.active){ switchSheet(si); toast(wb.sheets[si].name + ' 시트'); }
-  setSel(r, c); ensureVisible(r, c); updFindCount();
+  setSel(r, c); ensureVisible(r, c); scrollToText(r, c, at); updFindCount(); schedule();
 }
 const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function replaceIn(v){ return String(v).replace(new RegExp(reEsc(findQ.value), 'gi'), () => replQ.value); }
@@ -2370,7 +2398,8 @@ function replaceOne(){
 function replaceAll(){
   if (!findQ.value) return;
   const wasPV = pvOpen; pvOpen = false; runFind(); pvOpen = wasPV;
-  const targets = findHits.filter(([si]) => si === wb.active).map(([, r, c]) => [r, c]).filter(([r, c]) => String(getV(r, c)).toLowerCase().includes(findQ.value.toLowerCase()));
+  const seen = new Set();
+  const targets = findHits.filter(([si, r, c]) => si === wb.active && !seen.has(r + ':' + c) && seen.add(r + ':' + c)).map(([, r, c]) => [r, c]).filter(([r, c]) => String(getV(r, c)).toLowerCase().includes(findQ.value.toLowerCase()));
   if (!targets.length) return toast('바꿀 내용이 없습니다');
   mutate(() => { for (const [r, c] of targets) replaceCell(r, c); });
   if (pvOpen){ renderPageView().then(() => runFindPV()); } else runFind();
