@@ -2991,13 +2991,28 @@ let findCur = -1, findCurHit = null;   // 지금 보고 있는 찾은 곳
 function scrollToText(r, c, at){
   const m = unitOf(r, c), z = sh.zoom, s = stShow(r, c), raw = shown(r, c), v = String(fmtValue(raw, s));
   const pad = 3 * z + 1, w = (colX[m.c2 + 1] - colX[m.c1]) * z - pad * 2;
-  let yIn = 0, lineH = (s.fs || DEF_FS) * 4/3 * z * lhOf(s);
+  let yIn = 0, xIn = 0, xW = 20, lineH = (s.fs || DEF_FS) * 4/3 * z * lhOf(s);
   try {
     const RL = richLines(richFor(r, c, v) || plainRuns(v), s, w, mctx, z, wrapOn(s, raw));
-    for (const L of RL.lines){ if (at < L.b || L === RL.lines[RL.lines.length - 1]){ lineH = L.h; break; } yIn += L.h; }
+    for (const L of RL.lines){
+      if (at < L.b || L === RL.lines[RL.lines.length - 1]){
+        lineH = L.h;
+        const ha = s.ha || 'left', lead = ha === 'right' ? w - L.w : ha === 'center' ? (w - L.w) / 2 : (L.ind || 0);
+        xIn = lead + RL.M.meas(L.a, Math.max(L.a, Math.min(at, L.b)));
+        xW = RL.M.meas(Math.max(L.a, Math.min(at, L.b)), Math.min(L.b, at + Math.max(1, (findHL || '').length))) || 20;
+        break;
+      }
+      yIn += L.h;
+    }
   } catch (e) {}
   const f = frz(), vh = wrap.clientHeight - HH - rowY[f.r] * z;
   if (r < f.r) return;
+  // 좌우: 찾은 글자가 화면 밖이면, 칸 왼쪽이 같이 보이면 칸 왼쪽에 맞추고 아니면 글자를 가운데로
+  if (c >= f.c){
+    const vw = wrap.clientWidth - HW - colX[f.c] * z, cellL = (colX[m.c1] - colX[f.c]) * z, hx = cellL + pad + xIn;
+    if (hx < wrap.scrollLeft + 10 || hx + xW > wrap.scrollLeft + vw - 20)
+      wrap.scrollLeft = Math.max(0, hx + xW - cellL + 40 <= vw ? cellL - 10 : hx - vw / 2);
+  }
   const y = (rowY[m.r1] - rowY[f.r]) * z + pad * 0.5 + yIn;   // 그 줄의 위
   const have = (rowY[m.r2 + 1] - rowY[m.r1]) * z;
   if (s.ov === 'clip' && yIn + lineH > have && sh.peek !== false){
@@ -3007,7 +3022,10 @@ function scrollToText(r, c, at){
     peekOff = Math.max(0, (yIn - avail / 2 + lineH / 2) / z);
     return;
   }
-  if (y < wrap.scrollTop + 20 || y + lineH > wrap.scrollTop + vh - 20) wrap.scrollTop = Math.max(0, y - vh / 2 + lineH / 2);
+  // 떠 있는 찾기 창 밑은 가려지므로 그만큼 위 여백으로 침
+  const fb = findBar && !findBar.hidden && !findSet.dock ? findBar.getBoundingClientRect() : null, wb0 = wrap.getBoundingClientRect();
+  const topM = fb ? Math.max(20, fb.bottom - wb0.top - HH - rowY[f.r] * z + 10) : 20;
+  if (y < wrap.scrollTop + topM || y + lineH > wrap.scrollTop + vh - 20) wrap.scrollTop = Math.max(0, y - Math.max(topM, vh / 2 - lineH / 2));
 }
 function updFindCount(){
   const el = $('#findCount');
