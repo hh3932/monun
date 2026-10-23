@@ -68,6 +68,23 @@ button{font:inherit;color:inherit}
 .lhbox .szbtn{right:2px}
 .mi.dis{opacity:.5;cursor:default}
 #viewMenuBtn{display:inline-flex;align-items:center;gap:3px}
+.winbtns{display:flex;gap:2px;order:9}
+.winbtns[hidden]{display:none}
+.wbtn{width:34px;height:30px;border:0;border-radius:6px;background:none;color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.wbtn:hover{background:var(--line)}
+.wbtn svg{width:17px;height:17px}
+.wbtn.on{color:var(--accent);background:var(--accent-soft)}
+#pinTopBtn.on svg path:first-child{fill:currentColor}
+/* 프로그램: 맨 위 줄이 제목 줄 (끌어서 창 옮기기, 두 번 눌러 최대화). 오른쪽은 Windows 창 단추 자리 */
+body.natframe .titlebar{-webkit-app-region:drag;padding-right:150px;flex-wrap:nowrap;height:46px;overflow:hidden}
+body.natframe .titlebar button, body.natframe .titlebar input, body.natframe .titlebar a, body.natframe #docName{-webkit-app-region:no-drag}
+body.natframe .filebtns{flex-wrap:nowrap;overflow:hidden;min-width:0;flex-shrink:1}
+body.natframe .doc{flex:1 0 160px}
+body.natframe.v-notop .titlebar{display:flex!important}
+body.natframe.v-notop .titlebar .filebtns{display:none}
+/* 고른 칸만 보기: 표만 남김 */
+body.mini #ribbon, body.mini #ribbonFmt, body.mini .tabstrip, body.mini .fxbar, body.mini .bottombar, body.mini .filebtns, body.mini .brand{display:none!important}
+body.mini .titlebar{padding-left:10px;gap:6px}
 #viewMenuBtn svg{width:10px;height:10px}
 .mi .vck{width:16px;display:inline-block;text-align:center;color:var(--accent);font-weight:700}
 .emset{display:flex;flex-direction:column;gap:7px;min-width:300px}
@@ -116,6 +133,19 @@ button{font:inherit;color:inherit}
 .histpanel .hi.fut{opacity:.45}
 .histpanel .hfoot{font-size:11px;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);line-height:1.4}
 body.v-notop .titlebar, body.v-norib #ribbon, body.v-norib #ribbonFmt, body.v-nofx .fxbar, body.v-nobot .bottombar{display:none!important}
+.tooldock{display:flex;flex-wrap:wrap;gap:4px 6px;padding:4px 10px;background:var(--bar);border-bottom:1px solid var(--line);min-height:0}
+.tooldock[hidden]{display:none}
+.toolbox{position:fixed;z-index:14;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);display:flex;align-items:center;gap:2px;padding:3px 5px 3px 0}
+.tooldock .toolbox{position:static;box-shadow:none;border-radius:7px;background:var(--panel)}
+.toolbox .tgrip{align-self:stretch;width:16px;display:grid;place-items:center;cursor:move;color:var(--muted);font-size:10px;letter-spacing:-1px;user-select:none;border-right:1px solid var(--line);margin-right:3px}
+.toolbox .tgrip:hover{color:var(--ink)}
+.toolbox .tb{width:30px;height:28px}
+.toolbox .tb.labeled{width:auto}
+.toolbox select.ctl{height:28px;max-width:130px}
+.toolbox input.ctl{height:28px;width:120px}
+.toolbox .tx{border:0;background:none;color:var(--muted);cursor:pointer;width:20px;height:24px;border-radius:5px}
+.toolbox .tx:hover{background:var(--line);color:var(--ink)}
+.toolbox.dragging{opacity:.85}
 .findbar .fall{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--muted);cursor:pointer;padding:0 4px}
 .findbar #findGoBtn{flex:none;padding:0 12px;height:28px}
 ::highlight(findhl){background-color:#FFE14D}
@@ -390,6 +420,10 @@ html.darksheet .wrap{background:#1A1B1D}
       모눈
     </div>
     <div class="doc"><span id="docName">제목 없음</span><span id="saveState"></span><span id="bkState"></span></div>
+    <div class="winbtns" id="winBtns" hidden>
+      <button class="wbtn" data-cmd="miniView" id="miniBtn" title="고른 칸만 보기: 고른 칸 크기로 창을 줄여요 (다시 누르면 원래대로) · Ctrl+Shift+M"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="13" rx="1.5" stroke-dasharray="2.2 1.8"/><rect x="6.5" y="7" width="7" height="6" rx="1" fill="currentColor" fill-opacity=".25"/></svg></button>
+      <button class="wbtn" data-cmd="pinTop" id="pinTopBtn" title="상단 고정: 모눈 창을 늘 다른 창 위에 · Ctrl+Shift+T"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M7.5 2.5h5l-.8 5 3.3 2.8H5l3.3-2.8z"/><path d="M10 10.3v7.2"/></svg></button>
+    </div>
     <div class="filebtns">
       <button class="fbtn" data-cmd="install" id="installBtn" title="이 기기에 앱으로 설치" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="2.5" width="9" height="15" rx="2"/><path d="M10 6v6M7.5 9.5 10 12l2.5-2.5M8.5 15h3"/></svg><span>앱으로 설치</span></button>
       <button class="fbtn" data-cmd="recMenu" id="recBtn" title="녹화: 쓰는 과정을 동영상으로 (Ctrl+Alt+R 시작·중지, Ctrl+Alt+P 일시정지)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3.2" fill="currentColor" stroke="none" class="recdot"/></svg><span id="recLbl">녹화</span></button>
@@ -512,6 +546,7 @@ html.darksheet .wrap{background:#1A1B1D}
     </div>
   </div>
 
+  <div class="tooldock" id="toolDock" hidden></div>
   <div class="fxbar">
     <input class="ctl" id="nameBox" title="칸 주소 (입력 후 Enter로 이동)" spellcheck="false">
     <span class="fxlabel">내용</span>
@@ -4866,6 +4901,7 @@ nameBox.addEventListener('keydown', e => {
 // ===== 화면 갱신 =====
 function setOn(id, on){ const el = document.getElementById(id); if (el) el.classList.toggle('on', !!on); document.querySelectorAll(`[data-mirror="${id}"]`).forEach(x => x.classList.toggle('on', !!on)); }
 function refreshUI(){
+  if (typeof syncTools === 'function' && Object.keys(toolEls).length) queueMicrotask(syncTools);
   const s = st(act.r, act.c);
   setOn('tbBold', s.b); setOn('tbItalic', s.i); setOn('tbUnder', s.u); setOn('tbStrike', s.st);
   setOn('tbAL', s.ha === 'left'); setOn('tbAC', s.ha === 'center'); setOn('tbAR', s.ha === 'right');
@@ -5474,6 +5510,164 @@ function applyView(){
   try { localStorage.setItem('monun.view', JSON.stringify(viewSet)); } catch (e) {}
   layout(); positionEditor(); if (findBar && !findBar.hidden) placeFind(); if (docMode) layoutDoc(); if (histOn) placeHist(); schedule();
 }
+// 상단 고정 (다음에 켤 때도 그대로)
+let pinTop = false;
+try { pinTop = localStorage.getItem('monun.top') === '1'; } catch (e) {}
+function setPinTop(on, quiet){
+  if (!(window.native && window.native.winTop)) return;
+  pinTop = on; try { localStorage.setItem('monun.top', on ? '1' : '0'); } catch (e) {}
+  window.native.winTop(on); $('#pinTopBtn').classList.toggle('on', on); syncTools(); $('#pinTopBtn').title = (on ? '상단 고정 중 · 누르면 풀기' : '상단 고정: 모눈 창을 늘 다른 창 위에') + ' · Ctrl+Shift+T';
+  if (!quiet) toast(on ? '상단 고정: 모눈 창이 늘 다른 창 위에 있어요' : '상단 고정을 풀었어요');
+}
+if (window.native && window.native.winTop){ $('#winBtns').hidden = false; if (pinTop) setTimeout(() => setPinTop(true, true), 0); }
+if (window.native && window.native.titleOverlay) document.body.classList.add('natframe');
+// 고른 칸만 보기: 고른 칸(또는 합친 칸)이 꼭 들어가게 창 크기를 줄이고 표만 남김. 다시 누르면 원래 창·화면으로
+let miniOn = false, miniPrevView = null;
+function toggleMini(){
+  if (!(window.native && window.native.winMini)) return;
+  if (editing) commitEdit();
+  if (miniOn){
+    miniOn = false; document.body.classList.remove('mini'); $('#miniBtn').classList.remove('on'); setTimeout(syncTools, 0);
+    if (miniPrevView){ viewSet = miniPrevView; miniPrevView = null; }
+    window.native.winMini(null); setTimeout(applyView, 60); return;
+  }
+  let s = {...sel}; const m = mergeOf(s.r1, s.c1); if (m && s.r1 === s.r2 && s.c1 === s.c2) s = {r1: m.r1, c1: m.c1, r2: m.r2, c2: m.c2};
+  const z = sh.zoom, w = (colX[s.c2 + 1] - colX[s.c1]) * z, hh = (rowY[s.r2 + 1] - rowY[s.r1]) * z;
+  miniOn = true; miniPrevView = {...viewSet};
+  viewSet = {...viewSet, head: false}; document.body.classList.add('mini'); $('#miniBtn').classList.add('on'); applyView();
+  const top = (document.querySelector('.titlebar').getBoundingClientRect().height || 46) + $('#toolDock').getBoundingClientRect().height; setTimeout(syncTools, 0);
+  window.native.winMini({w: Math.ceil(w + 20), h: Math.ceil(Math.min(hh, screen.availHeight * 0.85) + top + 20)});
+  setTimeout(() => { const f = frz(); wrap.scrollLeft = (colX[s.c1] - colX[f.c]) * z; wrap.scrollTop = (rowY[s.r1] - rowY[f.r]) * z; schedule(); }, 250);
+  toast('고른 칸만 보기 · 다시 누르면 원래대로 (Ctrl+Shift+M)');
+}
+document.addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyM' && window.native && window.native.winMini){ e.preventDefault(); e.stopPropagation(); toggleMini(); } }, true);
+document.addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyT' && window.native && window.native.winTop){ e.preventDefault(); e.stopPropagation(); setPinTop(!pinTop); } }, true);
+// ===== 도구 띄우기 =====
+// 묶음마다 리본 단추를 복제해서 담음 (누르면 리본 단추와 똑같이 동작). 글꼴·크기·찾기 칸은 원래 칸과 이어 줌
+const TOOLS = {
+  font: {name: '글꼴', cmds: ['grow', 'shrink'], extra: 'font'},
+  fmt: {name: '글자 모양', cmds: ['bold', 'italic', 'underline', 'strike', 'fc', 'fcMenu', 'bg', 'bgMenu']},
+  align: {name: '맞춤', cmds: ['alignL', 'alignC', 'alignR', 'vTop', 'vMid', 'vBot', 'wrap']},
+  para: {name: '문단', cmds: ['paraMenu', 'indUp', 'indDown', 'bullet', 'numbering']},
+  cell: {name: '테두리·칸', cmds: ['border', 'borderMenu', 'merge', 'mergeMenu']},
+  mark: {name: '수정 표시', cmds: ['editMarkToggle', 'editMarkMenu'], extra: 'mark'},
+  find: {name: '찾기', cmds: [], extra: 'find'},
+  hist: {name: '작업 내역·레이어', cmds: ['undo', 'redo', 'history', 'layers']},
+  view: {name: '보기', cmds: ['docMode'], extra: 'view'},
+};
+let toolSet = {};   // {font: {on, dock, x, y}, ...}
+try { toolSet = JSON.parse(localStorage.getItem('monun.tools') || '{}') || {}; } catch (e) {}
+const saveTools = () => { try { localStorage.setItem('monun.tools', JSON.stringify(toolSet)); } catch (e) {} };
+const toolEls = {};
+const T_SIZES = [8, 9, 10, 10.5, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48];
+function makeTool(key){
+  const T = TOOLS[key], box = document.createElement('div');
+  box.className = 'toolbox'; box.dataset.tool = key;
+  box.innerHTML = `<span class="tgrip" title="${T.name} · 끌어서 옮기기 (위쪽 끝에 놓으면 도구 줄에 붙음)">⋮⋮</span>`;
+  const add = el => box.appendChild(el);
+  if (T.extra === 'font'){
+    const fsel = document.createElement('select'); fsel.className = 'ctl'; fsel.dataset.tsync = 'font'; fsel.title = '글꼴'; fsel.innerHTML = fontSel.innerHTML;
+    fsel.onchange = () => { fontSel.value = fsel.value; fontSel.dispatchEvent(new Event('change')); };
+    const ssel = document.createElement('select'); ssel.className = 'ctl'; ssel.dataset.tsync = 'size'; ssel.title = '글자 크기'; ssel.style.width = '62px';
+    ssel.innerHTML = T_SIZES.map(n => `<option>${n}</option>`).join('');
+    ssel.onmousedown = () => { if (!editing) return; const s = edSel(); savedSel = s && s[0] !== s[1] ? [Math.min(...s), Math.max(...s)] : null; };
+    ssel.onchange = () => { setFontSize(ssel.value); };
+    add(fsel); add(ssel);
+  }
+  if (T.extra === 'find'){
+    const q = document.createElement('input'); q.className = 'ctl'; q.placeholder = '찾을 내용'; q.dataset.tsync = 'find';
+    q.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter'){ e.preventDefault(); findQ.value = q.value; runFind(); findGo(e.shiftKey ? -1 : 1); } };
+    add(q);
+    const mk = (html, title, fn) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = html; b.onclick = fn; add(b); };
+    mk('▲', '이전 (Shift+Enter)', () => { findQ.value = q.value; runFind(); findGo(-1); });
+    mk('▼', '다음 (Enter)', () => { findQ.value = q.value; runFind(); findGo(1); });
+    mk('<span style="font-size:11px">지움</span>', '찾은 글자 형광펜 지우기 (Ctrl+D)', () => clearFindHL());
+    mk('<span style="font-size:11px">바꾸기</span>', '찾기·바꾸기 창 열기 (Ctrl+H)', () => { findQ.value = q.value; openFind(true); });
+  }
+  for (const cmd of T.cmds){
+    const src = document.querySelector(`#ribbon [data-cmd="${cmd}"], #ribbonFmt [data-cmd="${cmd}"]:not([data-mirror])`); if (!src) continue;
+    const c = src.cloneNode(true); if (src.id){ c.removeAttribute('id'); c.dataset.mirror = src.id; c.classList.toggle('on', src.classList.contains('on')); }
+    add(c);
+  }
+  if (T.extra === 'mark'){
+    for (const [d, t, l] of [[-1, '이전 수정한 곳', '◀'], [1, '다음 수정한 곳', '▶']]){ const b = document.createElement('button'); b.className = 'tb'; b.title = t; b.textContent = l; b.onclick = () => goEditMark(d); add(b); }
+  }
+  if (T.extra === 'view'){
+    const mk = (html, title, fn, id) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = html; b.onclick = fn; if (id) b.dataset.tsync = id; add(b); };
+    mk('−', '축소', () => setZoom(sh.zoom - 0.1)); mk('+', '확대', () => setZoom(sh.zoom + 0.1));
+    if (window.native && window.native.winTop){
+      mk($('#miniBtn').innerHTML, '고른 칸만 보기 (Ctrl+Shift+M)', () => toggleMini(), 'mini');
+      mk($('#pinTopBtn').innerHTML, '상단 고정 (Ctrl+Shift+T)', () => setPinTop(!pinTop), 'pin');
+    }
+  }
+  const x = document.createElement('button'); x.className = 'tx'; x.title = '닫기'; x.textContent = '✕'; x.onclick = () => setTool(key, false); add(x);
+  box.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+  box.querySelector('.tgrip').onpointerdown = e => toolDrag(e, key);
+  return box;
+}
+function placeTool(key){
+  const S = toolSet[key], box = toolEls[key]; if (!S || !box) return;
+  if (S.dock){ if (box.parentElement !== $('#toolDock')) $('#toolDock').appendChild(box); box.style.left = box.style.top = ''; }
+  else {
+    if (box.parentElement !== document.body) document.body.appendChild(box);
+    const b = wrap.getBoundingClientRect(), r = box.getBoundingClientRect();
+    const x = S.x ?? b.left + 20, y = S.y ?? b.top + 20;
+    box.style.left = Math.max(0, Math.min(innerWidth - r.width, x)) + 'px'; box.style.top = Math.max(0, Math.min(innerHeight - r.height, y)) + 'px';
+  }
+}
+function setTool(key, on){
+  const S = toolSet[key] = toolSet[key] || {dock: true};
+  S.on = on; saveTools();
+  if (on){ if (!toolEls[key]) toolEls[key] = makeTool(key); placeTool(key); syncTools(); }
+  else if (toolEls[key]){ toolEls[key].remove(); delete toolEls[key]; }
+  layoutTools();
+}
+function layoutTools(){
+  const D = $('#toolDock'); D.hidden = !D.children.length;
+  layout(); positionEditor(); if (histOn) placeHist(); if (findBar && !findBar.hidden) placeFind(); schedule();
+}
+// 원래 칸 값 → 도구 상자 칸 (글꼴·크기·켜짐 상태)
+function syncTools(){
+  for (const k in toolEls){
+    const box = toolEls[k];
+    box.querySelectorAll('[data-tsync]').forEach(el => {
+      const t = el.dataset.tsync;
+      if (t === 'font' && document.activeElement !== el){ if (el.options.length !== fontSel.options.length) el.innerHTML = fontSel.innerHTML; el.value = fontSel.value; }
+      if (t === 'size' && document.activeElement !== el){ const v = parseFloat(sizeIn.value); if (!T_SIZES.includes(v) && v){ const o = document.createElement('option'); o.textContent = v; el.prepend(o); } el.value = String(v || ''); }
+      if (t === 'mini') el.classList.toggle('on', !!miniOn);
+      if (t === 'pin') el.classList.toggle('on', !!pinTop);
+    });
+  }
+}
+// 끌기: 다른 상자·표 가장자리에 착 붙음, 위쪽 도구 줄(단추 줄 아래)에 놓으면 붙음
+function toolDrag(e, key){
+  if (e.button !== 0) return;
+  const g = window, box = toolEls[key], S = toolSet[key]; e.preventDefault();
+  let r = box.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top, moved = false, dockIt = false;
+  const mv = ev => {
+    if (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 5) return;
+    if (!moved){ moved = true; box.classList.add('dragging'); if (S.dock){ S.dock = false; document.body.appendChild(box); layoutTools(); r = box.getBoundingClientRect(); dx = 8; dy = 10; } }
+    const b = wrap.getBoundingClientRect(), D = $('#toolDock').getBoundingClientRect(), top = D.height ? D.top : b.top;
+    dockIt = ev.clientY < top + 18 && ev.clientY > top - 60;
+    const SN = 10; let x = ev.clientX - dx, y = ev.clientY - dy;
+    const xs = [b.left, b.right - r.width], ys = [b.top, b.bottom - r.height];
+    for (const k in toolEls){ if (k === key || toolSet[k].dock) continue; const o = toolEls[k].getBoundingClientRect(); xs.push(o.left, o.right + 2, o.left - r.width - 2); ys.push(o.top, o.bottom + 2, o.top - r.height - 2); }
+    for (const v of xs) if (Math.abs(x - v) < SN){ x = v; break; }
+    for (const v of ys) if (Math.abs(y - v) < SN){ y = v; break; }
+    box.style.left = Math.max(0, Math.min(innerWidth - r.width, x)) + 'px'; box.style.top = Math.max(0, Math.min(innerHeight - r.height, y)) + 'px';
+    $('#toolDock').hidden = false; $('#toolDock').style.outline = dockIt ? '2px dashed var(--accent)' : '';
+    if (!$('#toolDock').children.length && !dockIt) $('#toolDock').hidden = true;
+  };
+  const up = () => {
+    g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); g.removeEventListener('pointercancel', up);
+    box.classList.remove('dragging'); $('#toolDock').style.outline = '';
+    if (!moved) return;
+    if (dockIt) S.dock = true; else { const p = box.getBoundingClientRect(); S.dock = false; S.x = p.left; S.y = p.top; }
+    saveTools(); placeTool(key); layoutTools();
+  };
+  g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+}
+setTimeout(() => { for (const k in toolSet) if (toolSet[k].on && TOOLS[k]) setTool(k, true); }, 0);
 function viewMenu(el){
   if (editing) commitEdit();
   const b = (el || $('#viewMenuBtn')).getBoundingClientRect();
@@ -5493,10 +5687,14 @@ function viewMenu(el){
     T('레이어 창', histOn && panelTab === 'layer', () => showPanelTab('layer')),
     T('찾기 창', !findBar.hidden, () => { if (findBar.hidden) openFind(); else closeFind(); }, 'Ctrl+F'),
     '-',
+    {label: '<b>도구 띄우기</b> (끌어서 옮김 · 위쪽 끝에 놓으면 도구 줄에 붙음)', icon: '<span class="vck"></span>', disabled: true, run: () => {}},
+    ...Object.keys(TOOLS).map(k => T('　' + TOOLS[k].name, !!(toolSet[k] && toolSet[k].on), () => setTool(k, !(toolSet[k] && toolSet[k].on)))),
+    '-',
     T('수정한 곳 형광펜', editSet.on, () => setEditMark({on: !editSet.on})),
     T('레이어 글자를 레이어 색으로', wb.lyTint !== false, () => lyCmd('tint')),
     T('찾은 글자 형광펜', !!findHL, () => { if (findHL) clearFindHL(); else toast('Ctrl+F로 찾으면 다시 칠해져요'); }),
     '-',
+    ...(window.native && window.native.winTop ? [T('상단 고정 (늘 다른 창 위에)', pinTop, () => setPinTop(!pinTop), 'Ctrl+Shift+T'), T('고른 칸만 보기 (창 줄이기)', miniOn, () => toggleMini(), 'Ctrl+Shift+M')] : []),
     T('전체 화면', !!document.fullscreenElement, () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); }, 'F11'),
     {label: all ? '모두 보이는 중' : '모두 다시 보이기', icon: '<span class="vck"></span>', disabled: all, run: () => { viewSet = {top: true, rib: true, fx: true, head: true, bot: true}; applyView(); }},
   ]);
@@ -5578,7 +5776,7 @@ function run(cmd, el){
     alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
-    themeMenu: () => themeMenu(el), fileMenu: () => fileMenu(el), viewMenu: () => viewMenu(el),
+    themeMenu: () => themeMenu(el), fileMenu: () => fileMenu(el), viewMenu: () => viewMenu(el), pinTop: () => setPinTop(!pinTop), miniView: () => toggleMini(),
     history: () => showPanelTab('hist'), layers: () => showPanelTab('layer'),
     editMarkToggle: () => setEditMark({on: !editSet.on}), editMarkMenu: () => editMarkMenu(el),
     indUp: () => applyStyle({ind: Math.min(8, (s().ind || 0) + 1)}), indDown: () => applyStyle({ind: Math.max(0, (s().ind || 0) - 1) || null}),
@@ -6327,6 +6525,7 @@ function applyTheme(){
   darkSheet = themeMode === 'dark' || (themeMode === 'auto' && osDark.matches);
   root.classList.toggle('darksheet', darkSheet);
   readTheme(); schedule();
+  if (window.native && window.native.titleOverlay) setTimeout(() => { const cs = getComputedStyle(document.documentElement); window.native.titleOverlay({color: cs.getPropertyValue('--bar').trim(), symbol: cs.getPropertyValue('--ink').trim()}); }, 0);
 }
 function themeMenu(el){
   const b = el.getBoundingClientRect();
