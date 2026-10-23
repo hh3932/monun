@@ -1337,7 +1337,7 @@ function drawHeaders(f, fx, fy, sl, stp, z, W, H){
       const x = X(c), w = X(c+1) - x, on = c >= sel.c1 && c <= sel.c2;
       if (on){ ctx.fillStyle = fcs ? TH.sel : TH['head-sel']; ctx.fillRect(x, 0, w, HH); }
       ctx.fillStyle = on ? (fcs ? '#fff' : TH['head-sel-ink']) : TH['head-ink'];
-      if (w > 14) ctx.fillText(colName(c), x + w/2, HH/2 + 1);
+      if (w > 14) ctx.fillText(viewSet.colNum ? String(c + 1) : colName(c), x + w/2, HH/2 + 1);
       ctx.fillStyle = TH['head-line']; ctx.fillRect(Math.round(X(c+1))-1, 0, 1, HH);
       if (on && !fcs){ ctx.fillStyle = TH.sel; ctx.fillRect(x, HH-2, w, 2); }
     }
@@ -4766,7 +4766,8 @@ function caretAtPoint(x, y){
   if (!rg || !ed.contains(rg.startContainer)) return;
   const s = getSelection(); s.removeAllRanges(); s.addRange(rg);
 }
-cv.addEventListener('contextmenu', e => { e.preventDefault(); if (imageAt(e)) return; openCellMenu(e.clientX, e.clientY); });
+let ctxOnHead = false;
+cv.addEventListener('contextmenu', e => { e.preventDefault(); if (imageAt(e)) return; ctxOnHead = HH > 0 && e.clientY - cv.getBoundingClientRect().top < HH; openCellMenu(e.clientX, e.clientY); ctxOnHead = false; });
 wrap.addEventListener('scroll', () => { const fz = frz(); if (fz.c || fz.r) positionEditor(); schedule(); });
 wrap.addEventListener('wheel', e => {
   if (!(e.ctrlKey || e.metaKey) && peekBox && peekBox.max > 0){
@@ -5280,6 +5281,7 @@ async function copyRangeImage(){
 function openCellMenu(x, y){
   const fc = fullCols(sel);
   const items = [
+    ...(fc || ctxOnHead ? [{label: viewSet.colNum ? '열 이름을 글자로 (1 2 3 → A B C)' : '열 이름을 숫자로 (A B C → 1 2 3)', run: () => { viewSet.colNum = !viewSet.colNum; applyView(); }}, '-'] : []),
     {label:'선택한 칸 쪽 미리보기', icon:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 5.5C8.5 4.3 6 3.8 3 4v11.5c3-.2 5.5.3 7 1.5 1.5-1.2 4-1.7 7-1.5V4c-3-.2-5.5.3-7 1.5z"/><path d="M10 5.5V17"/></svg>', run: () => openPageView(true)},
     {label:'원고 쓰기 (이 칸만 크게)', kbd:'Ctrl+Shift+E', run: openDoc},
     '-',
@@ -5525,7 +5527,7 @@ function closeDocument(){
   confirmDiscard(() => { loadWorkbook({sheets: [newSheet('Sheet1')], active: 0}); fileHandle = null; filePath = null; fileName = '제목 없음'; fileDirty = false; updateDoc(); queueAutosave(); });
 }
 // ===== 표시: 화면에 보일 것 =====
-let viewSet = {top: true, rib: true, fx: true, head: true, bot: true};
+let viewSet = {top: true, rib: true, fx: true, head: true, bot: true, colNum: false};
 try { Object.assign(viewSet, JSON.parse(localStorage.getItem('monun.view') || '{}')); } catch (e) {}
 function applyView(){
   const B = document.body.classList;
@@ -5698,12 +5700,13 @@ function viewMenu(el){
   const ck = on => `<span class="vck">${on ? '✓' : ''}</span>`;
   const T = (label, on, fn, kbd) => ({label, icon: ck(on), kbd, run: () => { fn(); setTimeout(() => viewMenu(el), 0); }});
   const V = (k, label) => T(label, viewSet[k], () => { viewSet[k] = !viewSet[k]; applyView(); });
-  const all = Object.values(viewSet).every(Boolean);
+  const all = ['top', 'rib', 'fx', 'head', 'bot'].every(k => viewSet[k]);
   showMenu(b.left - 4, b.bottom + 4, [
     V('top', '맨 위 줄 (녹화·화면·저장 단추)'),
     V('rib', '단추 줄 (편집·서식 단추)'),
     V('fx', '내용 입력줄'),
     V('head', '행·열 머리글 (A B C / 1 2 3)'),
+    V('colNum', '열 이름을 숫자로 (A B C → 1 2 3)'),
     T('눈금선', !!sh.grid, () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); }),
     V('bot', '아래 줄 (시트 탭·글자 수·확대)'),
     '-',
@@ -5720,7 +5723,7 @@ function viewMenu(el){
     '-',
     ...(window.native && window.native.winTop ? [T('상단 고정 (늘 다른 창 위에)', pinTop, () => setPinTop(!pinTop), 'Ctrl+Shift+T'), T('고른 칸만 보기 (창 줄이기)', miniOn, () => toggleMini(), 'Ctrl+Shift+M')] : []),
     T('전체 화면', !!document.fullscreenElement, () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); }, 'F11'),
-    {label: all ? '모두 보이는 중' : '모두 다시 보이기', icon: '<span class="vck"></span>', disabled: all, run: () => { viewSet = {top: true, rib: true, fx: true, head: true, bot: true}; applyView(); }},
+    {label: all ? '모두 보이는 중' : '모두 다시 보이기', icon: '<span class="vck"></span>', disabled: all, run: () => { viewSet = {top: true, rib: true, fx: true, head: true, bot: true, colNum: viewSet.colNum}; applyView(); }},
   ]);
 }
 document.addEventListener('keydown', e => {
