@@ -77,6 +77,12 @@ button{font:inherit;color:inherit}
 .emset .navs .pbtn{flex:1;height:28px;font-size:12px}
 .histpanel{position:fixed;z-index:14;right:18px;bottom:44px;width:250px;max-height:min(460px,60vh);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
 .histpanel[hidden]{display:none}
+.histpanel.docked{border-radius:0;box-shadow:none;max-height:none;bottom:auto}
+.histpanel.docked.left{border-width:0 1px 0 0}
+.histpanel.docked.right{border-width:0 0 0 1px}
+.histpanel.dragging{opacity:.85}
+#dockGuide{position:fixed;z-index:13;background:color-mix(in srgb,var(--accent) 22%,transparent);border:2px dashed var(--accent);border-radius:6px;pointer-events:none}
+#dockGuide[hidden]{display:none}
 .histpanel .hhead{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;border-bottom:1px solid var(--line);font-size:13px;cursor:move;user-select:none}
 .histpanel .hhead #histCount{font-size:11.5px;color:var(--muted)}
 .histpanel .hhead .sp{flex:1}
@@ -523,8 +529,8 @@ html.darksheet .wrap{background:#1A1B1D}
 <div id="histPanel" class="histpanel" hidden>
   <div class="hhead"><b>작업 내역</b><span id="histCount"></span><span class="sp"></span><button class="tb" id="histClose" title="닫기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button></div>
   <div class="hlist" id="histList"></div>
-  <div class="hfoot">누르면 그때 상태로 돌아가요 · 그 뒤에 새로 고치면 아래(회색) 내역은 사라짐</div>
 </div>
+<div id="dockGuide" hidden></div>
 <div id="findBar" class="findbar" hidden>
   <div class="frow">
     <input class="ctl" id="findQ" placeholder="찾을 내용" spellcheck="false" autocomplete="off">
@@ -2401,21 +2407,58 @@ function clearFindHL(){
 let histOn = false;
 try { histOn = localStorage.getItem('monun.hist') === '1'; } catch (e) {}
 const histPanel = $('#histPanel'), histList = $('#histList');
+const HIST_MAX = 30;
+// 자리: float(안에 떠 있음, x·y) / left·right(옆에 붙음) / window(따로 창, 프로그램에서만)
+let histSet = {mode: 'float', x: null, y: null, w: 250};
+try { Object.assign(histSet, JSON.parse(localStorage.getItem('monun.histpos') || '{}')); } catch (e) {}
+if (histSet.mode === 'window' && !(window.native && window.native.histOpen)) histSet.mode = 'float';
+const saveHistSet = () => { try { localStorage.setItem('monun.histpos', JSON.stringify(histSet)); } catch (e) {} };
 function toggleHist(on = !histOn){
   histOn = on; try { localStorage.setItem('monun.hist', on ? '1' : '0'); } catch (e) {}
-  histPanel.hidden = !on; setOn('tbHistory', on); histRender();
+  setOn('tbHistory', on);
+  if (histSet.mode === 'window'){ histPanel.hidden = true; if (on) window.native.histOpen(); else window.native.histClose(); }
+  else histPanel.hidden = !on;
+  placeHist(); histRender();
 }
+// 지금 모드대로 자리 잡기. 옆에 붙으면 표가 그만큼 좁아짐
+function placeHist(){
+  const P = histPanel, docked = histOn && (histSet.mode === 'left' || histSet.mode === 'right');
+  wrap.style.marginLeft = docked && histSet.mode === 'left' ? histSet.w + 'px' : '';
+  wrap.style.marginRight = docked && histSet.mode === 'right' ? histSet.w + 'px' : '';
+  P.classList.toggle('docked', docked); P.classList.toggle('left', docked && histSet.mode === 'left'); P.classList.toggle('right', docked && histSet.mode === 'right');
+  P.style.width = histSet.w + 'px';
+  if (P.hidden) return;
+  const b = wrap.getBoundingClientRect();
+  if (docked){
+    P.style.top = b.top + 'px'; P.style.height = b.height + 'px'; P.style.bottom = 'auto';
+    if (histSet.mode === 'left'){ P.style.left = '0px'; P.style.right = 'auto'; } else { P.style.right = '0px'; P.style.left = 'auto'; }
+  } else {
+    P.style.height = '';
+    if (histSet.x == null){ P.style.left = 'auto'; P.style.top = 'auto'; P.style.right = '18px'; P.style.bottom = '44px'; }
+    else {
+      const r = P.getBoundingClientRect();
+      P.style.left = Math.max(0, Math.min(innerWidth - r.width, histSet.x)) + 'px'; P.style.top = Math.max(b.top - 40, Math.min(innerHeight - 60, histSet.y)) + 'px';
+      P.style.right = P.style.bottom = 'auto';
+    }
+  }
+}
+new ResizeObserver(() => { if (histOn) placeHist(); }).observe(wrap);
+addEventListener('resize', () => { if (histOn) placeHist(); });
 let histRaf = 0;
 function histRender(){
   if (!histOn || histRaf) return;
   histRaf = requestAnimationFrame(() => {
     histRaf = 0;
     const n = undoStack.length, esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[ch]);
-    const row = (i, m, cls) => `<div class="hi${cls}" data-h="${i}" title="${esc(m.label)}${m.sheet ? ' (' + esc(m.sheet) + ')' : ''}"><span class="hl">${esc(m.label)}</span><span class="ht">${hhmm(m.t)}</span></div>`;
-    let html = `<div class="hi${n === 0 ? ' cur' : ''}" data-h="0"><span class="hl">처음 상태</span></div>`;
-    undoMeta.forEach((m, i) => { html += row(i + 1, m || {label: '고침', t: Date.now()}, i + 1 === n ? ' cur' : ''); });
-    for (let j = redoMeta.length - 1, k = n + 1; j >= 0; j--, k++) html += row(k, redoMeta[j] || {label: '고침', t: Date.now()}, ' fut');
-    histList.innerHTML = html;
+    const row = (i, m, cls) => `<div class="hi${cls}" data-h="${i}" title="${esc(m.label)}${m.sheet ? ' (' + esc(m.sheet) + ')' : ''}"><span class="hl">${esc(m.label)}</span><span class="ht">${m.t ? hhmm(m.t) : ''}</span></div>`;
+    // [번호, 이름표, 시간, 지금/앞으로]: 처음 상태 + 한 일 + 되돌린 일 → 지금 것 근처 최대 30개
+    let items = [[0, '처음 상태', 0, n === 0 ? 'cur' : '']];
+    undoMeta.forEach((m, i) => items.push([i + 1, (m || {}).label || '고침', (m || {}).t || 0, i + 1 === n ? 'cur' : '']));
+    for (let j = redoMeta.length - 1, k = n + 1; j >= 0; j--, k++) items.push([k, (redoMeta[j] || {}).label || '고침', (redoMeta[j] || {}).t || 0, 'fut']);
+    if (items.length > HIST_MAX){ const s = Math.max(0, Math.min(n - (HIST_MAX - 6), items.length - HIST_MAX)); items = items.slice(s, s + HIST_MAX); }
+    $('#histCount').textContent = n + (redoMeta.length ? ' / ' + (n + redoMeta.length) : '') + '개';
+    histList.innerHTML = items.map(([i, l, t, cls]) => row(i, {label: l, t}, cls ? ' ' + cls : '')).join('');
+    if (histSet.mode === 'window' && window.native && window.native.histState) window.native.histState({items: items.map(([i, l, t, cls]) => [i, l, t ? hhmm(t) : '', cls]), count: $('#histCount').textContent});
     $('#histCount').textContent = n + (redoMeta.length ? ' / ' + (n + redoMeta.length) : '') + '개';
     const cur = histList.querySelector('.cur'); if (cur) cur.scrollIntoView({block: 'nearest'});
   });
@@ -2423,12 +2466,48 @@ function histRender(){
 histList.onclick = e => { const it = e.target.closest('[data-h]'); if (it) histGo(+it.dataset.h); };
 $('#histClose').onclick = () => toggleHist(false);
 // 머리를 끌어서 옮기기
+const guide = $('#dockGuide');
 histPanel.querySelector('.hhead').onpointerdown = e => {
-  if (e.target.closest('button')) return;
-  const r = histPanel.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
-  const mv = ev => { histPanel.style.left = Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx)) + 'px'; histPanel.style.top = Math.max(0, Math.min(innerHeight - 40, ev.clientY - dy)) + 'px'; histPanel.style.right = histPanel.style.bottom = 'auto'; };
-  const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
-  addEventListener('pointermove', mv); addEventListener('pointerup', up);
+  if (e.target.closest('button') || e.button !== 0) return;
+  const head = e.currentTarget; head.setPointerCapture(e.pointerId);
+  let r = histPanel.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top, moved = false, target = null;
+  const SNAP = 14, EDGE = 36;
+  const mv = ev => {
+    if (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 6) return;
+    if (!moved){
+      moved = true; histPanel.classList.add('dragging');
+      if (histSet.mode !== 'float'){ histSet.mode = 'float'; placeHist(); r = histPanel.getBoundingClientRect(); dx = Math.min(dx, r.width - 30); dy = 14; }
+    }
+    const b = wrap.getBoundingClientRect(), out = ev.clientX < 0 || ev.clientY < 0 || ev.clientX >= innerWidth || ev.clientY >= innerHeight;
+    target = out && window.native && window.native.histOpen ? 'window' : ev.clientX < b.left + EDGE && ev.clientY > b.top ? 'left' : ev.clientX > b.right - EDGE && ev.clientY > b.top ? 'right' : null;
+    guide.hidden = !(target === 'left' || target === 'right');
+    if (!guide.hidden) Object.assign(guide.style, {top: b.top + 'px', height: b.height + 'px', width: histSet.w + 'px', left: (target === 'left' ? b.left : b.right - histSet.w) + 'px'});
+    // 떠 있을 때: 표 가장자리 가까이 가면 착 붙음
+    let x = ev.clientX - dx, y = ev.clientY - dy;
+    if (Math.abs(x - b.left) < SNAP) x = b.left; if (Math.abs(x + r.width - b.right) < SNAP) x = b.right - r.width;
+    if (Math.abs(y - b.top) < SNAP) y = b.top; if (Math.abs(y + r.height - b.bottom) < SNAP) y = b.bottom - r.height;
+    histPanel.style.left = Math.max(0, Math.min(innerWidth - r.width, x)) + 'px'; histPanel.style.top = Math.max(0, Math.min(innerHeight - 40, y)) + 'px';
+    histPanel.style.right = histPanel.style.bottom = 'auto';
+  };
+  const up = ev => {
+    head.removeEventListener('pointermove', mv); head.removeEventListener('pointerup', up); head.removeEventListener('pointercancel', up);
+    histPanel.classList.remove('dragging'); guide.hidden = true;
+    if (!moved) return;
+    if (target === 'window'){ histSet.mode = 'window'; saveHistSet(); histPanel.hidden = true; placeHist(); window.native.histOpen({x: ev.screenX, y: ev.screenY}); setTimeout(histRender, 300); return; }
+    if (target){ histSet.mode = target; }
+    else { const p = histPanel.getBoundingClientRect(); histSet.mode = 'float'; histSet.x = p.left; histSet.y = p.top; }
+    saveHistSet(); placeHist(); histRender();
+  };
+  head.addEventListener('pointermove', mv); head.addEventListener('pointerup', up); head.addEventListener('pointercancel', up);
+};
+// 머리를 두 번 누르면: 붙어 있으면 떼고, 떠 있으면 오른쪽에 붙임
+histPanel.querySelector('.hhead').ondblclick = e => { if (e.target.closest('button')) return; histSet.mode = histSet.mode === 'float' ? 'right' : 'float'; saveHistSet(); placeHist(); };
+// 따로 창에서 오는 명령
+window.__histCmd = c => {
+  if (c && c.go != null) return histGo(+c.go);
+  if (c === 'dock'){ histSet.mode = 'float'; saveHistSet(); if (window.native && window.native.histClose) window.native.histClose(true); histPanel.hidden = !histOn; placeHist(); histRender(); return; }
+  if (c === 'closed'){ if (histSet.mode === 'window'){ histOn = false; try { localStorage.setItem('monun.hist', '0'); } catch (e) {} setOn('tbHistory', false); } return; }
+  if (c === 'ready') histRender();
 };
 setTimeout(() => toggleHist(histOn), 0);
 
