@@ -84,6 +84,24 @@ button{font:inherit;color:inherit}
 #dockGuide{position:fixed;z-index:13;background:color-mix(in srgb,var(--accent) 22%,transparent);border:2px dashed var(--accent);border-radius:6px;pointer-events:none}
 #dockGuide[hidden]{display:none}
 .histpanel .hhead{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;border-bottom:1px solid var(--line);font-size:13px;cursor:move;user-select:none}
+.histpanel .htab{border:0;background:none;color:var(--muted);font:inherit;font-size:12.5px;padding:3px 7px;border-radius:6px;cursor:pointer}
+.histpanel .htab.on{color:var(--ink);font-weight:700;background:var(--accent-soft)}
+.histpanel .lrow{display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:12.5px;cursor:pointer;border-bottom:1px solid var(--line)}
+.histpanel .lrow:hover{background:var(--hover,rgba(127,127,127,.12))}
+.histpanel .lrow.cur{background:var(--accent-soft)}
+.histpanel .lrow .eye{width:24px;height:22px;border:0;background:none;cursor:pointer;color:var(--ink);display:grid;place-items:center;padding:0}
+.histpanel .lrow .eye.off{opacity:.3}
+.histpanel .lrow .lsw{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.15);flex:none;cursor:pointer}
+.histpanel .lrow .lnm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.histpanel .lrow .lnm input{width:100%;font:inherit;padding:1px 4px}
+.histpanel .lrow .lc{font-size:11px;color:var(--muted)}
+.histpanel .lrow .pen{font-size:11px;color:var(--accent);font-weight:700}
+.histpanel .lrow.base{cursor:pointer;background:transparent}
+.histpanel .lrow.base.cur{background:var(--accent-soft)}
+.histpanel .lfoot{display:flex;flex-wrap:wrap;gap:5px;padding:7px 8px;border-top:1px solid var(--line)}
+.histpanel .lfoot[hidden]{display:none}
+.histpanel .lfoot .pbtn{height:26px;font-size:12px;padding:0 8px;white-space:nowrap}
+.histpanel .lfoot .chk{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:4px;width:100%}
 .histpanel .hhead #histCount{font-size:11.5px;color:var(--muted)}
 .histpanel .hhead .sp{flex:1}
 .histpanel .hlist{overflow:auto;flex:1;padding:4px 0}
@@ -416,6 +434,7 @@ html.darksheet .wrap{background:#1A1B1D}
       <button class="tb" data-cmd="undo" title="실행 취소 (Ctrl+Z)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 4 8l3.5 3.5"/><path d="M4.5 8H12a4 4 0 0 1 0 8H8"/></svg></button>
       <button class="tb" data-cmd="redo" title="다시 실행 (Ctrl+Y)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5 16 8l-3.5 3.5"/><path d="M15.5 8H8a4 4 0 0 0 0 8h4"/></svg></button>
       <button class="tb labeled" data-cmd="history" id="tbHistory" title="작업 내역: 한 일을 차례로 보고, 누르면 그때로 돌아감"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10a6.5 6.5 0 1 0 2-4.7"/><path d="M3 3.5v3h3"/><path d="M10 6.5V10l2.5 1.8"/></svg><span>작업 내역</span></button>
+      <button class="tb labeled" data-cmd="layers" id="tbLayers" title="레이어: 레이어에 쓴 글만 따로 숨기거나 지우기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10 3 7 3.6-7 3.6-7-3.6z"/><path d="m3 10.2 7 3.6 7-3.6"/><path d="m3 13.8 7 3.6 7-3.6"/></svg><span>레이어</span></button>
       <button class="tb" data-cmd="painter" id="painterBtn" title="서식 복사 (두 번 누르면 계속 적용)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="2.5" width="11" height="4.5" rx="1"/><path d="M14 4.75h2.5V9.5H9.5v2.5"/><rect x="8.25" y="12" width="2.5" height="5.5" rx=".6"/></svg></button>
     </div>
     <div class="sep"></div>
@@ -527,8 +546,15 @@ html.darksheet .wrap{background:#1A1B1D}
   </footer>
 </div>
 <div id="histPanel" class="histpanel" hidden>
-  <div class="hhead"><b>작업 내역</b><span id="histCount"></span><span class="sp"></span><button class="tb" id="histClose" title="닫기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button></div>
+  <div class="hhead"><button class="htab" data-tab="hist">작업 내역</button><button class="htab" data-tab="layer">레이어</button><span id="histCount"></span><span class="sp"></span><button class="tb" id="histClose" title="닫기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button></div>
   <div class="hlist" id="histList"></div>
+  <div class="hlist" id="layerList" hidden></div>
+  <div class="lfoot" id="layerFoot" hidden>
+    <button class="pbtn" data-ly="add" title="새 레이어 (이제부터 쓰는 글이 이 레이어에 들어감)">＋ 새 레이어</button>
+    <button class="pbtn" data-ly="merge" title="고른 레이어 글을 보통 글로 확정 (글은 남고 레이어만 없어짐)">합치기</button>
+    <button class="pbtn" data-ly="del" title="고른 레이어와 그 레이어에 쓴 글을 모두 지움 (Ctrl+Z로 되돌리기)">삭제</button>
+    <label class="chk" title="레이어 글을 레이어 색으로 보여 줌 (인쇄에는 안 나옴)"><input type="checkbox" data-ly="tint"> 레이어 색으로 보기</label>
+  </div>
 </div>
 <div id="dockGuide" hidden></div>
 <div id="findBar" class="findbar" hidden>
@@ -628,6 +654,7 @@ function setV(r,c,v){
   const k = r+':'+c; let cell = sh.cells[k];
   if (v === '' || v == null){ if (cell){ delete cell.v; clean(r,c); } return; }
   if (!cell) cell = sh.cells[k] = {};
+  lyShift(cell, cell.v == null ? '' : String(cell.v), String(v));
   cell.v = String(v);
   // 글이 바뀌면 부분 서식은 바뀐 곳만 갈아 끼우고 나머지는 그대로 (수식이 되면 버림)
   if (cell.rt){
@@ -639,7 +666,7 @@ function ensureCell(r,c){ const k = r+':'+c; return sh.cells[k] || (sh.cells[k] 
 function clean(r,c){
   const k = r+':'+c, cell = sh.cells[k]; if (!cell) return;
   if (cell.s && !Object.keys(cell.s).length) delete cell.s;
-  if (cell.v == null) delete cell.rt;
+  if (cell.v == null){ delete cell.rt; delete cell.ly; delete cell.lyN; }
   if (cell.v == null && !cell.s && !cell.goal) delete sh.cells[k];
 }
 const EMPTY = {};
@@ -733,7 +760,11 @@ function runsOfCell(cell){
 }
 const runsOf = (r, c) => runsOfCell(sh.cells[r+':'+c]);
 // 보이는 글(text)이 칸에 적힌 글 그대로일 때만 (수식 결과·숫자 서식이 붙으면 부분 서식 없이)
-const richFor = (r, c, text) => { const cell = sh.cells[r+':'+c]; return cell && String(text) === cell.v ? runsOfCell(cell) : null; };
+const richFor = (r, c, text) => {
+  const cell = sh.cells[r+':'+c]; if (!cell) return null;
+  if (cell.ly && lyAnyHidden()){ const L = lyView(cell, false); if (L) return String(text) === L.t ? L.runs : null; }
+  return String(text) === cell.v ? runsOfCell(cell) : null;
+};
 const sameRS = (a, b) => RT_KEYS.every(k => (a[k] ?? null) === (b[k] ?? null));
 function mergeRuns(runs){
   const out = [];
@@ -845,7 +876,7 @@ const noDeco = s => Object.assign({}, s, {u: false, st: false});
 // 이 칸 글 전체가 차지하는 높이 (배율 1, 너비 w)
 function textHeight(r, c, w){
   const s = st(r, c), cell = sh.cells[r+':'+c]; if (!cell || cell.v == null || cell.v === '') return 0;
-  const px = (s.fs || DEF_FS) * 4/3, t = shown(r, c), rt = String(t) === cell.v ? runsOfCell(cell) : null, wr = wrapOn(s, cell.v);
+  const px = (s.fs || DEF_FS) * 4/3, t = shown(r, c), rt = richFor(r, c, t), wr = wrapOn(s, cell.v);
   if (needRich(rt, s)) return richLines(rt || plainRuns(t), s, w - 8, mctx, 1, wr).lines.reduce((a, L) => a + L.h, 0) + 4;
   mctx.font = fontStr(s, 1);
   return (wr ? wrapLines(t, w - 8, mctx).length : String(t).split('\n').length) * px * lhOf(s) + 4;
@@ -1038,7 +1069,9 @@ function drawText(r, c, rect, isMerge){
   // 찾기 중이면 찾은 글자를 칠하려고 글자 위치를 아는 방식(richLines)으로 그림
   const fq = findTerm(), hitHere = !!fq && String(v).toLowerCase().includes(fq);
   const em = editMarksFor(r, c);
-  const rt = richFor(r, c, v), RL = needRich(rt, s) || hitHere || em ? richLines(rt || plainRuns(v), s, rect.w - pad*2, ctx, z, doWrap) : null;
+  let rt = richFor(r, c, v);
+  if (ctx === MAIN_CTX && wb.layers && wb.lyTint !== false){ const cell = sh.cells[r + ':' + c]; if (cell && cell.ly){ const L = lyView(cell, true); if (L && L.t === String(v)) rt = L.runs; } }
+  const RL = needRich(rt, s) || hitHere || em ? richLines(rt || plainRuns(v), s, rect.w - pad*2, ctx, z, doWrap) : null;
   if (RL && em){ RL.em = em; RL.showOld = editSet.old === 'all' || (editSet.old === 'sel' && r === act.r && c === act.c && !editing); }
   if (RL && hitHere){ RL.fq = fq; const ch = findCur >= 0 && findHits[findCur]; RL.curAt = ch && ch[0] === wb.active && ch[1] === r && ch[2] === c ? ch[3] : -1; }
   if (RL) ctx.font = fontStr(s, z);
@@ -1416,7 +1449,7 @@ function startEdit(mode, text){
   edDeco();
   ed.classList.add('on');
   if (findHL) setTimeout(edMarkFind, 0);
-  edStartText = ed.value; setTimeout(edMarkEdits, 0);
+  edStartText = ed.value; setTimeout(() => { edMarkEdits(); edMarkLayers(); }, 0);
   positionEditor();
   if (mode === 'edit'){ const n = ed.value.length; ed.setSelectionRange(n, n); }
   fx.value = ed.value;
@@ -2403,6 +2436,107 @@ function clearFindHL(){
   if (!findHL) return;
   findHL = ''; edMarkFind(); schedule(); toast('형광펜을 지웠습니다');
 }
+// ===== 레이어 =====
+// wb.layers = [{id, name, color, hidden}] (아래→위 순서), wb.curLayer = 지금 쓰는 레이어 id (0 = 기본 종이)
+// 칸: cell.ly = [[a, b, id], ...] 글자 a~b가 그 레이어. cell.lyN = 그때 글 길이 (다르면 무효)
+const LY_COLORS = ['#2F6FDB', '#D9480F', '#2B8A3E', '#AE3EC9', '#C2255C', '#0C8599', '#E67700', '#5C5F66'];
+const lyById = id => (wb.layers || []).find(L => L.id === id);
+const lyAnyHidden = () => !!(wb.layers && wb.layers.some(L => L.hidden));
+function lyRanges(cell){
+  if (!cell || !cell.ly || cell.v == null || String(cell.v).length !== cell.lyN) return null;
+  return cell.ly.filter(([a, b, id]) => b > a && lyById(id));
+}
+// 칸 글이 ot → nt로 바뀔 때 레이어 범위를 옮김. 새로 들어온 글은 지금 레이어로
+function lyShift(cell, ot, nt){
+  if (ot === nt) return;
+  const old = lyRanges(cell) || [];
+  if (isFormula(nt)){ delete cell.ly; delete cell.lyN; return; }
+  let p = 0; while (p < ot.length && p < nt.length && ot[p] === nt[p]) p++;
+  let q = 0; while (q < ot.length - p && q < nt.length - p && ot[ot.length - 1 - q] === nt[nt.length - 1 - q]) q++;
+  const oEnd = ot.length - q, nEnd = nt.length - q, d = nt.length - ot.length, out = [];
+  for (const [a, b, id] of old){
+    if (b <= p) out.push([a, b, id]);
+    else if (a >= oEnd) out.push([a + d, b + d, id]);
+    else { if (a < p) out.push([a, p, id]); if (b > oEnd) out.push([nEnd, b + d, id]); }
+  }
+  const cur = wb.curLayer && lyById(wb.curLayer) ? wb.curLayer : 0;
+  if (cur && nEnd > p) out.push([p, nEnd, cur]);
+  out.sort((x, y) => x[0] - y[0]);
+  const m = [];
+  for (const x of out){ const L = m[m.length - 1]; if (L && L[2] === x[2] && L[1] >= x[0]) L[1] = Math.max(L[1], x[1]); else m.push([...x]); }
+  if (m.length){ cell.ly = m; cell.lyN = nt.length; } else { delete cell.ly; delete cell.lyN; }
+}
+// 보이는 글과 서식: 숨긴 레이어 글은 빼고, color면 레이어 글에 레이어 색
+function lyView(cell, color){
+  const R = lyRanges(cell); if (!R || !R.length) return null;
+  const v = String(cell.v), base = runsOfCell(cell) || [{t: v}];
+  if (!R.some(([, , id]) => lyById(id).hidden) && !color) return null;
+  const cuts = new Set([0, v.length]); for (const [a, b] of R){ cuts.add(a); cuts.add(b); }
+  const xs = [...cuts].sort((a, b) => a - b), runs = [];
+  for (let i = 0; i + 1 < xs.length; i++){
+    const a = xs[i], b = xs[i + 1], hit = R.find(([x, y]) => x <= a && y >= b), L = hit && lyById(hit[2]);
+    if (L && L.hidden) continue;
+    for (const x of sliceRuns(base, a, b)) runs.push(L && color ? {...x, fc: L.color} : x);
+  }
+  const t = runs.map(x => x.t).join('');
+  return {t: v[0] === "'" && !R.some(([a]) => a === 0) ? t.slice(1) : t, runs: mergeRuns(runs)};
+}
+function lyEach(fn){ for (const S of wb.sheets) for (const k in S.cells){ const cell = S.cells[k]; if (cell.ly) fn(cell, S); } }
+function lyCount(id){ let n = 0; lyEach(cell => { const R = lyRanges(cell); if (R) for (const [a, b, i] of R) if (i === id) n += b - a; }); return n; }
+function lyAdd(){
+  if (editing) commitEdit();
+  const L = wb.layers || [], id = Math.max(0, ...L.map(x => x.id)) + 1;
+  nextLabel = '새 레이어';
+  mutate(() => { wb.layers = [...L, {id, name: '레이어 ' + id, color: LY_COLORS[(id - 1) % LY_COLORS.length], hidden: false}]; wb.curLayer = id; });
+  toast('레이어 ' + id + ' · 이제부터 쓰는 글은 이 레이어에 들어가요');
+}
+// 지우기: 그 레이어 글자를 모든 시트에서 빼고 레이어도 없앰 / 합치기: 글은 두고 레이어만 없앰
+function lyRemove(id, keepText){
+  if (editing) commitEdit();
+  const L = lyById(id); if (!L) return;
+  nextLabel = (keepText ? '레이어 합치기 · ' : '레이어 삭제 · ') + L.name;
+  mutate(() => {
+    lyEach(cell => {
+      const R = lyRanges(cell); if (!R){ delete cell.ly; delete cell.lyN; return; }
+      if (keepText || !R.some(x => x[2] === id)){ cell.ly = R.filter(x => x[2] !== id); if (!cell.ly.length){ delete cell.ly; delete cell.lyN; } return; }
+      const v = String(cell.v), base = runsOfCell(cell), keep = [];
+      let p = 0; for (const [a, b, i] of R) if (i === id){ if (a > p) keep.push([p, a]); p = b; } if (p < v.length) keep.push([p, v.length]);
+      const nv = keep.map(([a, b]) => v.slice(a, b)).join('');
+      const nr = []; let off = 0, shift = 0, k = 0;
+      // 남는 레이어 범위 새 자리로
+      for (const [a, b, i] of R){ if (i === id) continue; let removed = 0; for (const [x, y, j] of R) if (j === id && y <= a) removed += y - x; nr.push([a - removed, b - removed, i]); }
+      if (base){ const rr = mergeRuns(keep.flatMap(([a, b]) => sliceRuns(base, a, b))); if (rr.some(x => Object.keys(x).length > 1)) cell.rt = rr; else delete cell.rt; }
+      if (nv === ''){ delete cell.v; delete cell.rt; delete cell.ly; delete cell.lyN; return; }
+      cell.v = nv;
+      if (nr.length){ cell.ly = nr; cell.lyN = nv.length; } else { delete cell.ly; delete cell.lyN; }
+    });
+    for (const S of wb.sheets) for (const k in S.cells){ const c = S.cells[k]; if (c.v == null && !c.s && !c.goal) delete S.cells[k]; }
+    wb.layers = wb.layers.filter(x => x.id !== id);
+    if (wb.curLayer === id) wb.curLayer = 0;
+    if (!wb.layers.length){ delete wb.layers; delete wb.curLayer; }
+  });
+  toast(keepText ? L.name + '을(를) 보통 글로 합쳤어요' : L.name + '과(와) 그 레이어 글을 지웠어요 (Ctrl+Z로 되돌리기)');
+}
+function lySet(patch, id){
+  const L = lyById(id); if (!L) return;
+  Object.assign(L, patch); fileDirty = true; updateDoc(); queueAutosave(); buildMerges(); autoRows(); layout(); schedule(); panelRender(); edMarkLayers();
+}
+function lyUse(id){ wb.curLayer = id; fileDirty = true; updateDoc(); queueAutosave(); panelRender(); edMarkLayers(); const L = lyById(id); if (L && L.hidden) toast(L.name + '은(는) 숨겨져 있어요 · 눈을 켜야 쓴 글이 보여요'); }
+// 편집 칸 안: 레이어 글은 레이어 색 글씨로 (숨긴 레이어는 회색)
+function edMarkLayers(){
+  if (!window.CSS || !CSS.highlights || typeof Highlight === 'undefined') return;
+  for (const k of [...CSS.highlights.keys()]) if (k.startsWith('lyr')) CSS.highlights.delete(k);
+  if (!editing || !wb.layers) return;
+  const cell = sh.cells[act.r + ':' + act.c], tmp = {v: edStartText, ly: cell && cell.v === edStartText ? cell.ly : null, lyN: cell && cell.lyN};
+  lyShift(tmp, edStartText, ed.value);
+  const R = tmp.ly || []; let css = '';
+  const by = {};
+  for (const [a, b, id] of R){ try { const x = edPoint(a), y = edPoint(b), rg = document.createRange(); rg.setStart(x[0], x[1]); rg.setEnd(y[0], y[1]); (by[id] = by[id] || []).push(rg); } catch (e) {} }
+  for (const id in by){ const L = lyById(+id); if (!L) continue; CSS.highlights.set('lyr' + id, new Highlight(...by[id])); css += `::highlight(lyr${id}){color:${L.hidden ? '#9AA0A6' : wb.lyTint === false ? 'inherit' : L.color}}\n`; }
+  let el = document.getElementById('lyStyle'); if (!el){ el = document.createElement('style'); el.id = 'lyStyle'; document.head.appendChild(el); }
+  el.textContent = css;
+}
+
 // ===== 작업 내역 패널 =====
 let histOn = false;
 try { histOn = localStorage.getItem('monun.hist') === '1'; } catch (e) {}
@@ -2413,12 +2547,20 @@ let histSet = {mode: 'float', x: null, y: null, w: 250};
 try { Object.assign(histSet, JSON.parse(localStorage.getItem('monun.histpos') || '{}')); } catch (e) {}
 if (histSet.mode === 'window' && !(window.native && window.native.histOpen)) histSet.mode = 'float';
 const saveHistSet = () => { try { localStorage.setItem('monun.histpos', JSON.stringify(histSet)); } catch (e) {} };
+let panelTab = 'hist';
+try { panelTab = localStorage.getItem('monun.ptab') || 'hist'; } catch (e) {}
+// 단추: 그 탭이 이미 보이면 닫고, 아니면 그 탭으로 열기
+function showPanelTab(tab){
+  if (histOn && panelTab === tab) return toggleHist(false);
+  panelTab = tab; try { localStorage.setItem('monun.ptab', tab); } catch (e) {}
+  if (!histOn) toggleHist(true); else { panelRender(); }
+}
 function toggleHist(on = !histOn){
   histOn = on; try { localStorage.setItem('monun.hist', on ? '1' : '0'); } catch (e) {}
-  setOn('tbHistory', on);
+  setOn('tbHistory', on && panelTab === 'hist'); setOn('tbLayers', on && panelTab === 'layer');
   if (histSet.mode === 'window'){ histPanel.hidden = true; if (on) window.native.histOpen(); else window.native.histClose(); }
   else histPanel.hidden = !on;
-  placeHist(); histRender();
+  placeHist(); panelRender();
 }
 // 지금 모드대로 자리 잡기. 옆에 붙으면 표가 그만큼 좁아짐
 function placeHist(){
@@ -2445,6 +2587,7 @@ function placeHist(){
 new ResizeObserver(() => { if (histOn) placeHist(); }).observe(wrap);
 addEventListener('resize', () => { if (histOn) placeHist(); });
 let histRaf = 0;
+const panelRender = () => histRender();
 function histRender(){
   if (!histOn || histRaf) return;
   histRaf = requestAnimationFrame(() => {
@@ -2458,12 +2601,56 @@ function histRender(){
     if (items.length > HIST_MAX){ const s = Math.max(0, Math.min(n - (HIST_MAX - 6), items.length - HIST_MAX)); items = items.slice(s, s + HIST_MAX); }
     $('#histCount').textContent = n + (redoMeta.length ? ' / ' + (n + redoMeta.length) : '') + '개';
     histList.innerHTML = items.map(([i, l, t, cls]) => row(i, {label: l, t}, cls ? ' ' + cls : '')).join('');
-    if (histSet.mode === 'window' && window.native && window.native.histState) window.native.histState({items: items.map(([i, l, t, cls]) => [i, l, t ? hhmm(t) : '', cls]), count: $('#histCount').textContent});
-    $('#histCount').textContent = n + (redoMeta.length ? ' / ' + (n + redoMeta.length) : '') + '개';
+    // 레이어 탭
+    const lays = (wb.layers || []).slice().reverse().map(L => ({id: L.id, name: L.name, color: L.color, hidden: !!L.hidden, cur: wb.curLayer === L.id, n: lyCount(L.id)}));
+    const eye = on => `<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5">${on ? '<path d="M2 10s3-5.5 8-5.5S18 10 18 10s-3 5.5-8 5.5S2 10 2 10z"/><circle cx="10" cy="10" r="2.3"/>' : '<path d="M3 3l14 14M2 10s3-5.5 8-5.5c1.6 0 3 .5 4.1 1.2M18 10s-3 5.5-8 5.5c-1.6 0-3-.5-4.1-1.2"/>'}</svg>`;
+    $('#layerList').innerHTML = lays.map(L => `<div class="lrow${L.cur ? ' cur' : ''}" data-lyuse="${L.id}"><button class="eye${L.hidden ? ' off' : ''}" data-lyeye="${L.id}" title="${L.hidden ? '보이기' : '숨기기'}">${eye(!L.hidden)}</button><span class="lsw" data-lycol="${L.id}" style="background:${L.color}" title="색 바꾸기"></span><span class="lnm" data-lyname="${L.id}" title="두 번 누르면 이름 바꾸기">${esc(L.name)}</span>${L.cur ? '<span class="pen">✎</span>' : ''}<span class="lc">${L.n}자</span></div>`).join('')
+      + `<div class="lrow base${!wb.curLayer ? ' cur' : ''}" data-lyuse="0"><span style="width:24px"></span><span class="lsw" style="background:#fff"></span><span class="lnm">기본 (종이)</span>${!wb.curLayer ? '<span class="pen">✎</span>' : ''}</div>`
+      + (lays.length ? '' : '<div style="padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.5">[＋ 새 레이어]를 누르고 글을 쓰면 그 글은 레이어에 들어가요. 레이어를 숨기거나 지우면 그 글만 숨겨지거나 지워져요.</div>');
+    $('#layerFoot').querySelector('[data-ly=tint]').checked = wb.lyTint !== false;
+    const isL = panelTab === 'layer';
+    histList.hidden = isL; $('#layerList').hidden = !isL; $('#layerFoot').hidden = !isL;
+    histPanel.querySelectorAll('.htab').forEach(b => b.classList.toggle('on', b.dataset.tab === panelTab));
+    setOn('tbHistory', histOn && !isL); setOn('tbLayers', histOn && isL);
+    if (isL) $('#histCount').textContent = '';
+    if (histSet.mode === 'window' && window.native && window.native.histState) window.native.histState({tab: panelTab, items: items.map(([i, l, t, cls]) => [i, l, t ? hhmm(t) : '', cls]), count: n + (redoMeta.length ? ' / ' + (n + redoMeta.length) : '') + '개', layers: lays, base: !wb.curLayer, tint: wb.lyTint !== false});
     const cur = histList.querySelector('.cur'); if (cur) cur.scrollIntoView({block: 'nearest'});
   });
 }
 histList.onclick = e => { const it = e.target.closest('[data-h]'); if (it) histGo(+it.dataset.h); };
+histPanel.querySelectorAll('.htab').forEach(b => b.onclick = () => { panelTab = b.dataset.tab; try { localStorage.setItem('monun.ptab', panelTab); } catch (e) {} panelRender(); });
+// 레이어 명령 (패널·따로 창 공통)
+function lyCmd(act, id, text){
+  const L = lyById(id);
+  if (act === 'add') return lyAdd();
+  if (act === 'use') return lyUse(id);
+  if (act === 'eye' && L) return lySet({hidden: !L.hidden}, id);
+  if (act === 'color' && L) return lySet({color: LY_COLORS[(LY_COLORS.indexOf(L.color) + 1) % LY_COLORS.length]}, id);
+  if (act === 'rename' && L && text && text.trim()) return lySet({name: text.trim().slice(0, 30)}, id);
+  if (act === 'tint'){ wb.lyTint = wb.lyTint === false; fileDirty = true; updateDoc(); queueAutosave(); schedule(); panelRender(); edMarkLayers(); return; }
+  const sel = wb.curLayer && lyById(wb.curLayer);
+  if (act === 'merge' || act === 'del'){
+    if (!sel) return toast('위에서 레이어를 먼저 고르세요 (기본 종이는 합치거나 지울 수 없어요)');
+    if (act === 'del' && lyCount(sel.id) > 0 && !confirm(`${sel.name}에 쓴 글 ${lyCount(sel.id)}자를 모두 지울까요? (Ctrl+Z로 되돌릴 수 있어요)`)) return;
+    lyRemove(sel.id, act === 'merge');
+  }
+}
+$('#layerList').onclick = e => {
+  const t = e.target, g = (a) => t.closest('[data-' + a + ']');
+  if (g('lyeye')) return lyCmd('eye', +g('lyeye').dataset.lyeye);
+  if (g('lycol')) return lyCmd('color', +g('lycol').dataset.lycol);
+  if (t.closest('input')) return;
+  if (g('lyuse')) return lyCmd('use', +g('lyuse').dataset.lyuse);
+};
+$('#layerList').ondblclick = e => {
+  const n = e.target.closest('[data-lyname]'); if (!n) return;
+  const id = +n.dataset.lyname, L = lyById(id); if (!L) return;
+  n.innerHTML = '<input class="ctl">'; const inp = n.querySelector('input'); inp.value = L.name; inp.focus(); inp.select();
+  let done = false; const fin = ok => { if (done) return; done = true; if (ok) lyCmd('rename', id, inp.value); else panelRender(); };
+  inp.onkeydown = ev => { ev.stopPropagation(); if (ev.key === 'Enter') fin(true); if (ev.key === 'Escape') fin(false); };
+  inp.onblur = () => fin(true);
+};
+$('#layerFoot').onclick = e => { const b = e.target.closest('[data-ly]'); if (!b) return; if (b.dataset.ly === 'tint'){ if (e.target.tagName === 'INPUT') lyCmd('tint'); return; } lyCmd(b.dataset.ly); };
 $('#histClose').onclick = () => toggleHist(false);
 // 머리를 끌어서 옮기기
 const guide = $('#dockGuide');
@@ -2505,6 +2692,8 @@ histPanel.querySelector('.hhead').ondblclick = e => { if (e.target.closest('butt
 // 따로 창에서 오는 명령
 window.__histCmd = c => {
   if (c && c.go != null) return histGo(+c.go);
+  if (c && c.tab){ panelTab = c.tab === 'layer' ? 'layer' : 'hist'; try { localStorage.setItem('monun.ptab', panelTab); } catch (e) {} return panelRender(); }
+  if (c && c.ly) return lyCmd(c.ly, +c.id || 0, c.text);
   if (c === 'dock'){ histSet.mode = 'float'; saveHistSet(); if (window.native && window.native.histClose) window.native.histClose(true); histPanel.hidden = !histOn; placeHist(); histRender(); return; }
   if (c === 'closed'){ if (histSet.mode === 'window'){ histOn = false; try { localStorage.setItem('monun.hist', '0'); } catch (e) {} setOn('tbHistory', false); } return; }
   if (c === 'ready') histRender();
@@ -3230,6 +3419,7 @@ const FN_HELP = {
 function shownIn(s, r, c){
   const cell = s.cells[r + ':' + c]; if (!cell || cell.v == null) return '';
   const v = cell.v;
+  if (cell.ly && lyAnyHidden()){ const L = lyView(cell, false); if (L) return L.t; }
   if (!isFormula(v)) return typeof v === 'string' && v[0] === "'" ? v.slice(1) : v;
   return toStr(cellValue(s, r, c));
 }
@@ -4607,7 +4797,7 @@ ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefaul
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 // 편집기에 서식 있는 글이 섞여 들어오지 않게: 붙여넣기·끌어 놓기는 글자만, 브라우저 자체 서식 명령은 막음
 function edInputDone(){
-  pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); if (findHL) edMarkFind(); edMarkEdits();
+  pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); if (findHL) edMarkFind(); edMarkEdits(); if (wb.layers) edMarkLayers();
   // 칸에 쓰는 중에도 저장 안 됨(•)으로: 편집을 마치기 전이라도 업데이트·창 닫기 때 저장할지 묻도록
   if (!fileDirty){ fileDirty = true; updateDoc(); }
 }
@@ -5164,6 +5354,7 @@ $('#styleGal').addEventListener('click', e => {
   const clone = id => { const s = document.getElementById(id), c = s.cloneNode(true); c.removeAttribute('id'); c.dataset.mirror = id; return c; };
   ['tbAL', 'tbAC', 'tbAR', 'tbWrap'].forEach(id => $('#fmtAlign').appendChild(clone(id)));
   ['tbPara', 'tbDoc', 'tbEditMark'].forEach(id => $('#fmtMore').appendChild(clone(id)));
+  $('#fmtMore').prepend(clone('tbLayers'));
   $('#fmtMore').prepend(clone('tbHistory'));
   $('#fmtMore').prepend(document.querySelector('#ribbon [data-cmd="borderMenu"]').cloneNode(true));
   $('#fmtMore').prepend(clone('tbBorder'));
@@ -5339,7 +5530,7 @@ function run(cmd, el){
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
     themeMenu: () => themeMenu(el), fileMenu: () => fileMenu(el),
-    history: () => toggleHist(),
+    history: () => showPanelTab('hist'), layers: () => showPanelTab('layer'),
     editMarkToggle: () => setEditMark({on: !editSet.on}), editMarkMenu: () => editMarkMenu(el),
     indUp: () => applyStyle({ind: Math.min(8, (s().ind || 0) + 1)}), indDown: () => applyStyle({ind: Math.max(0, (s().ind || 0) - 1) || null}),
     bullet: () => listPrefix('bullet'), numbering: () => listPrefix('num'), recMenu: () => { if (!el.dataset.noclick) recMenu(el); },
@@ -5517,6 +5708,7 @@ function newFile(){
 }
 function loadWorkbook(obj){
   wb = {sheets: obj.sheets.map(normSheet), active: Math.min(obj.active || 0, obj.sheets.length - 1), media: obj.media || {}, savedAt: obj.savedAt, savedOn: obj.savedOn, saveLog: obj.saveLog || []};
+  if (Array.isArray(obj.layers) && obj.layers.length){ wb.layers = obj.layers; wb.curLayer = obj.curLayer || 0; wb.lyTint = obj.lyTint; }
   IMG.clear(); selImg = null; clearCalc();
   if (!wb.sheets.length) wb.sheets = [newSheet('Sheet1')];
   sh = wb.sheets[wb.active];
