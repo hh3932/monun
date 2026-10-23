@@ -312,9 +312,13 @@ html.darksheet .wrap{background:#1A1B1D}
 .fc-row:hover{background:var(--hover)}
 .fc-row b{font-family:"IBM Plex Mono",Consolas,monospace;font-weight:500;font-size:12.5px}
 .fc-row span{color:var(--muted);font-size:12px}
-.findbar{position:fixed;z-index:15;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px;display:grid;gap:6px;width:min(540px,calc(100vw - 24px))}
+.findbar{position:fixed;z-index:15;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px;display:grid;gap:6px;width:min(380px,calc(100vw - 24px))}
 .frow.fopts .sp{flex:1}
-.frow.fopts{flex-wrap:wrap;row-gap:4px}
+.frow.fopts{align-items:flex-start}
+.fchecks{display:flex;flex-direction:column;gap:5px;padding-top:2px}
+.fbtns{display:flex;flex-direction:column;gap:4px;align-items:stretch}
+.findbar.docked .fchecks,.findbar.docked .fbtns{flex-direction:row;align-items:center;padding-top:0}
+.findbar.docked .frow.fopts{align-items:center}
 .findbar.docked{position:static;width:auto;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:5px 16px;background:var(--bar)}
 .findbar.docked .frow:first-child{flex:1 1 380px;max-width:560px}
 .findbar.docked .frow.fopts{flex:0 1 auto}
@@ -512,12 +516,16 @@ html.darksheet .wrap{background:#1A1B1D}
     <button class="tb" id="findClose" title="닫기 (Esc)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
   </div>
   <div class="frow fopts">
+    <div class="fchecks">
     <label class="chk fall" title="모든 시트에서 찾기"><input type="checkbox" id="findAll"> 모든 시트</label>
     <label class="chk fall" title="Esc를 눌러도 닫히지 않고, 켤 때도 열려 있음 (✕로 닫기)"><input type="checkbox" id="findPin"> 항상 띄워 두기</label>
     <label class="chk fall" title="표 위에 떠 있지 않고 단추 줄 바로 아래에 한 줄로"><input type="checkbox" id="findDock"> 위쪽에 붙이기</label>
+    </div>
     <span class="sp"></span>
+    <div class="fbtns">
     <button class="pbtn" id="findClear" title="찾은 글자 형광펜 지우기 (Ctrl+D)">형광펜 지우기</button>
     <button class="pbtn" id="findToggle" title="바꾸기 열기/닫기 (Ctrl+H)">바꾸기 ▾</button>
+    </div>
   </div>
   <div class="frow" id="replRow" hidden>
     <input class="ctl" id="replQ" placeholder="바꿀 내용" spellcheck="false" autocomplete="off">
