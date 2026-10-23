@@ -1322,6 +1322,15 @@ function drawSelection(){
     ctx.strokeRect(T.x1-0.75, T.y1-0.75, T.x2-T.x1, T.y2-T.y1); ctx.setLineDash([]);
   }
 }
+// 머리글 이름: 시트마다 어느 열·행부터 A(1)·1로 셀지 (sh.colStart, sh.rowStart). 그 앞은 비워 둠
+const colLabel = c => { const n = c - (sh.colStart || 0); return n < 0 ? '' : viewSet.colNum ? String(n + 1) : colName(n); };
+const rowLabel = r => { const n = r - (sh.rowStart || 0); return n < 0 ? '' : String(n + 1); };
+function setHeadStart(kind, v){
+  if (kind === 'col'){ if (v) sh.colStart = v; else delete sh.colStart; } else { if (v) sh.rowStart = v; else delete sh.rowStart; }
+  fileDirty = true; updateDoc(); queueAutosave(); schedule();
+  if (kind === 'col') toast(v ? `${colName(v)}열부터 ${viewSet.colNum ? '1' : 'A'}로 셉니다` : '처음 열부터 세기로 되돌렸어요');
+  else toast(v ? `${v + 1}번째 행부터 1로 셉니다` : '처음 행부터 세기로 되돌렸어요');
+}
 function drawHeaders(f, fx, fy, sl, stp, z, W, H){
   if (!HW && !HH) return;
   ctx.font = '500 11.5px "IBM Plex Sans KR", "Malgun Gothic", sans-serif';
@@ -1337,7 +1346,7 @@ function drawHeaders(f, fx, fy, sl, stp, z, W, H){
       const x = X(c), w = X(c+1) - x, on = c >= sel.c1 && c <= sel.c2;
       if (on){ ctx.fillStyle = fcs ? TH.sel : TH['head-sel']; ctx.fillRect(x, 0, w, HH); }
       ctx.fillStyle = on ? (fcs ? '#fff' : TH['head-sel-ink']) : TH['head-ink'];
-      if (w > 14) ctx.fillText(viewSet.colNum ? String(c + 1) : colName(c), x + w/2, HH/2 + 1);
+      if (w > 14) ctx.fillText(colLabel(c), x + w/2, HH/2 + 1);
       ctx.fillStyle = TH['head-line']; ctx.fillRect(Math.round(X(c+1))-1, 0, 1, HH);
       if (on && !fcs){ ctx.fillStyle = TH.sel; ctx.fillRect(x, HH-2, w, 2); }
     }
@@ -1357,7 +1366,7 @@ function drawHeaders(f, fx, fy, sl, stp, z, W, H){
       if (on){ ctx.fillStyle = frs ? TH.sel : TH['head-sel']; ctx.fillRect(0, y, HW, h); }
       // 필터로 일부 행이 숨겨진 표의 행 번호는 엑셀처럼 파랗게
       ctx.fillStyle = on ? (frs ? '#fff' : TH['head-sel-ink']) : (filtered && r > F.r1 && r <= F.r2 ? TH.sel : TH['head-ink']);
-      if (h > 10) ctx.fillText(String(r+1), HW/2, y + h/2 + 1);
+      if (h > 10) ctx.fillText(rowLabel(r), HW/2, y + h/2 + 1);
       ctx.fillStyle = TH['head-line']; ctx.fillRect(0, Math.round(Y(r+1))-1, HW, 1);
       if (on && !frs){ ctx.fillStyle = TH.sel; ctx.fillRect(HW-2, y, 2, h); }
     }
@@ -4766,8 +4775,8 @@ function caretAtPoint(x, y){
   if (!rg || !ed.contains(rg.startContainer)) return;
   const s = getSelection(); s.removeAllRanges(); s.addRange(rg);
 }
-let ctxOnHead = false;
-cv.addEventListener('contextmenu', e => { e.preventDefault(); if (imageAt(e)) return; ctxOnHead = HH > 0 && e.clientY - cv.getBoundingClientRect().top < HH; openCellMenu(e.clientX, e.clientY); ctxOnHead = false; });
+let ctxOnHead = false, ctxHit = null;
+cv.addEventListener('contextmenu', e => { e.preventDefault(); if (imageAt(e)) return; ctxHit = hit(e); ctxOnHead = ctxHit.type === 'colh'; openCellMenu(e.clientX, e.clientY); ctxOnHead = false; ctxHit = null; });
 wrap.addEventListener('scroll', () => { const fz = frz(); if (fz.c || fz.r) positionEditor(); schedule(); });
 wrap.addEventListener('wheel', e => {
   if (!(e.ctrlKey || e.metaKey) && peekBox && peekBox.max > 0){
@@ -5281,7 +5290,18 @@ async function copyRangeImage(){
 function openCellMenu(x, y){
   const fc = fullCols(sel);
   const items = [
-    ...(fc || ctxOnHead ? [{label: viewSet.colNum ? '열 이름을 글자로 (1 2 3 → A B C)' : '열 이름을 숫자로 (A B C → 1 2 3)', run: () => { viewSet.colNum = !viewSet.colNum; applyView(); }}, '-'] : []),
+    ...(fc || ctxOnHead ? (() => {
+      const c = ctxHit && ctxHit.type === 'colh' ? ctxHit.c : sel.c1;
+      return [
+        {label: viewSet.colNum ? '열 이름을 글자로 (1 2 3 → A B C)' : '열 이름을 숫자로 (A B C → 1 2 3)', run: () => { viewSet.colNum = !viewSet.colNum; applyView(); }},
+        {label: `이 열(${colName(c)})부터 ${viewSet.colNum ? '1' : 'A'}로 세기`, disabled: (sh.colStart || 0) === c, run: () => setHeadStart('col', c)},
+        ...(sh.colStart ? [{label: '처음 열부터 세기로 되돌리기', run: () => setHeadStart('col', 0)}] : []), '-'];
+    })() : []),
+    ...(fullRows(sel) || (ctxHit && ctxHit.type === 'rowh') ? (() => {
+      const r = ctxHit && ctxHit.type === 'rowh' ? ctxHit.r : sel.r1;
+      return [{label: `이 행(${r + 1}번째)부터 1로 세기`, disabled: (sh.rowStart || 0) === r, run: () => setHeadStart('row', r)},
+        ...(sh.rowStart ? [{label: '처음 행부터 세기로 되돌리기', run: () => setHeadStart('row', 0)}] : []), '-'];
+    })() : []),
     {label:'선택한 칸 쪽 미리보기', icon:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 5.5C8.5 4.3 6 3.8 3 4v11.5c3-.2 5.5.3 7 1.5 1.5-1.2 4-1.7 7-1.5V4c-3-.2-5.5.3-7 1.5z"/><path d="M10 5.5V17"/></svg>', run: () => openPageView(true)},
     {label:'원고 쓰기 (이 칸만 크게)', kbd:'Ctrl+Shift+E', run: openDoc},
     '-',
@@ -5694,6 +5714,12 @@ function toolDrag(e, key){
   g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
 }
 setTimeout(() => { for (const k in toolSet) if (toolSet[k].on && TOOLS[k]) setTool(k, true); }, 0);
+function headStartAsk(){
+  askNumber('세기 시작 (열)', '몇 번째 열부터 ' + (viewSet.colNum ? '1' : 'A') + '로 셀까요? (1 = 맨 왼쪽 열, 2 = 그다음 열 …)', (sh.colStart || 0) + 1, 1, COLS, n => {
+    setHeadStart('col', n - 1);
+    setTimeout(() => askNumber('세기 시작 (행)', '몇 번째 행부터 1로 셀까요? (1 = 맨 위 행)', (sh.rowStart || 0) + 1, 1, ROWS, m => setHeadStart('row', m - 1)), 80);
+  });
+}
 function viewMenu(el){
   if (editing) commitEdit();
   const b = (el || $('#viewMenuBtn')).getBoundingClientRect();
@@ -5707,6 +5733,7 @@ function viewMenu(el){
     V('fx', '내용 입력줄'),
     V('head', '행·열 머리글 (A B C / 1 2 3)'),
     V('colNum', '열 이름을 숫자로 (A B C → 1 2 3)'),
+    {label: `세기 시작 바꾸기… (지금 ${colName(sh.colStart || 0)}열 · ${(sh.rowStart || 0) + 1}번째 행부터)`, icon: '<span class="vck"></span>', run: headStartAsk},
     T('눈금선', !!sh.grid, () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); }),
     V('bot', '아래 줄 (시트 탭·글자 수·확대)'),
     '-',
