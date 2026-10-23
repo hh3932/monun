@@ -75,6 +75,19 @@ button{font:inherit;color:inherit}
 .emset .sw2.on{outline:2px solid var(--accent);outline-offset:1px}
 .emset .navs{display:flex;gap:5px}
 .emset .navs .pbtn{flex:1;height:28px;font-size:12px}
+.histpanel{position:fixed;z-index:14;right:18px;bottom:44px;width:250px;max-height:min(460px,60vh);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+.histpanel[hidden]{display:none}
+.histpanel .hhead{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;border-bottom:1px solid var(--line);font-size:13px;cursor:move;user-select:none}
+.histpanel .hhead #histCount{font-size:11.5px;color:var(--muted)}
+.histpanel .hhead .sp{flex:1}
+.histpanel .hlist{overflow:auto;flex:1;padding:4px 0}
+.histpanel .hi{display:flex;align-items:center;gap:8px;padding:5px 12px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.histpanel .hi .hl{flex:1;overflow:hidden;text-overflow:ellipsis}
+.histpanel .hi .ht{font-size:11px;color:var(--muted)}
+.histpanel .hi:hover{background:var(--hover,rgba(127,127,127,.12))}
+.histpanel .hi.cur{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.histpanel .hi.fut{opacity:.45}
+.histpanel .hfoot{font-size:11px;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);line-height:1.4}
 .findbar .fall{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--muted);cursor:pointer;padding:0 4px}
 .findbar #findGoBtn{flex:none;padding:0 12px;height:28px}
 ::highlight(findhl){background-color:#FFE14D}
@@ -396,6 +409,7 @@ html.darksheet .wrap{background:#1A1B1D}
     <div class="grp">
       <button class="tb" data-cmd="undo" title="실행 취소 (Ctrl+Z)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 4 8l3.5 3.5"/><path d="M4.5 8H12a4 4 0 0 1 0 8H8"/></svg></button>
       <button class="tb" data-cmd="redo" title="다시 실행 (Ctrl+Y)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5 16 8l-3.5 3.5"/><path d="M15.5 8H8a4 4 0 0 0 0 8h4"/></svg></button>
+      <button class="tb labeled" data-cmd="history" id="tbHistory" title="작업 내역: 한 일을 차례로 보고, 누르면 그때로 돌아감"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10a6.5 6.5 0 1 0 2-4.7"/><path d="M3 3.5v3h3"/><path d="M10 6.5V10l2.5 1.8"/></svg><span>작업 내역</span></button>
       <button class="tb" data-cmd="painter" id="painterBtn" title="서식 복사 (두 번 누르면 계속 적용)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="2.5" width="11" height="4.5" rx="1"/><path d="M14 4.75h2.5V9.5H9.5v2.5"/><rect x="8.25" y="12" width="2.5" height="5.5" rx=".6"/></svg></button>
     </div>
     <div class="sep"></div>
@@ -506,6 +520,11 @@ html.darksheet .wrap{background:#1A1B1D}
     </div>
   </footer>
 </div>
+<div id="histPanel" class="histpanel" hidden>
+  <div class="hhead"><b>작업 내역</b><span id="histCount"></span><span class="sp"></span><button class="tb" id="histClose" title="닫기"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button></div>
+  <div class="hlist" id="histList"></div>
+  <div class="hfoot">누르면 그때 상태로 돌아가요 · 그 뒤에 새로 고치면 아래(회색) 내역은 사라짐</div>
+</div>
 <div id="findBar" class="findbar" hidden>
   <div class="frow">
     <input class="ctl" id="findQ" placeholder="찾을 내용" spellcheck="false" autocomplete="off">
@@ -514,6 +533,11 @@ html.darksheet .wrap{background:#1A1B1D}
     <button class="tb" id="findPrev" title="이전 (Shift+Enter)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 5-5 5 5"/></svg></button>
     <button class="tb" id="findNext" title="다음 (Enter)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 7.5 5 5 5-5"/></svg></button>
     <button class="tb" id="findClose" title="닫기 (Esc)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
+  </div>
+  <div class="frow" id="replRow">
+    <input class="ctl" id="replQ" placeholder="바꿀 내용" spellcheck="false" autocomplete="off">
+    <button class="pbtn" id="replOne">바꾸기</button>
+    <button class="pbtn" id="replAll">모두 바꾸기</button>
   </div>
   <div class="frow fopts">
     <div class="fchecks">
@@ -524,13 +548,7 @@ html.darksheet .wrap{background:#1A1B1D}
     <span class="sp"></span>
     <div class="fbtns">
     <button class="pbtn" id="findClear" title="찾은 글자 형광펜 지우기 (Ctrl+D)">형광펜 지우기</button>
-    <button class="pbtn" id="findToggle" title="바꾸기 열기/닫기 (Ctrl+H)">바꾸기 ▾</button>
     </div>
-  </div>
-  <div class="frow" id="replRow" hidden>
-    <input class="ctl" id="replQ" placeholder="바꿀 내용" spellcheck="false" autocomplete="off">
-    <button class="pbtn" id="replOne">바꾸기</button>
-    <button class="pbtn" id="replAll">모두 바꾸기</button>
   </div>
 </div>
 <div id="pop" class="pop" hidden></div>
@@ -1406,6 +1424,7 @@ function commitEdit(){
   pointRef = null; hideFnHint(); savedSel = null;
   editing = false; ed.classList.remove('on'); ed.value = '';
   const oldRt = runsOf(act.r, act.c), oldV = String(getV(act.r, act.c));
+  { const one = String(v).replace(/\s+/g, ' ').trim(); nextLabel = (v === '' ? '지움 ' : oldV === '' ? '입력 ' : '글 고침 ') + cellName(act.r, act.c) + (one ? ' “' + (one.length > 14 ? one.slice(0, 14) + '…' : one) + '”' : ''); setTimeout(() => { nextLabel = ''; }, 0); }
   if (v !== getV(act.r, act.c) || JSON.stringify(rt) !== JSON.stringify(oldRt)) mutate(() => {
     if (editSet.on && !isFormula(v)) noteEdit(act.r, act.c, oldV, v);
     setV(act.r, act.c, v);
@@ -1729,16 +1748,32 @@ document.addEventListener('selectionchange', () => { if (editing && document.act
 
 // ===== 변경과 실행 취소 =====
 const snapJSON = () => JSON.stringify(wb, (k, v) => k === 'media' ? undefined : v);
-function snap(){ undoStack.push(snapJSON()); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; }
-function afterChange(){ clearCalc(); changedSinceBackup = true; buildMerges(); autoRows(); layout(); fileDirty = true; updateDoc(); queueAutosave(); refreshUI(); schedule(); }
+let undoMeta = [], redoMeta = [], nextLabel = '';   // 작업 내역 이름표 (undoStack과 나란히)
+const cellName = (r, c) => colName(c) + (r + 1);
+function selName(){ const s = sel; return s.r1 === s.r2 && s.c1 === s.c2 ? cellName(s.r1, s.c1) : cellName(s.r1, s.c1) + ':' + cellName(s.r2, s.c2); }
+function snap(){
+  undoStack.push(snapJSON()); undoMeta.push({label: nextLabel || selName() + ' 고침', t: Date.now(), sheet: sh.name});
+  if (undoStack.length > 100){ undoStack.shift(); undoMeta.shift(); }
+  redoStack.length = 0; redoMeta.length = 0; nextLabel = '';
+}
+function afterChange(){ histRender(); clearCalc(); changedSinceBackup = true; buildMerges(); autoRows(); layout(); fileDirty = true; updateDoc(); queueAutosave(); refreshUI(); schedule(); }
 function mutate(fn){ snap(); fn(); afterChange(); }
 function restore(json){
   clearCalc(); const media = wb.media, keep = {savedAt: wb.savedAt, savedOn: wb.savedOn, saveLog: wb.saveLog}; wb = JSON.parse(json); wb.media = media || {}; Object.assign(wb, keep); wb.sheets = wb.sheets.map(normSheet); sh = wb.sheets[wb.active]; changedSinceBackup = true; selImg = null;
   buildMerges(); layout(); clampSel(); renderTabs();
   fileDirty = true; updateDoc(); queueAutosave(); afterSel();
 }
-function undo(){ if (editing) cancelEdit(); if (!undoStack.length) return toast('되돌릴 작업이 없습니다'); redoStack.push(snapJSON()); restore(undoStack.pop()); }
-function redo(){ if (editing) cancelEdit(); if (!redoStack.length) return toast('다시 실행할 작업이 없습니다'); undoStack.push(snapJSON()); restore(redoStack.pop()); }
+function undo(){ if (editing) cancelEdit(); if (!undoStack.length) return toast('되돌릴 작업이 없습니다'); redoStack.push(snapJSON()); redoMeta.push(undoMeta.pop()); restore(undoStack.pop()); histRender(); }
+function redo(){ if (editing) cancelEdit(); if (!redoStack.length) return toast('다시 실행할 작업이 없습니다'); undoStack.push(snapJSON()); undoMeta.push(redoMeta.pop()); restore(redoStack.pop()); histRender(); }
+// 작업 내역에서 고른 시점으로 (n = 그때까지 한 작업 수). 중간 상태는 옮기기만 하고 마지막에 한 번만 불러옴
+function histGo(n){
+  if (editing) commitEdit();
+  if (n === undoStack.length) return;
+  let cur = snapJSON();
+  while (undoStack.length > n){ redoStack.push(cur); redoMeta.push(undoMeta.pop()); cur = undoStack.pop(); }
+  while (undoStack.length < n && redoStack.length){ undoStack.push(cur); undoMeta.push(redoMeta.pop()); cur = redoStack.pop(); }
+  restore(cur); histRender();
+}
 let asT = 0;
 function queueAutosave(){ clearTimeout(asT); asT = setTimeout(() => writeSession(false), 400); }
 // 지금 상태를 비상 복구용으로 기록 (프로그램: 디스크 파일, 웹: 브라우저 저장소)
@@ -1839,6 +1874,7 @@ function applyBorder(kind){
     if (fullCols(s)) s.r2 = Math.max(mr, 29);
     if (fullRows(s)) s.c2 = Math.max(mc, 9);
   }
+  if (!nextLabel) nextLabel = '테두리 · ' + selName();
   let pen = {...borderPen};
   if (kind === 'thickOuter') pen = {w: Math.max(2, borderPen.w), s: borderPen.s === 'double' ? 'solid' : borderPen.s, c: borderPen.c};
   if (kind === 'bottomDouble') pen = {w:1, s:'double', c: borderPen.c};
@@ -1862,6 +1898,22 @@ function applyBorder(kind){
       }
     });
   });
+}
+// 고른 곳에 이미 그어진 테두리만 지금 펜으로 바꿈 (colorOnly면 색만)
+function recolorBorders(colorOnly){
+  if (editing) commitEdit();
+  const s = {...sel}; let n = 0;
+  if (fullCols(s) || fullRows(s)){ const {mr, mc} = usedMax(); if (fullCols(s)) s.r2 = mr; if (fullRows(s)) s.c2 = mc; }
+  nextLabel = (colorOnly ? '테두리 색 바꿈 · ' : '테두리 바꿈 · ') + selName();
+  mutate(() => {
+    for (let r = Math.max(0, s.r1 - 1); r <= s.r2 + 1; r++) for (let c = Math.max(0, s.c1 - 1); c <= s.c2 + 1; c++){
+      const x = sh.cells[r + ':' + c]; if (!x || !x.s) continue;
+      const inR = r >= s.r1 && r <= s.r2, inC = c >= s.c1 && c <= s.c2;
+      const sides = inR && inC ? ['bt', 'bb', 'bl', 'br'] : inC && r === s.r1 - 1 ? ['bb'] : inC && r === s.r2 + 1 ? ['bt'] : inR && c === s.c1 - 1 ? ['br'] : inR && c === s.c2 + 1 ? ['bl'] : [];
+      for (const k of sides) if (x.s[k]){ x.s[k] = colorOnly ? {...x.s[k], c: borderPen.c} : {...borderPen}; n++; }
+    }
+  });
+  toast(n ? (colorOnly ? '테두리 색을 바꿨어요' : '테두리를 지금 선으로 바꿨어요') : '고른 곳에 테두리가 없어요');
 }
 
 // ===== 병합 =====
@@ -2299,11 +2351,10 @@ function placeFind(){ if (findSet.dock){ findBar.style.top = findBar.style.right
 function openFind(withReplace){
   if (editing) commitEdit();
   findBar.hidden = false;
-  if (withReplace){ $('#replRow').hidden = false; $('#findToggle').classList.add('on'); $('#findToggle').textContent = '바꾸기 ▴'; }
   placeFind();
   const cur = pvOpen ? '' : getV(act.r, act.c);
   if (!findQ.value && cur !== '' && String(cur).length < 40 && !String(cur).includes('\n')) findQ.value = cur;
-  setTimeout(() => { findQ.focus(); findQ.select(); }, 0);
+  setTimeout(() => { const q = withReplace && findQ.value ? replQ : findQ; q.focus(); q.select(); }, 0);
   runFind();
 }
 function closeFind(){ findBar.hidden = true; pvUnmark(); schedule(); if (!pvOpen) focusGrid(); }
@@ -2346,6 +2397,41 @@ function clearFindHL(){
   if (!findHL) return;
   findHL = ''; edMarkFind(); schedule(); toast('형광펜을 지웠습니다');
 }
+// ===== 작업 내역 패널 =====
+let histOn = false;
+try { histOn = localStorage.getItem('monun.hist') === '1'; } catch (e) {}
+const histPanel = $('#histPanel'), histList = $('#histList');
+function toggleHist(on = !histOn){
+  histOn = on; try { localStorage.setItem('monun.hist', on ? '1' : '0'); } catch (e) {}
+  histPanel.hidden = !on; setOn('tbHistory', on); histRender();
+}
+let histRaf = 0;
+function histRender(){
+  if (!histOn || histRaf) return;
+  histRaf = requestAnimationFrame(() => {
+    histRaf = 0;
+    const n = undoStack.length, esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[ch]);
+    const row = (i, m, cls) => `<div class="hi${cls}" data-h="${i}" title="${esc(m.label)}${m.sheet ? ' (' + esc(m.sheet) + ')' : ''}"><span class="hl">${esc(m.label)}</span><span class="ht">${hhmm(m.t)}</span></div>`;
+    let html = `<div class="hi${n === 0 ? ' cur' : ''}" data-h="0"><span class="hl">처음 상태</span></div>`;
+    undoMeta.forEach((m, i) => { html += row(i + 1, m || {label: '고침', t: Date.now()}, i + 1 === n ? ' cur' : ''); });
+    for (let j = redoMeta.length - 1, k = n + 1; j >= 0; j--, k++) html += row(k, redoMeta[j] || {label: '고침', t: Date.now()}, ' fut');
+    histList.innerHTML = html;
+    $('#histCount').textContent = n + (redoMeta.length ? ' / ' + (n + redoMeta.length) : '') + '개';
+    const cur = histList.querySelector('.cur'); if (cur) cur.scrollIntoView({block: 'nearest'});
+  });
+}
+histList.onclick = e => { const it = e.target.closest('[data-h]'); if (it) histGo(+it.dataset.h); };
+$('#histClose').onclick = () => toggleHist(false);
+// 머리를 끌어서 옮기기
+histPanel.querySelector('.hhead').onpointerdown = e => {
+  if (e.target.closest('button')) return;
+  const r = histPanel.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+  const mv = ev => { histPanel.style.left = Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx)) + 'px'; histPanel.style.top = Math.max(0, Math.min(innerHeight - 40, ev.clientY - dy)) + 'px'; histPanel.style.right = histPanel.style.bottom = 'auto'; };
+  const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+  addEventListener('pointermove', mv); addEventListener('pointerup', up);
+};
+setTimeout(() => toggleHist(histOn), 0);
+
 // ===== 수정한 곳 형광펜 =====
 // sh.editMarks = [{r, c, a, b, t}, ...] 새것부터. 칸 글의 a~b 글자(문장)를 칠함. 파일에 함께 저장됨
 let editSet = {on: false, n: 3, limit: true, color: '#B9F6CA', colorMode: 'new', fade: true, unit: 'sentence', old: 'sel', oldSize: 70, oldLim: true, oldN: 3, oldFade: false, oldFadeFrom: 2};
@@ -2687,7 +2773,6 @@ document.addEventListener('keydown', e => {
 }, true);
 $('#findPrev').onclick = () => findGo(-1);
 $('#findClose').onclick = closeFind;
-$('#findToggle').onclick = () => { const r = $('#replRow'); r.hidden = !r.hidden; $('#findToggle').classList.toggle('on', !r.hidden); $('#findToggle').textContent = r.hidden ? '바꾸기 ▾' : '바꾸기 ▴'; if (!r.hidden) replQ.focus(); };
 $('#replOne').onclick = replaceOne;
 $('#replAll').onclick = replaceAll;
 window.addEventListener('resize', () => { if (!findBar.hidden) placeFind(); });
@@ -4206,7 +4291,7 @@ cv.addEventListener('pointerup', e => {
   const d = drag; drag = null;
   cancelAnimationFrame(asId); asId = 0;
   if (d.mode === 'pointref'){ ed.focus(); schedule(); return; }
-  if (d.mode === 'imgmove' || d.mode === 'imgresize'){ if (d.moved) afterChange(); else undoStack.pop(); schedule(); }
+  if (d.mode === 'imgmove' || d.mode === 'imgresize'){ if (d.moved) afterChange(); else { undoStack.pop(); undoMeta.pop(); } schedule(); }
   else if (d.mode === 'colw' || d.mode === 'rowh'){ afterChange();
     if (d.mode === 'rowh') clipGrown(d.rows);
   }
@@ -4952,7 +5037,9 @@ function borderPop(anchor){
     <div class="plabel">선 모양</div><div class="lineopt">${styles}</div>
     <div class="plabel">선 색</div><div class="swgrid" style="grid-template-columns:repeat(8,18px)">${cols.map(swatch).join('')}</div>
     <div class="prow"><label class="pbtn">다른 색 <input type="color" id="bpC" value="${borderPen.c}"></label><span class="pbtn" style="cursor:default;color:${borderPen.c}" title="지금 선">${lineSvg(borderPen).replace('120 10', '120 10" style="width:70px')}</span></div>
-    <div class="plabel" style="line-height:1.5">두께·모양·색을 고른 뒤 왼쪽에서 테두리 종류를 누르세요.</div></div></div>`;
+    <div class="plabel" style="line-height:1.5">두께·모양·색을 고른 뒤 왼쪽에서 테두리 종류를 누르세요.</div>
+    <div class="plabel">이미 그어 둔 테두리 (고른 곳)</div>
+    <div class="prow"><button class="pbtn" id="bpRecolor" title="선은 그대로, 색만 지금 색으로">색만 바꾸기</button><button class="pbtn" id="bpRestyle" title="두께·모양·색 모두 지금 선으로">선 전체 바꾸기</button></div></div></div>`;
   showPop(anchor, html, p => {
     p.onclick = e => {
       const b = e.target.closest('[data-b]'); if (b){ hideMenus(); applyBorder(b.dataset.b); focusGrid(); return; }
@@ -4961,6 +5048,8 @@ function borderPop(anchor){
       const c = e.target.closest('[data-c]'); if (c){ borderPen.c = c.dataset.c; return borderPop(anchor); }
     };
     p.querySelector('#bpC').onchange = e => { borderPen.c = e.target.value.toUpperCase(); borderPop(anchor); };
+    p.querySelector('#bpRecolor').onclick = e => { e.stopPropagation(); hideMenus(); recolorBorders(true); focusGrid(); };
+    p.querySelector('#bpRestyle').onclick = e => { e.stopPropagation(); hideMenus(); recolorBorders(false); focusGrid(); };
   });
 }
 function mergePop(anchor){
@@ -4996,6 +5085,9 @@ $('#styleGal').addEventListener('click', e => {
   const clone = id => { const s = document.getElementById(id), c = s.cloneNode(true); c.removeAttribute('id'); c.dataset.mirror = id; return c; };
   ['tbAL', 'tbAC', 'tbAR', 'tbWrap'].forEach(id => $('#fmtAlign').appendChild(clone(id)));
   ['tbPara', 'tbDoc', 'tbEditMark'].forEach(id => $('#fmtMore').appendChild(clone(id)));
+  $('#fmtMore').prepend(clone('tbHistory'));
+  $('#fmtMore').prepend(document.querySelector('#ribbon [data-cmd="borderMenu"]').cloneNode(true));
+  $('#fmtMore').prepend(clone('tbBorder'));
   $('#fmtMore').appendChild(document.querySelector('#ribbon [data-cmd="editMarkMenu"]').cloneNode(true));
   const cf = document.querySelector('#ribbon [data-cmd="clear"]').cloneNode(true); $('#fmtMore').appendChild(cf);
 })();
@@ -5151,6 +5243,7 @@ document.addEventListener('click', e => {
   run(b.dataset.cmd, b);
 });
 function run(cmd, el){
+  if (el && cmd !== 'undo' && cmd !== 'redo'){ const t = (el.title || '').split(/ ?[(·:]/)[0] || (el.querySelector('span') || {}).textContent; if (t) { nextLabel = t.trim() + ' · ' + selName(); setTimeout(() => { nextLabel = ''; }, 0); } }
   const fileCmds = {new: newFile, open: openFile, save: () => saveFile(false), saveAs: () => saveFile(true), export: exportXlsx, backups: openBackups, install: installApp, print: openPrint, pageView: openPageView};
   if (fileCmds[cmd]){ if (editing) commitEdit(); fileCmds[cmd](); return; }
   const s = () => st(act.r, act.c);
@@ -5167,6 +5260,7 @@ function run(cmd, el){
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
     themeMenu: () => themeMenu(el), fileMenu: () => fileMenu(el),
+    history: () => toggleHist(),
     editMarkToggle: () => setEditMark({on: !editSet.on}), editMarkMenu: () => editMarkMenu(el),
     indUp: () => applyStyle({ind: Math.min(8, (s().ind || 0) + 1)}), indDown: () => applyStyle({ind: Math.max(0, (s().ind || 0) - 1) || null}),
     bullet: () => listPrefix('bullet'), numbering: () => listPrefix('num'), recMenu: () => { if (!el.dataset.noclick) recMenu(el); },
@@ -5347,7 +5441,7 @@ function loadWorkbook(obj){
   IMG.clear(); selImg = null; clearCalc();
   if (!wb.sheets.length) wb.sheets = [newSheet('Sheet1')];
   sh = wb.sheets[wb.active];
-  undoStack = []; redoStack = []; clip = null; painter = null; updatePainter();
+  undoStack = []; redoStack = []; undoMeta = []; redoMeta = []; clip = null; painter = null; updatePainter();
   if (editing) cancelEdit();
   buildMerges(); autoRows(); layout(); wrap.scrollTo(0, 0); setSel(0, 0); renderTabs(); schedule();
 }
