@@ -67,6 +67,9 @@ button{font:inherit;color:inherit}
 .lhbox .pct{position:absolute;right:24px;pointer-events:none;font-size:12px}
 .lhbox .szbtn{right:2px}
 .mi.dis{opacity:.5;cursor:default}
+#viewMenuBtn{display:inline-flex;align-items:center;gap:3px}
+#viewMenuBtn svg{width:10px;height:10px}
+.mi .vck{width:16px;display:inline-block;text-align:center;color:var(--accent);font-weight:700}
 .emset{display:flex;flex-direction:column;gap:7px;min-width:300px}
 .emset .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
 .emset input[type=number]{width:64px}
@@ -112,6 +115,7 @@ button{font:inherit;color:inherit}
 .histpanel .hi.cur{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .histpanel .hi.fut{opacity:.45}
 .histpanel .hfoot{font-size:11px;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);line-height:1.4}
+body.v-notop .titlebar, body.v-norib #ribbon, body.v-norib #ribbonFmt, body.v-nofx .fxbar, body.v-nobot .bottombar{display:none!important}
 .findbar .fall{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--muted);cursor:pointer;padding:0 4px}
 .findbar #findGoBtn{flex:none;padding:0 12px;height:28px}
 ::highlight(findhl){background-color:#FFE14D}
@@ -406,6 +410,7 @@ html.darksheet .wrap{background:#1A1B1D}
     <button class="tabbtn filetab" data-cmd="fileMenu" id="fileMenuBtn" title="파일 (Alt+F)">파일 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
     <button class="tabbtn" data-tab="edit">편집</button>
     <button class="tabbtn" data-tab="fmt">서식</button>
+    <button class="tabbtn" data-cmd="viewMenu" id="viewMenuBtn" title="표시: 화면에 보일 것 고르기 (Alt+V)">표시 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
   </div>
   <div class="ribbon" id="ribbonFmt" hidden>
     <div class="grp stylegal" id="styleGal"></div>
@@ -593,7 +598,8 @@ html.darksheet .wrap{background:#1A1B1D}
 (() => {
 'use strict';
 // ===== 기본 값 =====
-const ROWS = 1000, COLS = 52, DEF_W = 90, DEF_H = 24, HW = 46, HH = 24;
+const ROWS = 1000, COLS = 52, DEF_W = 90, DEF_H = 24;
+let HW = 46, HH = 24;   // 행·열 머리글 (표시 메뉴에서 끄면 0)
 const DEF_FONT = 'Malgun Gothic', DEF_FS = 11, LS = 'monun.autosave.v1';
 // 어두운 시트: 칸 색을 화면에서만 밝기를 뒤집어 그린다 (색감은 유지). 편집 칸의 CSS filter와 같은 계산
 let darkSheet = false;
@@ -1273,6 +1279,7 @@ function drawSelection(){
   }
 }
 function drawHeaders(f, fx, fy, sl, stp, z, W, H){
+  if (!HW && !HH) return;
   ctx.font = '500 11.5px "IBM Plex Sans KR", "Malgun Gothic", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const fcs = fullCols(sel), frs = fullRows(sel);
@@ -5457,6 +5464,48 @@ function closeDocument(){
   if (NATIVE) return window.close();   // 저장 안 했으면 프로그램이 저장할지 물어봄
   confirmDiscard(() => { loadWorkbook({sheets: [newSheet('Sheet1')], active: 0}); fileHandle = null; filePath = null; fileName = '제목 없음'; fileDirty = false; updateDoc(); queueAutosave(); });
 }
+// ===== 표시: 화면에 보일 것 =====
+let viewSet = {top: true, rib: true, fx: true, head: true, bot: true};
+try { Object.assign(viewSet, JSON.parse(localStorage.getItem('monun.view') || '{}')); } catch (e) {}
+function applyView(){
+  const B = document.body.classList;
+  B.toggle('v-notop', !viewSet.top); B.toggle('v-norib', !viewSet.rib); B.toggle('v-nofx', !viewSet.fx); B.toggle('v-nobot', !viewSet.bot);
+  HW = viewSet.head ? 46 : 0; HH = viewSet.head ? 24 : 0;
+  try { localStorage.setItem('monun.view', JSON.stringify(viewSet)); } catch (e) {}
+  layout(); positionEditor(); if (findBar && !findBar.hidden) placeFind(); if (docMode) layoutDoc(); if (histOn) placeHist(); schedule();
+}
+function viewMenu(el){
+  if (editing) commitEdit();
+  const b = (el || $('#viewMenuBtn')).getBoundingClientRect();
+  const ck = on => `<span class="vck">${on ? '✓' : ''}</span>`;
+  const T = (label, on, fn, kbd) => ({label, icon: ck(on), kbd, run: () => { fn(); setTimeout(() => viewMenu(el), 0); }});
+  const V = (k, label) => T(label, viewSet[k], () => { viewSet[k] = !viewSet[k]; applyView(); });
+  const all = Object.values(viewSet).every(Boolean);
+  showMenu(b.left - 4, b.bottom + 4, [
+    V('top', '맨 위 줄 (녹화·화면·저장 단추)'),
+    V('rib', '단추 줄 (편집·서식 단추)'),
+    V('fx', '내용 입력줄'),
+    V('head', '행·열 머리글 (A B C / 1 2 3)'),
+    T('눈금선', !!sh.grid, () => { sh.grid = !sh.grid; queueAutosave(); refreshUI(); schedule(); }),
+    V('bot', '아래 줄 (시트 탭·글자 수·확대)'),
+    '-',
+    T('작업 내역 창', histOn && panelTab === 'hist', () => showPanelTab('hist')),
+    T('레이어 창', histOn && panelTab === 'layer', () => showPanelTab('layer')),
+    T('찾기 창', !findBar.hidden, () => { if (findBar.hidden) openFind(); else closeFind(); }, 'Ctrl+F'),
+    '-',
+    T('수정한 곳 형광펜', editSet.on, () => setEditMark({on: !editSet.on})),
+    T('레이어 글자를 레이어 색으로', wb.lyTint !== false, () => lyCmd('tint')),
+    T('찾은 글자 형광펜', !!findHL, () => { if (findHL) clearFindHL(); else toast('Ctrl+F로 찾으면 다시 칠해져요'); }),
+    '-',
+    T('전체 화면', !!document.fullscreenElement, () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); }, 'F11'),
+    {label: all ? '모두 보이는 중' : '모두 다시 보이기', icon: '<span class="vck"></span>', disabled: all, run: () => { viewSet = {top: true, rib: true, fx: true, head: true, bot: true}; applyView(); }},
+  ]);
+}
+document.addEventListener('keydown', e => {
+  if (e.altKey && !e.ctrlKey && !e.shiftKey && e.code === 'KeyV'){ e.preventDefault(); e.stopPropagation(); viewMenu(); }
+  else if (e.key === 'F11' && !e.ctrlKey && !e.altKey){ e.preventDefault(); if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); }
+}, true);
+setTimeout(applyView, 0);
 async function fileMenu(el){
   if (editing) commitEdit();
   const b = (el || $('#fileMenuBtn')).getBoundingClientRect();
@@ -5529,7 +5578,7 @@ function run(cmd, el){
     alignC: () => applyStyle({ha: s().ha === 'center' ? null : 'center'}),
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
-    themeMenu: () => themeMenu(el), fileMenu: () => fileMenu(el),
+    themeMenu: () => themeMenu(el), fileMenu: () => fileMenu(el), viewMenu: () => viewMenu(el),
     history: () => showPanelTab('hist'), layers: () => showPanelTab('layer'),
     editMarkToggle: () => setEditMark({on: !editSet.on}), editMarkMenu: () => editMarkMenu(el),
     indUp: () => applyStyle({ind: Math.min(8, (s().ind || 0) + 1)}), indDown: () => applyStyle({ind: Math.max(0, (s().ind || 0) - 1) || null}),
