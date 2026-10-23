@@ -67,6 +67,14 @@ button{font:inherit;color:inherit}
 .lhbox .pct{position:absolute;right:24px;pointer-events:none;font-size:12px}
 .lhbox .szbtn{right:2px}
 .mi.dis{opacity:.5;cursor:default}
+.emset{display:flex;flex-direction:column;gap:7px;min-width:300px}
+.emset .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.emset input[type=number]{width:64px}
+.emset .sws{display:flex;gap:5px;flex-wrap:wrap}
+.emset .sw2{width:22px;height:22px;border-radius:5px;border:1px solid var(--line);cursor:pointer}
+.emset .sw2.on{outline:2px solid var(--accent);outline-offset:1px}
+.emset .navs{display:flex;gap:5px}
+.emset .navs .pbtn{flex:1;height:28px;font-size:12px}
 .findbar .fall{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--muted);cursor:pointer;padding:0 4px}
 .findbar #findGoBtn{flex:none;padding:0 12px;height:28px}
 ::highlight(findhl){background-color:#FFE14D}
@@ -304,7 +312,15 @@ html.darksheet .wrap{background:#1A1B1D}
 .fc-row:hover{background:var(--hover)}
 .fc-row b{font-family:"IBM Plex Mono",Consolas,monospace;font-weight:500;font-size:12.5px}
 .fc-row span{color:var(--muted);font-size:12px}
-.findbar{position:fixed;z-index:15;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px;display:grid;gap:6px;width:min(400px,calc(100vw - 32px))}
+.findbar{position:fixed;z-index:15;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px;display:grid;gap:6px;width:min(540px,calc(100vw - 24px))}
+.frow.fopts .sp{flex:1}
+.frow.fopts{flex-wrap:wrap;row-gap:4px}
+.findbar.docked{position:static;width:auto;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:5px 16px;background:var(--bar)}
+.findbar.docked .frow:first-child{flex:1 1 380px;max-width:560px}
+.findbar.docked .frow.fopts{flex:0 1 auto}
+.findbar.docked #replRow{flex:1 1 320px;max-width:520px}
+.frow.fopts .pbtn{height:28px;font-size:12px;padding:0 10px}
+#findToggle.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
 .findbar[hidden]{display:none}
 .frow{display:flex;gap:4px;align-items:center}
 .frow[hidden]{display:none}
@@ -442,6 +458,8 @@ html.darksheet .wrap{background:#1A1B1D}
       <button class="tb labeled" data-cmd="freezeMenu" id="tbFreeze" title="틀 고정: 제목 줄·열을 스크롤해도 보이게"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="3" y="3" width="14" height="14" rx="1" stroke-width="1.3"/><path d="M3 7.5h14M7.5 3v14" stroke-width="2.4"/></svg><span>틀 고정</span></button>
       <button class="tb" data-cmd="autoSum" title="자동 합계 (Alt+=)"><span class="glyph" style="font-family:Georgia,serif;font-size:17px">Σ</span></button>
       <button class="tb caret" data-cmd="sumMenu" title="평균·개수·최댓값… 함수 목록"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
+      <button class="tb labeled" data-cmd="editMarkToggle" id="tbEditMark" title="수정한 곳 형광펜: 켜 두면 고친 문장을 칠해 둡니다"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12.5 3.5 4 4-8 8H4.5v-4z"/><path d="M3 17.5h14" stroke-width="2.2" stroke-opacity=".55"/></svg><span>수정 표시</span></button>
+      <button class="tb caret" data-cmd="editMarkMenu" title="수정 표시 설정 (색·몇 문장까지·이동)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       <button class="tb" data-cmd="find" title="찾기 (Ctrl+F) · 바꾸기 (Ctrl+H)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.5 12.5 4.5 4.5"/></svg></button>
     </div>
   </div>
@@ -491,10 +509,15 @@ html.darksheet .wrap{background:#1A1B1D}
     <span id="findCount"></span>
     <button class="tb" id="findPrev" title="이전 (Shift+Enter)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 5-5 5 5"/></svg></button>
     <button class="tb" id="findNext" title="다음 (Enter)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 7.5 5 5 5-5"/></svg></button>
-    <label class="chk fall" title="모든 시트에서 찾기"><input type="checkbox" id="findAll"> 모든 시트</label>
-    <button class="tb" id="findClear" title="형광펜 지우기 (Ctrl+D)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m11.5 3.5 5 5-7 7H5v-4.5z"/><path d="M3 17.5h14"/><path d="m4.5 4.5 11 11" stroke-width="1.7"/></svg></button>
-    <button class="tb" id="findToggle" title="바꾸기 열기/닫기 (Ctrl+H)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11l-3-3M16 13H5l3 3"/></svg></button>
     <button class="tb" id="findClose" title="닫기 (Esc)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
+  </div>
+  <div class="frow fopts">
+    <label class="chk fall" title="모든 시트에서 찾기"><input type="checkbox" id="findAll"> 모든 시트</label>
+    <label class="chk fall" title="Esc를 눌러도 닫히지 않고, 켤 때도 열려 있음 (✕로 닫기)"><input type="checkbox" id="findPin"> 항상 띄워 두기</label>
+    <label class="chk fall" title="표 위에 떠 있지 않고 단추 줄 바로 아래에 한 줄로"><input type="checkbox" id="findDock"> 위쪽에 붙이기</label>
+    <span class="sp"></span>
+    <button class="pbtn" id="findClear" title="찾은 글자 형광펜 지우기 (Ctrl+D)">형광펜 지우기</button>
+    <button class="pbtn" id="findToggle" title="바꾸기 열기/닫기 (Ctrl+H)">바꾸기 ▾</button>
   </div>
   <div class="frow" id="replRow" hidden>
     <input class="ctl" id="replQ" placeholder="바꿀 내용" spellcheck="false" autocomplete="off">
@@ -541,6 +564,8 @@ const SIZES = [8,9,10,11,12,14,16,18,20,22,24,26,28,36,48,72];
 const $ = s => document.querySelector(s);
 const wrap = $('#wrap'), cv = $('#cv'), spacer = $('#spacer'), ed = $('#ed');
 let ctx = cv.getContext('2d');   // 그림으로 복사할 때 잠깐 다른 캔버스로 바꿔 그림
+const MAIN_CTX = ctx;
+let oldLabels = [];   // 고치기 전 문장 꼬리표 (칸을 다 그린 뒤 맨 위에)
 const fx = $('#fx'), nameBox = $('#nameBox'), pop = $('#pop'), menuEl = $('#ctx');
 const mctx = document.createElement('canvas').getContext('2d');
 
@@ -700,7 +725,8 @@ function spliceRuns(runs, nt){
   let p = 0; while (p < n && ot[p] === nt[p]) p++;
   let q = 0; while (q < n - p && ot[ot.length - 1 - q] === nt[nt.length - 1 - q]) q++;
   const mid = nt.slice(p, nt.length - q);
-  const near = sliceRuns(runs, p ? p - 1 : 0, p ? p : 1)[0] || {t: ''};
+  // 바뀌는 글자가 있으면 그 자리 글자의 서식을, 끼워 넣기만 하면 바로 앞 글자의 서식을 따름
+  const near = (ot.length - q > p ? sliceRuns(runs, p, p + 1)[0] : sliceRuns(runs, p ? p - 1 : 0, p ? p : 1)[0]) || {t: ''};
   return mergeRuns([...sliceRuns(runs, 0, p), ...(mid ? [{...near, t: mid}] : []), ...sliceRuns(runs, ot.length - q, ot.length)]);
 }
 // 칸 서식 + 이 부분의 서식
@@ -852,15 +878,19 @@ function render(){
     if (p.x1 - p.x0 <= 0 || p.y1 - p.y0 <= 0) continue;
     V = paneV(p);
     ctx.save(); ctx.beginPath(); ctx.rect(p.x0, p.y0, p.x1 - p.x0, p.y1 - p.y0); ctx.clip();
+    oldLabels = [];
     drawCells();
     drawSelection();
+    flushOldLabels();
     ctx.restore();
   }
   V = paneV(panes[0]);
   ctx.save(); ctx.beginPath(); ctx.rect(HW, HH, W-HW, H-HH); ctx.clip();
   drawImages();
   drawImageSelection();
+  oldLabels = [];
   drawPeek();
+  flushOldLabels();
   ctx.fillStyle = '#8D97A8';
   if (f.c) ctx.fillRect(Math.round(fx) - 1, HH, 1, H - HH);
   if (f.r) ctx.fillRect(HW, Math.round(fy) - 1, W - HW, 1);
@@ -975,7 +1005,9 @@ function drawText(r, c, rect, isMerge){
   const doWrap = wrapOn(s, raw);
   // 찾기 중이면 찾은 글자를 칠하려고 글자 위치를 아는 방식(richLines)으로 그림
   const fq = findTerm(), hitHere = !!fq && String(v).toLowerCase().includes(fq);
-  const rt = richFor(r, c, v), RL = needRich(rt, s) || hitHere ? richLines(rt || plainRuns(v), s, rect.w - pad*2, ctx, z, doWrap) : null;
+  const em = editMarksFor(r, c);
+  const rt = richFor(r, c, v), RL = needRich(rt, s) || hitHere || em ? richLines(rt || plainRuns(v), s, rect.w - pad*2, ctx, z, doWrap) : null;
+  if (RL && em){ RL.em = em; RL.showOld = editSet.old === 'all' || (editSet.old === 'sel' && r === act.r && c === act.c && !editing); }
   if (RL && hitHere){ RL.fq = fq; const ch = findCur >= 0 && findHits[findCur]; RL.curAt = ch && ch[0] === wb.active && ch[1] === r && ch[2] === c ? ch[3] : -1; }
   if (RL) ctx.font = fontStr(s, z);
   const lines = RL ? RL.lines.map(L => RL.M.text.slice(L.a, L.b)) : doWrap ? wrapLines(v, rect.w - pad*2, ctx) : String(v).split('\n');
@@ -1052,7 +1084,18 @@ function drawText(r, c, rect, isMerge){
 // y는 줄의 가운데. 글자 크기가 섞인 줄은 작은 글자를 내려서 글자 바닥선을 맞춘다
 function drawRichLine(RL, L, x, y, ha){
   let cx = ha === 'left' ? x + L.ind : ha === 'right' ? x - L.w : x - L.w/2 + L.ind/2;
+  const cx0 = cx;
   ctx.textAlign = 'left';
+  // 수정한 곳: 고친 문장 뒤에 형광펜 (오래된 것은 옅게)
+  if (RL.em){
+    for (const m of RL.em){
+      const a = Math.max(m.a, L.a), b = Math.min(m.b, L.b); if (a >= b) continue;
+      ctx.fillStyle = DC(m.col);
+      ctx.globalAlpha = m.alpha;
+      ctx.fillRect(cx + RL.M.meas(L.a, a), y - L.px*0.66, RL.M.meas(a, b), L.px*1.32);
+    }
+    ctx.globalAlpha = 1;
+  }
   // 찾기: 찾은 글자 뒤에 형광색 (지금 칸은 주황)
   if (RL.fq){
     if (!RL.hits){ RL.hits = []; const lt = RL.M.text.toLowerCase(); for (let i = lt.indexOf(RL.fq); i >= 0; i = lt.indexOf(RL.fq, i + RL.fq.length)) RL.hits.push([i, i + RL.fq.length]); }
@@ -1074,6 +1117,11 @@ function drawRichLine(RL, L, x, y, ha){
     if (e.u) ctx.fillRect(cx, gy + px*0.52, w, th);
     if (e.st) ctx.fillRect(cx, gy, w, th);
     cx += w;
+  }
+  if (RL.em && RL.showOld) for (const m of RL.em){
+    if (m.old == null || m.a < L.a || m.a >= L.b) continue;
+    const fpx = Math.max(9, L.px * editSet.oldSize / 100);
+    oldLabels.push({t: m.old === '' ? '(새로 쓴 문장)' : m.old, x: cx0 + RL.M.meas(L.a, m.a), y: y - L.px * 0.62, fpx, col: m.col});
   }
 }
 
@@ -1336,6 +1384,7 @@ function startEdit(mode, text){
   edDeco();
   ed.classList.add('on');
   if (findHL) setTimeout(edMarkFind, 0);
+  edStartText = ed.value; setTimeout(edMarkEdits, 0);
   positionEditor();
   if (mode === 'edit'){ const n = ed.value.length; ed.setSelectionRange(n, n); }
   fx.value = ed.value;
@@ -1348,8 +1397,9 @@ function commitEdit(){
   const rt = v !== '' && !isFormula(v) ? absToRt(readAbs(), st(act.r, act.c)) : null;
   pointRef = null; hideFnHint(); savedSel = null;
   editing = false; ed.classList.remove('on'); ed.value = '';
-  const oldRt = runsOf(act.r, act.c);
+  const oldRt = runsOf(act.r, act.c), oldV = String(getV(act.r, act.c));
   if (v !== getV(act.r, act.c) || JSON.stringify(rt) !== JSON.stringify(oldRt)) mutate(() => {
+    if (editSet.on && !isFormula(v)) noteEdit(act.r, act.c, oldV, v);
     setV(act.r, act.c, v);
     const cell = sh.cells[act.r+':'+act.c];
     if (cell){ if (rt) cell.rt = rt; else delete cell.rt; }
@@ -2237,11 +2287,11 @@ function openFilterPop(c, cx, cy){
 // ===== 찾기/바꾸기 =====
 let findHits = [];
 const findBar = $('#findBar'), findQ = $('#findQ'), replQ = $('#replQ');
-function placeFind(){ const b = (pvOpen ? document.getElementById('pvScroll') : wrap).getBoundingClientRect(); findBar.style.top = (b.top + 8) + 'px'; findBar.style.right = Math.max(8, innerWidth - b.right + 18) + 'px'; }
+function placeFind(){ if (findSet.dock){ findBar.style.top = findBar.style.right = ''; return; } const b = (pvOpen ? document.getElementById('pvScroll') : wrap).getBoundingClientRect(); findBar.style.top = (b.top + 8) + 'px'; findBar.style.right = Math.max(8, innerWidth - b.right + 18) + 'px'; }
 function openFind(withReplace){
   if (editing) commitEdit();
   findBar.hidden = false;
-  if (withReplace) $('#replRow').hidden = false;
+  if (withReplace){ $('#replRow').hidden = false; $('#findToggle').classList.add('on'); $('#findToggle').textContent = '바꾸기 ▴'; }
   placeFind();
   const cur = pvOpen ? '' : getV(act.r, act.c);
   if (!findQ.value && cur !== '' && String(cur).length < 40 && !String(cur).includes('\n')) findQ.value = cur;
@@ -2288,6 +2338,174 @@ function clearFindHL(){
   if (!findHL) return;
   findHL = ''; edMarkFind(); schedule(); toast('형광펜을 지웠습니다');
 }
+// ===== 수정한 곳 형광펜 =====
+// sh.editMarks = [{r, c, a, b, t}, ...] 새것부터. 칸 글의 a~b 글자(문장)를 칠함. 파일에 함께 저장됨
+let editSet = {on: false, n: 3, limit: true, color: '#B9F6CA', colorMode: 'new', fade: true, unit: 'sentence', old: 'sel', oldSize: 70};
+try { Object.assign(editSet, JSON.parse(localStorage.getItem('monun.editmark') || '{}')); } catch (e) {}
+let edStartText = '';
+const EM_COLORS = ['#B9F6CA', '#FFF59D', '#FFCDD2', '#B3E5FC', '#FFD8A8', '#E1BEE7', '#C5E1A5', '#D7CCC8'];
+function emStyle(){
+  let el = document.getElementById('emStyle');
+  if (!el){ el = document.createElement('style'); el.id = 'emStyle'; document.head.appendChild(el); }
+  el.textContent = emColors().map((c, i) => `::highlight(editmark${i}){background-color:${c}}`).join('\n');
+}
+// 칠할 색: '모두 한꺼번에'면 지금 색 하나, '지금부터만'이면 표시마다 그때 색
+const markColor = m => editSet.colorMode === 'all' ? editSet.color : (m.col || editSet.color);
+function emColors(){ const s = new Set([editSet.color]); for (const m of sh && sh.editMarks || []) s.add(markColor(m)); return [...s]; }
+emStyle();
+function setEditMark(patch){
+  Object.assign(editSet, patch);
+  try { localStorage.setItem('monun.editmark', JSON.stringify(editSet)); } catch (e) {}
+  if (('n' in patch || 'limit' in patch) && editSet.limit && (sh.editMarks || []).length > editSet.n) mutate(trimMarks);
+  emStyle(); setOn('tbEditMark', editSet.on); edMarkEdits(); schedule();
+  if ('on' in patch) toast(editSet.on ? '수정 표시를 켰어요 · 이제부터 고친 문장을 칠합니다' : '수정 표시를 껐어요 (칠해 둔 건 다시 켜면 보여요)');
+}
+// 문장 나누기: 줄 바꿈, 또는 . ! ? … 。 다음에 띄어쓰기/끝
+function sentences(t){
+  const out = []; let s = 0;
+  for (let i = 0; i < t.length; i++){
+    const ch = t[i];
+    if (ch === '\n'){ if (i > s) out.push([s, i]); s = i + 1; }
+    else if ('.!?…。'.includes(ch) && (i + 1 === t.length || /\s/.test(t[i + 1]))){ out.push([s, i + 1]); s = i + 1; while (s < t.length && t[s] === ' ') s++; i = s - 1; }
+  }
+  if (s < t.length) out.push([s, t.length]);
+  return out;
+}
+function trimMarks(){
+  const L = sh.editMarks; if (!L) return;
+  if (editSet.limit && L.length > editSet.n) L.length = editSet.n;
+  if (L.length > 3000) L.length = 3000;
+}
+// 칸 글이 ot → nt로 바뀔 때: 그 칸의 예전 표시는 자리를 옮기고, 고친 문장(또는 글자)을 새로 칠함
+function shiftMarks(list, r, c, ot, nt){
+  let p = 0; while (p < ot.length && p < nt.length && ot[p] === nt[p]) p++;
+  let q = 0; while (q < ot.length - p && q < nt.length - p && ot[ot.length - 1 - q] === nt[nt.length - 1 - q]) q++;
+  const oEnd = ot.length - q, delta = nt.length - ot.length, out = [];
+  for (const m of list){
+    if (m.r !== r || m.c !== c){ out.push(m); continue; }
+    if (m.b <= p) out.push(m);
+    else if (m.a >= oEnd) out.push({...m, a: m.a + delta, b: m.b + delta});
+  }
+  return {list: out, p, nEnd: nt.length - q};
+}
+function noteEdit(r, c, ot, nt){
+  if (ot === nt) return;
+  const {list, p, nEnd} = shiftMarks(sh.editMarks || [], r, c, ot, nt);
+  const oEnd = nEnd + ot.length - nt.length;
+  // 고친 자리에 걸쳐 있던 예전 표시 (예전 글 기준)
+  const touched = (sh.editMarks || []).filter(m => m.r === r && m.c === c && m.a < Math.max(oEnd, p + 1) && m.b > Math.max(0, p - (oEnd > p ? 0 : 1)));
+  const t = Date.now(), add = [];
+  const col = editSet.color;
+  if (editSet.unit === 'chars'){ if (nEnd > p) add.push({r, c, a: p, b: nEnd, t, col}); }
+  else {
+    const a = nEnd > p ? p : Math.max(0, p - 1), b = Math.max(nEnd, a + 1);
+    for (const [s0, s1] of sentences(nt)) if (s0 < b && s1 > a) add.push({r, c, a: s0, b: s1, t, col});
+  }
+  const gone = list.filter(m => m.r === r && m.c === c && add.some(x => x.a < m.b && x.b > m.a));
+  const fresh = list.filter(m => !gone.includes(m));
+  // 고치기 전 글: 고친 자리가 걸친 예전 문장(또는 글자). 이미 고쳤던 자리면 맨 처음 글
+  if (add.length){
+    let old;
+    const prev = touched.filter(m => m.old != null);
+    if (prev.length === 1) old = prev[0].old;
+    else if (editSet.unit === 'chars') old = ot.slice(p, oEnd);
+    else {
+      const a = oEnd > p ? p : Math.max(0, p - 1), b = Math.max(oEnd, a + 1);
+      const ss = sentences(ot).filter(([s0, s1]) => s0 < b && s1 > a);
+      old = ss.length ? ot.slice(ss[0][0], ss[ss.length - 1][1]) : '';
+    }
+    add[0].old = old;
+  }
+  sh.editMarks = [...add.reverse(), ...fresh];
+  trimMarks();
+}
+// 이 칸에 칠할 것 (새것일수록 진하게)
+// 꼬리표: 고친 문장 바로 위에 떠서 (윗줄·윗칸을 살짝 덮음), 화면 밖으로는 안 나가게
+function flushOldLabels(){
+  if (!oldLabels.length) return;
+  ctx.save(); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  for (const o of oldLabels){
+    ctx.font = `${o.fpx}px "IBM Plex Sans KR", "Malgun Gothic", sans-serif`;
+    const pre = '전 ', pw = ctx.measureText(pre).width, maxW = Math.max(120, (V ? V.W : 800) - o.x - 12);
+    let t = o.t, w = ctx.measureText(t).width;
+    if (w > maxW - pw){ while (t.length > 1 && ctx.measureText(t + '…').width > maxW - pw) t = t.slice(0, -1); t += '…'; w = ctx.measureText(t).width; }
+    const bh = o.fpx * 1.45, top = Math.max(HH + 1, o.y - bh - 1), x = o.x - 3;
+    ctx.globalAlpha = 0.96; ctx.fillStyle = DC('#FFFDF5'); ctx.fillRect(x, top, pw + w + 8, bh);
+    ctx.globalAlpha = 1; ctx.fillStyle = DC(o.col); ctx.fillRect(x, top, 3, bh);
+    ctx.strokeStyle = DC('#D9CFBF'); ctx.lineWidth = 1; ctx.strokeRect(x + .5, top + .5, pw + w + 7, bh - 1);
+    ctx.fillStyle = DC('#B08A4A'); ctx.fillText(pre, x + 6, top + bh / 2);
+    ctx.fillStyle = DC('#5B5346'); ctx.fillText(t, x + 6 + pw, top + bh / 2);
+  }
+  ctx.restore(); oldLabels = [];
+}
+function editMarksFor(r, c){
+  if (ctx !== MAIN_CTX) return null;   // 인쇄·그림 복사에는 안 나오게
+  if (!editSet.on || !sh.editMarks || !sh.editMarks.length) return null;
+  const L = sh.editMarks, n = L.length, out = [];
+  L.forEach((m, i) => { if (m.r === r && m.c === c) out.push({a: m.a, b: m.b, old: m.old, col: markColor(m), alpha: editSet.fade && n > 1 ? 0.95 - 0.6 * i / (n - 1) : 0.85}); });
+  return out.length ? out : null;
+}
+// 편집 칸 안에서도 (쓰는 중엔 바뀐 만큼 자리를 옮겨서)
+function edMarkEdits(){
+  if (!window.CSS || !CSS.highlights || typeof Highlight === 'undefined') return;
+  for (const k of [...CSS.highlights.keys()]) if (k.startsWith('editmark')) CSS.highlights.delete(k);
+  if (!editing || !editSet.on || !sh.editMarks) return;
+  emStyle(); const cols = emColors();
+  const {list} = shiftMarks(sh.editMarks.filter(m => m.r === act.r && m.c === act.c), act.r, act.c, edStartText, ed.value);
+  const by = {};
+  for (const m of list){ try { const a = edPoint(m.a), b = edPoint(m.b), rg = document.createRange(); rg.setStart(a[0], a[1]); rg.setEnd(b[0], b[1]); const i = cols.indexOf(markColor(m)); (by[i] = by[i] || []).push(rg); } catch (e) {} }
+  for (const i in by) CSS.highlights.set('editmark' + i, new Highlight(...by[i]));
+}
+// 수정한 곳으로 이동 (새것부터 차례로)
+let emNav = -1;
+function goEditMark(d){
+  const L = sh.editMarks || [];
+  if (!L.length) return toast('칠해 둔 수정한 곳이 없어요');
+  emNav = d === 0 ? 0 : Math.max(0, Math.min(L.length - 1, emNav + d));
+  const m = L[emNav];
+  if (editing) commitEdit();
+  setSel(m.r, m.c); ensureVisible(m.r, m.c); scrollToText(m.r, m.c, m.a); schedule();
+  toast(`수정한 곳 ${emNav + 1}/${L.length}` + (m.old ? ` · 전: ${m.old.length > 40 ? m.old.slice(0, 40) + '…' : m.old}` : ''));
+}
+function editMarkMenu(anchor){
+  const swatches = EM_COLORS.map(c => `<button class="sw2${c === editSet.color ? ' on' : ''}" data-emc="${c}" style="background:${c}" title="${c}"></button>`).join('');
+  showPop(anchor, `<div class="emset">
+    <label class="chk"><input type="checkbox" id="emOn"${editSet.on ? ' checked' : ''}> 수정한 곳 형광펜 칠하기</label>
+    <div class="row">칠하는 범위 <select class="ctl" id="emUnit"><option value="sentence"${editSet.unit !== 'chars' ? ' selected' : ''}>고친 문장 전체</option><option value="chars"${editSet.unit === 'chars' ? ' selected' : ''}>고친 글자만</option></select></div>
+    <div class="plabel">얼마나 남겨 둘까</div>
+    <label class="chk"><input type="radio" name="emLim" value="1"${editSet.limit ? ' checked' : ''}> 최근 <input class="ctl" id="emN" type="number" min="1" max="500" value="${editSet.n}"> 문장까지만 (오래된 것부터 사라짐)</label>
+    <label class="chk"><input type="radio" name="emLim" value="0"${editSet.limit ? '' : ' checked'}> 제한 없이 계속 (지울 때까지 남음)</label>
+    <div class="plabel">고치기 전 문장 (고친 문장 위에 작게)</div>
+    <div class="row"><select class="ctl" id="emOld"><option value="sel"${editSet.old === 'sel' ? ' selected' : ''}>고른 칸에서만 보기</option><option value="all"${editSet.old === 'all' ? ' selected' : ''}>모든 칸에서 보기</option><option value="off"${editSet.old === 'off' ? ' selected' : ''}>안 보기</option></select>
+      <span>글씨 <input class="ctl" id="emOldSize" type="number" min="30" max="100" step="5" value="${editSet.oldSize}"> %</span></div>
+    <label class="chk"><input type="checkbox" id="emFade"${editSet.fade ? ' checked' : ''}> 오래된 수정일수록 옅게</label>
+    <div class="plabel">형광펜 색</div>
+    <label class="chk"><input type="radio" name="emCm" value="new"${editSet.colorMode !== 'all' ? ' checked' : ''}> 바꾼 순간부터 새 색 (이전 수정은 원래 색 그대로)</label>
+    <label class="chk"><input type="radio" name="emCm" value="all"${editSet.colorMode === 'all' ? ' checked' : ''}> 모두 한꺼번에 새 색으로</label>
+    <div class="sws">${swatches}<label class="pbtn" style="height:24px;padding:0 8px;font-size:12px">다른 색 <input type="color" id="emPick" value="${editSet.color}" style="width:0;height:0;opacity:0;border:0;padding:0"></label></div>
+    <div class="plabel">수정한 곳으로 이동 (${(sh.editMarks || []).length}곳)</div>
+    <div class="navs"><button class="pbtn" data-emgo="0">가장 최근</button><button class="pbtn" data-emgo="-1">◀ 이전</button><button class="pbtn" data-emgo="1">다음 ▶</button></div>
+    <button class="pbtn" id="emClear" style="height:28px">이 시트의 수정 표시 지우기</button>
+  </div>`, p => {
+    p.querySelector('#emOn').onchange = e => setEditMark({on: e.target.checked});
+    p.querySelector('#emUnit').onchange = e => setEditMark({unit: e.target.value});
+    p.querySelector('#emN').onchange = e => setEditMark({n: Math.max(1, Math.min(500, parseInt(e.target.value, 10) || 3)), limit: true});
+    p.querySelector('#emN').onfocus = () => { p.querySelector('[name=emLim][value="1"]').checked = true; };
+    p.querySelectorAll('[name=emLim]').forEach(x => x.onchange = () => { const lim = x.value === '1'; if (lim && (sh.editMarks || []).length > editSet.n && !confirm(`최근 ${editSet.n}문장만 남기고 오래된 표시 ${(sh.editMarks || []).length - editSet.n}개는 지웁니다.`)){ editMarkMenu(anchor); return; } setEditMark({limit: lim}); editMarkMenu(anchor); });
+    p.querySelectorAll('[name=emCm]').forEach(x => x.onchange = () => { setEditMark({colorMode: x.value}); toast(x.value === 'all' ? '모든 수정 표시를 지금 색으로 칠해요' : '이제부터 고친 곳만 새 색으로 칠해요'); });
+    p.querySelector('#emOld').onchange = e => setEditMark({old: e.target.value});
+    p.querySelector('#emOldSize').onchange = e => setEditMark({oldSize: Math.max(30, Math.min(100, parseInt(e.target.value, 10) || 70))});
+    p.querySelector('#emFade').onchange = e => setEditMark({fade: e.target.checked});
+    p.querySelector('#emPick').onchange = e => { setEditMark({color: e.target.value.toUpperCase()}); editMarkMenu(anchor); };
+    p.onclick = e => {
+      const sw = e.target.closest('[data-emc]'); if (sw){ setEditMark({color: sw.dataset.emc}); editMarkMenu(anchor); return; }
+      const g = e.target.closest('[data-emgo]'); if (g){ goEditMark(+g.dataset.emgo); return; }
+      if (e.target.closest('#emClear')){ if (!(sh.editMarks || []).length) return toast('지울 수정 표시가 없어요'); mutate(() => { delete sh.editMarks; }); hideMenus(); toast('이 시트의 수정 표시를 지웠어요 (Ctrl+Z로 되돌리기)'); }
+    };
+  });
+  menuOpenedAt = Date.now();
+}
+setTimeout(() => setOn('tbEditMark', editSet.on), 0);
 // 편집 칸 안에도 형광펜 (글자는 건드리지 않고 표시만: CSS Highlight)
 function edMarkFind(){
   if (!window.CSS || !CSS.highlights || typeof Highlight === 'undefined') return;
@@ -2398,24 +2616,44 @@ function replaceOne(){
 function replaceAll(){
   if (!findQ.value) return;
   const wasPV = pvOpen; pvOpen = false; runFind(); pvOpen = wasPV;
-  const seen = new Set();
-  const targets = findHits.filter(([si, r, c]) => si === wb.active && !seen.has(r + ':' + c) && seen.add(r + ':' + c)).map(([, r, c]) => [r, c]).filter(([r, c]) => String(getV(r, c)).toLowerCase().includes(findQ.value.toLowerCase()));
+  const seen = new Set(), all = $('#findAll').checked;
+  const targets = findHits.filter(([si, r, c]) => (all || si === wb.active) && !seen.has(si + ':' + r + ':' + c) && seen.add(si + ':' + r + ':' + c));
   if (!targets.length) return toast('바꿀 내용이 없습니다');
-  mutate(() => { for (const [r, c] of targets) replaceCell(r, c); });
+  const nSheets = new Set(targets.map(x => x[0])).size;
+  mutate(() => {
+    const keep = sh;
+    for (const [si, r, c] of targets){ sh = wb.sheets[si]; if (String(getV(r, c)).toLowerCase().includes(findQ.value.toLowerCase())) replaceCell(r, c); }
+    sh = keep;
+  });
   if (pvOpen){ renderPageView().then(() => runFindPV()); } else runFind();
-  toast(`${targets.length}칸에서 바꿨습니다 · Ctrl+Z로 되돌릴 수 있어요`);
+  toast(`${nSheets > 1 ? '시트 ' + nSheets + '개, ' : ''}${targets.length}칸에서 바꿨습니다 · Ctrl+Z로 되돌릴 수 있어요`);
 }
 findQ.addEventListener('input', runFind);
 findQ.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); findGo(e.shiftKey ? -1 : 1); }
-  else if (e.key === 'Escape'){ e.preventDefault(); closeFind(); }
+  else if (e.key === 'Escape'){ e.preventDefault(); escFind(); }
 });
 replQ.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); replaceOne(); }
-  else if (e.key === 'Escape'){ e.preventDefault(); closeFind(); }
+  else if (e.key === 'Escape'){ e.preventDefault(); escFind(); }
 });
 findBar.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
 $('#findNext').onclick = () => findGo(1);
+// --- 항상 띄워 두기 / 위쪽에 붙이기 (다음에 켤 때도 그대로) ---
+let findSet = {pin: false, dock: false};
+try { Object.assign(findSet, JSON.parse(localStorage.getItem('monun.find') || '{}')); } catch (e) {}
+const saveFindSet = () => { try { localStorage.setItem('monun.find', JSON.stringify(findSet)); } catch (e) {} };
+function escFind(){ if (findSet.pin) focusGrid(); else closeFind(); }
+function applyFindDock(){
+  if (findSet.dock){ document.querySelector('.fxbar').before(findBar); findBar.classList.add('docked'); }
+  else { document.body.appendChild(findBar); findBar.classList.remove('docked'); }
+  placeFind(); if (docMode) layoutDoc(); positionEditor(); schedule();
+}
+$('#findPin').checked = findSet.pin; $('#findDock').checked = findSet.dock;
+$('#findPin').onchange = e => { findSet.pin = e.target.checked; saveFindSet(); findQ.focus(); };
+$('#findDock').onchange = e => { findSet.dock = e.target.checked; saveFindSet(); applyFindDock(); findQ.focus(); };
+if (findSet.dock) applyFindDock();
+if (findSet.pin) setTimeout(() => { findBar.hidden = false; placeFind(); schedule(); }, 0);   // 켤 때도 열어 둠 (글 쓰는 곳의 커서는 그대로)
 $('#findGoBtn').onclick = () => findGo(1);
 $('#findClear').onclick = () => { clearFindHL(); findQ.focus(); };
 $('#findAll').onchange = () => { runFind(); findQ.focus(); };
@@ -2425,7 +2663,7 @@ document.addEventListener('keydown', e => {
 }, true);
 $('#findPrev').onclick = () => findGo(-1);
 $('#findClose').onclick = closeFind;
-$('#findToggle').onclick = () => { const r = $('#replRow'); r.hidden = !r.hidden; if (!r.hidden) replQ.focus(); };
+$('#findToggle').onclick = () => { const r = $('#replRow'); r.hidden = !r.hidden; $('#findToggle').classList.toggle('on', !r.hidden); $('#findToggle').textContent = r.hidden ? '바꾸기 ▾' : '바꾸기 ▴'; if (!r.hidden) replQ.focus(); };
 $('#replOne').onclick = replaceOne;
 $('#replAll').onclick = replaceAll;
 window.addEventListener('resize', () => { if (!findBar.hidden) placeFind(); });
@@ -3571,7 +3809,7 @@ let pvScope = 'all';
 // onlySel: 오른쪽 클릭 메뉴에서 열면 고른 칸들만 보여 줌
 function openPageView(onlySel){
   if (editing) commitEdit();
-  if (findBar && !findBar.hidden) closeFind();
+  if (findBar && !findBar.hidden && !findSet.pin) closeFind();
   const usable = !fullCols(sel) && !fullRows(sel);
   pvSel = usable && (sel.r1 !== sel.r2 || sel.c1 !== sel.c2 || getV(act.r, act.c) !== '') ? {...sel} : null;
   if (onlySel === true){
@@ -4181,7 +4419,7 @@ ed.addEventListener('copy', e => { if (editing || !clip) return; e.preventDefaul
 ed.addEventListener('cut', e => { if (editing || !clip) return; e.preventDefault(); e.clipboardData.setData('text/plain', clip.text); e.clipboardData.setData('text/html', clipHTML); });
 // 편집기에 서식 있는 글이 섞여 들어오지 않게: 붙여넣기·끌어 놓기는 글자만, 브라우저 자체 서식 명령은 막음
 function edInputDone(){
-  pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); if (findHL) edMarkFind();
+  pointRef = null; sizeEditor(); syncFx(); updateCharCount(); updDocInfo(); if (findHL) edMarkFind(); edMarkEdits();
   // 칸에 쓰는 중에도 저장 안 됨(•)으로: 편집을 마치기 전이라도 업데이트·창 닫기 때 저장할지 묻도록
   if (!fileDirty){ fileDirty = true; updateDoc(); }
 }
@@ -4733,7 +4971,8 @@ $('#styleGal').addEventListener('click', e => {
 (() => {
   const clone = id => { const s = document.getElementById(id), c = s.cloneNode(true); c.removeAttribute('id'); c.dataset.mirror = id; return c; };
   ['tbAL', 'tbAC', 'tbAR', 'tbWrap'].forEach(id => $('#fmtAlign').appendChild(clone(id)));
-  ['tbPara', 'tbDoc'].forEach(id => $('#fmtMore').appendChild(clone(id)));
+  ['tbPara', 'tbDoc', 'tbEditMark'].forEach(id => $('#fmtMore').appendChild(clone(id)));
+  $('#fmtMore').appendChild(document.querySelector('#ribbon [data-cmd="editMarkMenu"]').cloneNode(true));
   const cf = document.querySelector('#ribbon [data-cmd="clear"]').cloneNode(true); $('#fmtMore').appendChild(cf);
 })();
 // 줄 간격 % 칸
@@ -4904,6 +5143,7 @@ function run(cmd, el){
     alignR: () => applyStyle({ha: s().ha === 'right' ? null : 'right'}),
     vTop: () => applyStyle({va:null}), vMid: () => applyStyle({va:'middle'}), vBot: () => applyStyle({va:'bottom'}),
     themeMenu: () => themeMenu(el), fileMenu: () => fileMenu(el),
+    editMarkToggle: () => setEditMark({on: !editSet.on}), editMarkMenu: () => editMarkMenu(el),
     indUp: () => applyStyle({ind: Math.min(8, (s().ind || 0) + 1)}), indDown: () => applyStyle({ind: Math.max(0, (s().ind || 0) - 1) || null}),
     bullet: () => listPrefix('bullet'), numbering: () => listPrefix('num'), recMenu: () => { if (!el.dataset.noclick) recMenu(el); },
     wrap: () => applyStyle({wrap: wrapOn(st(act.r, act.c)) ? false : null}), paraMenu: () => paraMenu(el), docMode: () => docMode ? closeDoc() : openDoc(), merge: mergeToggle, mergeMenu: () => mergePop(el),
