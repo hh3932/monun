@@ -1119,9 +1119,9 @@ function drawRichLine(RL, L, x, y, ha){
     cx += w;
   }
   if (RL.em && RL.showOld) for (const m of RL.em){
-    if (m.old == null || m.a < L.a || m.a >= L.b) continue;
+    if (m.old == null || !m.oa || m.a < L.a || m.a >= L.b) continue;
     const fpx = Math.max(9, L.px * editSet.oldSize / 100);
-    oldLabels.push({t: m.old === '' ? '(새로 쓴 문장)' : m.old, x: cx0 + RL.M.meas(L.a, m.a), y: y - L.px * 0.62, fpx, col: m.col});
+    oldLabels.push({t: m.old === '' ? '(새로 쓴 문장)' : m.old, x: cx0 + RL.M.meas(L.a, m.a), y: y - L.px * 0.62, fpx, col: m.col, oa: m.oa});
   }
 }
 
@@ -2340,7 +2340,7 @@ function clearFindHL(){
 }
 // ===== 수정한 곳 형광펜 =====
 // sh.editMarks = [{r, c, a, b, t}, ...] 새것부터. 칸 글의 a~b 글자(문장)를 칠함. 파일에 함께 저장됨
-let editSet = {on: false, n: 3, limit: true, color: '#B9F6CA', colorMode: 'new', fade: true, unit: 'sentence', old: 'sel', oldSize: 70};
+let editSet = {on: false, n: 3, limit: true, color: '#B9F6CA', colorMode: 'new', fade: true, unit: 'sentence', old: 'sel', oldSize: 70, oldLim: true, oldN: 3, oldFade: false, oldFadeFrom: 2};
 try { Object.assign(editSet, JSON.parse(localStorage.getItem('monun.editmark') || '{}')); } catch (e) {}
 let edStartText = '';
 const EM_COLORS = ['#B9F6CA', '#FFF59D', '#FFCDD2', '#B3E5FC', '#FFD8A8', '#E1BEE7', '#C5E1A5', '#D7CCC8'];
@@ -2430,19 +2430,27 @@ function flushOldLabels(){
     let t = o.t, w = ctx.measureText(t).width;
     if (w > maxW - pw){ while (t.length > 1 && ctx.measureText(t + '…').width > maxW - pw) t = t.slice(0, -1); t += '…'; w = ctx.measureText(t).width; }
     const bh = o.fpx * 1.45, top = Math.max(HH + 1, o.y - bh - 1), x = o.x - 3;
-    ctx.globalAlpha = 0.96; ctx.fillStyle = DC('#FFFDF5'); ctx.fillRect(x, top, pw + w + 8, bh);
-    ctx.globalAlpha = 1; ctx.fillStyle = DC(o.col); ctx.fillRect(x, top, 3, bh);
+    ctx.globalAlpha = 0.96 * o.oa; ctx.fillStyle = DC('#FFFDF5'); ctx.fillRect(x, top, pw + w + 8, bh);
+    ctx.globalAlpha = o.oa; ctx.fillStyle = DC(o.col); ctx.fillRect(x, top, 3, bh);
     ctx.strokeStyle = DC('#D9CFBF'); ctx.lineWidth = 1; ctx.strokeRect(x + .5, top + .5, pw + w + 7, bh - 1);
     ctx.fillStyle = DC('#B08A4A'); ctx.fillText(pre, x + 6, top + bh / 2);
     ctx.fillStyle = DC('#5B5346'); ctx.fillText(t, x + 6 + pw, top + bh / 2);
   }
-  ctx.restore(); oldLabels = [];
+  ctx.globalAlpha = 1; ctx.restore(); oldLabels = [];
+}
+// 꼬리표 진하기: i = 몇 번째로 최근 수정인지 (0 = 가장 최근). 0이면 안 띄움
+function oldAlpha(i){
+  if (editSet.oldLim && i >= editSet.oldN) return 0;
+  const f = editSet.oldFadeFrom - 1;
+  if (!editSet.oldFade || i < f) return 1;
+  const end = editSet.oldLim ? editSet.oldN : f + 10;
+  return Math.max(0.15, 1 - 0.85 * (i - f + 1) / (end - f + 1));
 }
 function editMarksFor(r, c){
   if (ctx !== MAIN_CTX) return null;   // 인쇄·그림 복사에는 안 나오게
   if (!editSet.on || !sh.editMarks || !sh.editMarks.length) return null;
   const L = sh.editMarks, n = L.length, out = [];
-  L.forEach((m, i) => { if (m.r === r && m.c === c) out.push({a: m.a, b: m.b, old: m.old, col: markColor(m), alpha: editSet.fade && n > 1 ? 0.95 - 0.6 * i / (n - 1) : 0.85}); });
+  L.forEach((m, i) => { if (m.r === r && m.c === c) out.push({a: m.a, b: m.b, old: m.old, oa: oldAlpha(i), col: markColor(m), alpha: editSet.fade && n > 1 ? 0.95 - 0.6 * i / (n - 1) : 0.85}); });
   return out.length ? out : null;
 }
 // 편집 칸 안에서도 (쓰는 중엔 바뀐 만큼 자리를 옮겨서)
@@ -2478,6 +2486,9 @@ function editMarkMenu(anchor){
     <div class="plabel">고치기 전 문장 (고친 문장 위에 작게)</div>
     <div class="row"><select class="ctl" id="emOld"><option value="sel"${editSet.old === 'sel' ? ' selected' : ''}>고른 칸에서만 보기</option><option value="all"${editSet.old === 'all' ? ' selected' : ''}>모든 칸에서 보기</option><option value="off"${editSet.old === 'off' ? ' selected' : ''}>안 보기</option></select>
       <span>글씨 <input class="ctl" id="emOldSize" type="number" min="30" max="100" step="5" value="${editSet.oldSize}"> %</span></div>
+    <label class="chk"><input type="radio" name="emOL" value="1"${editSet.oldLim ? ' checked' : ''}> 최근 <input class="ctl" id="emOldN" type="number" min="1" max="500" value="${editSet.oldN}"> 개까지만 띄우기</label>
+    <label class="chk"><input type="radio" name="emOL" value="0"${editSet.oldLim ? '' : ' checked'}> 칠해진 곳 모두 띄우기</label>
+    <label class="chk"><input type="checkbox" id="emOldFade"${editSet.oldFade ? ' checked' : ''}> <input class="ctl" id="emOldFF" type="number" min="1" max="500" value="${editSet.oldFadeFrom}"> 번째부터 점점 옅게 (끝에 가면 사라짐)</label>
     <label class="chk"><input type="checkbox" id="emFade"${editSet.fade ? ' checked' : ''}> 오래된 수정일수록 옅게</label>
     <div class="plabel">형광펜 색</div>
     <label class="chk"><input type="radio" name="emCm" value="new"${editSet.colorMode !== 'all' ? ' checked' : ''}> 바꾼 순간부터 새 색 (이전 수정은 원래 색 그대로)</label>
@@ -2493,6 +2504,11 @@ function editMarkMenu(anchor){
     p.querySelector('#emN').onfocus = () => { p.querySelector('[name=emLim][value="1"]').checked = true; };
     p.querySelectorAll('[name=emLim]').forEach(x => x.onchange = () => { const lim = x.value === '1'; if (lim && (sh.editMarks || []).length > editSet.n && !confirm(`최근 ${editSet.n}문장만 남기고 오래된 표시 ${(sh.editMarks || []).length - editSet.n}개는 지웁니다.`)){ editMarkMenu(anchor); return; } setEditMark({limit: lim}); editMarkMenu(anchor); });
     p.querySelectorAll('[name=emCm]').forEach(x => x.onchange = () => { setEditMark({colorMode: x.value}); toast(x.value === 'all' ? '모든 수정 표시를 지금 색으로 칠해요' : '이제부터 고친 곳만 새 색으로 칠해요'); });
+    p.querySelectorAll('[name=emOL]').forEach(x => x.onchange = () => setEditMark({oldLim: x.value === '1'}));
+    p.querySelector('#emOldN').onfocus = () => { p.querySelector('[name=emOL][value="1"]').checked = true; };
+    p.querySelector('#emOldN').onchange = e => setEditMark({oldN: Math.max(1, Math.min(500, parseInt(e.target.value, 10) || 3)), oldLim: true});
+    p.querySelector('#emOldFade').onchange = e => setEditMark({oldFade: e.target.checked});
+    p.querySelector('#emOldFF').onchange = e => { p.querySelector('#emOldFade').checked = true; setEditMark({oldFadeFrom: Math.max(1, Math.min(500, parseInt(e.target.value, 10) || 2)), oldFade: true}); };
     p.querySelector('#emOld').onchange = e => setEditMark({old: e.target.value});
     p.querySelector('#emOldSize').onchange = e => setEditMark({oldSize: Math.max(30, Math.min(100, parseInt(e.target.value, 10) || 70))});
     p.querySelector('#emFade').onchange = e => setEditMark({fade: e.target.checked});
